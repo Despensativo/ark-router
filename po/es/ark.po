@@ -15295,3 +15295,105 @@ msgstr "🔀 MODO HUB • SWITCH GIGABIT & PUENTE L2"
 
 msgid "🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Sob Demanda)"
 msgstr "🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Bajo Demanda)"
+msgid "Digite o número da VLAN (1 a 4094):"
+msgstr "Ingrese el número de VLAN (1 a 4094):"
+
+msgid "Filtro de seções do painel"
+msgstr "Filtro de secciones del panel"
+
+msgid "Nenhuma (Sem VLAN • Padrão)"
+msgstr "Ninguna (Sin VLAN • Por defecto)"
+
+msgid "VLAN ID inválido. Deve ser um número entre 1 e 4094."
+msgstr "ID de VLAN no válido. Debe ser un número entre 1 y 4094."
+
+msgid "IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall"
+msgstr "IPv6 Puro: sin concesión DHCPv4 e IPv4 bloqueado en el firewall"
+
+msgid "🟣 IPv6 Puro"
+msgstr "🟣 IPv6 Puro"
+
+msgid "🟣 IPv6 Puro (Sem IPv4)"
+msgstr "🟣 IPv6 Puro (Sin IPv4)"
+
+msgid "IPv6 PURO (SEM IPv4)"
+msgstr "IPv6 PURO (SIN IPv4)"
+
+msgid "Ative o IPv6 global no roteador para usar o modo IPv6 Puro"
+msgstr "Activa IPv6 global en el router para usar el modo IPv6 Puro"
+
+msgid "Bloqueia 100% do IPv4 e impede concessão DHCPv4 para este aparelho"
+msgstr "Bloquea el 100% de IPv4 e impide concesiones DHCPv4 para este dispositivo"
+
+msgid "Este aparelho não recebe endereço IPv4 no DHCP e tem 100% do tráfego IPv4 bloqueado no firewall. Reserva de IPv4, DMZ, DNS IPv4 e rota WAN IPv4 são desativados enquanto estiver em IPv6 Puro (sites exclusivamente IPv4 não abrirão sem NAT64)."
+msgstr "Este dispositivo no recibe dirección IPv4 por DHCP y tiene el 100% del tráfico IPv4 bloqueado en el firewall. La reserva de IPv4, DMZ, DNS IPv4 y ruta WAN IPv4 se desactivan mientras esté en IPv6 Puro (los sitios exclusivamente IPv4 no abrirán sin NAT64)."
+
+msgid "Dispositivo IPv6"
+msgstr "Dispositivo IPv6"
+
+msgid "🚀 Auto-Escolher Melhor DNS"
+msgstr "🚀 Elegir Mejor DNS Automáticamente"
+
+msgid "Recomendado: 2 provedores distintos (evita rajadas duplicadas no All-Servers). Campos vazios serão desconsiderados."
+msgstr "Recomendado: 2 proveedores distintos (evita ráfagas duplicadas en All-Servers). Los campos vacíos serán ignorados."
+
+msgid "Escolha um valor predefinido comum ou digite o tamanho de MTU desejado (entre 1280 e 2000 bytes). O valor será gravado no kernel e propagado em cascata para todas as camadas de rede."
+msgstr "Elige un valor predefinido común o ingresa el tamaño de MTU deseado (entre 1280 y 2000 bytes). El valor se guardará en el kernel y se propagará en cascada a todas las capas de red."
+
+msgid "Estes parâmetros calibram o tamanho exato de pacote da sua conexão para eliminar fragmentação e latência oculta."
+msgstr "Estos parámetros calibran el tamaño exacto de paquete de tu conexión para eliminar fragmentación y latencia oculta."
+
+msgid "⚙️ Calibração de MTU e Overhead de Pacotes (Avançado)"
+msgstr "⚙️ Calibración de MTU y Overhead de Paquetes (Avanzado)"
+
+msgid "⚠️ Falha na sondagem:"
+msgstr "⚠️ Error en el sondeo:"
+
+msgid "✅ Sondagem Concluída: MTU"
+msgstr "✅ Sondeo Completado: MTU"
+
+msgid "✍️ Modo Manual / Personalizado"
+msgstr "✍️ Modo Manual / Personalizado"
+
+msgid "✨ Automático Inteligente (Fast PMTUD)"
+msgstr "✨ Automático Inteligente (Fast PMTUD)"
+
+msgid "🌐 Controle de MTU da Conexão"
+msgstr "🌐 Control de MTU de la Conexión"
+
+msgid "🛡️ Sincronização em Cascata Ativa (Zero Fragmentação):"
+msgstr "🛡️ Sincronización en Cascada Activa (Cero Fragmentación):"
+
+msgid "🛡️ Sondagem Concluída: Concentrador upstream limitou a rota em MTU"
+msgstr "🛡️ Sondeo Completado: El concentrador upstream limitó la ruta a MTU"
+
+msgid "🛡️ Status Atual: Sessão operando em MTU"
+msgstr "🛡️ Estado Actual: Sesión operando en MTU"
+
+msgid "Fallback NAT64 (Jool):"
+msgstr "Fallback NAT64 (Jool):"
+
+msgid "Pronto em Standby (0% CPU)"
+msgstr "Listo en Standby (0% CPU)"
+
+msgid "Sob Demanda"
+msgstr "Bajo Demanda"
+
+msgid "Modo 5: IPv6-Only + NAT64/DNS64 (Jool)"
+msgstr "Modo 5: IPv6-Only + NAT64/DNS64 (Jool)"
+
+msgid "Single-Stack + Fallback"
+msgstr "Single-Stack + Fallback"
+
+msgid "LAN operando 100% em IPv6 como primário (sem DHCP IPv4), com DNS64 + NAT64 em kernel (Jool 64:ff9b::/96) e PREF64 apenas como fallback automático para sites/apps IPv4-only."
+msgstr "LAN operando 100% en IPv6 primario (sin DHCP IPv4), con DNS64 + NAT64 en kernel (Jool 64:ff9b::/96) y PREF64 solo como fallback automático para sitios/apps solo IPv4."
+
+msgid "Sites com IPv6 saem 100% nativos direto (com aceleração PPE em hardware); destinos exclusivamente IPv4 são traduzidos transparentemente pelo Jool NAT64."
+msgstr "Los sitios con IPv6 salen 100% nativos directos (con aceleración PPE por hardware); los destinos solo IPv4 se traducen de forma transparente con Jool NAT64."
+
+msgid "Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 11 via PREF64 e ipv4only.arpa."
+msgstr "Soporte nativo de 464XLAT/CLAT en iOS, iPadOS, macOS, Android y Windows 11 mediante PREF64 e ipv4only.arpa."
+
+msgid "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
+msgstr "También puede activarse individualmente dispositivo por dispositivo (sin afectar equipos Dual-Stack) en la tarjeta DISPOSITIVOS."
+

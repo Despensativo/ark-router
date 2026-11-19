@@ -92,6 +92,7 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_loop_prevention.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_post_upgrade_safeguards.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_dns_optimization.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 
 # 4. Auditoria de Contratos Funcionais, Preservação de Estado, Documentação e i18n

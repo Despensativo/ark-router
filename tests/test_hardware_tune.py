@@ -326,6 +326,8 @@ class TestHardwareTune(unittest.TestCase):
         # 4b. Endpoint-Independent Mapping (Full Cone NAT) para jogos UDP (PS5, Xbox, PC, STUN)
         self.assertIn("chain ark_cone_nat", nft_content)
         self.assertIn("masquerade persistent", nft_content)
+        # 4c. Cobertura sem buracos em portas altas UDP de jogos/boosters (17501-19999 e 60001-65535), isolando Tailscale/BT/WireGuard
+        self.assertIn("17000-41640, 41642-51412, 51414-51819, 51821-65535", nft_content)
 
         # 5. Valida PLPMTUD (tcp_mtu_probing=1 + tcp_base_mss=1024) em 99-ark-hardware-tune.conf
         res_tune = self.sb.run_control("system-hardware-auto-tune")

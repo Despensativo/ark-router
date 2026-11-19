@@ -437,7 +437,7 @@ function deviceLimitsMap(config) {
 	});
 	return out;
 }
-function deviceIpv6Map(config, globalIpv6Mode) {
+function deviceIpProtocolMap(config, globalIpv6Mode) {
 	const out = {};
 	const v = values(config);
 	const isSelective = (globalIpv6Mode === 'selective');
@@ -445,12 +445,22 @@ function deviceIpv6Map(config, globalIpv6Mode) {
 		const x = v[k];
 		if (x && x.mac) {
 			const mac = String(x.mac).toUpperCase();
-			if (isSelective) {
-				out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true);
+			if (x.ip_protocol === 'ipv6_only' || x.ip_protocol === 'ipv4_only' || x.ip_protocol === 'dual_stack') {
+				out[mac] = x.ip_protocol;
+			} else if (isSelective) {
+				out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true) ? 'dual_stack' : 'ipv4_only';
 			} else {
-				out[mac] = (String(x.ipv6_allowed) !== '0' && x.ipv6_allowed !== false);
+				out[mac] = (String(x.ipv6_allowed) === '0' || x.ipv6_allowed === false) ? 'ipv4_only' : 'dual_stack';
 			}
 		}
+	});
+	return out;
+}
+function deviceIpv6Map(config, globalIpv6Mode) {
+	const protoMap = deviceIpProtocolMap(config, globalIpv6Mode);
+	const out = {};
+	Object.keys(protoMap).forEach(function(mac) {
+		out[mac] = (protoMap[mac] === 'dual_stack' || protoMap[mac] === 'ipv6_only');
 	});
 	return out;
 }
@@ -719,10 +729,10 @@ function getWifiRuntimeState(cfg, wirelessConfig, wirelessStatus) {
 	}
 
 	return {
-		state: 'down',
-		label: 'DESLIGADA',
+		state: 'starting',
+		label: 'INICIANDO (DFS / RADAR)',
 		pillClass: 'standby',
-		checked: false
+		checked: true
 	};
 }
 function wifiBand(radioName, radio) {

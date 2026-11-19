@@ -1,6 +1,6 @@
 # ARK Router — Mapa Mestre de Documentação Técnica e Navegação (`.md`)
 
-> **Versão Homologada**: [`2.2.7`](../VERSION) | **Status**: Ativo & Validado  
+> **Versão Homologada**: [`2.2.14`](../VERSION) | **Status**: Ativo & Validado  
 > **Finalidade**: Catálogo mestre e índice de navegação de alta eficiência de toda a documentação técnica do ARK Router. Organizado em **5 Camadas Estritas** para garantir que desenvolvedores e agentes de IA encontrem imediatamente as fontes de verdade canônicas sem queimar contexto com relatórios históricos ou estudos datados.
 
 ---
@@ -95,3 +95,8 @@ Para iniciar qualquer tarefa de desenvolvimento ou manutenção sem perder tempo
 | [`docs/archive/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md`](archive/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md) | Recorte de latência e WED no Filogic 830 / OpenWrt 25.12.5 (`T-064`). |
 | [`docs/archive/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md`](archive/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md) | Estudo de AQL, airtime fairness e bufferbloat Wi-Fi (`T-064`). |
 | [`docs/archive/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md`](archive/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md) | Revisão consolidada dos parâmetros Wi-Fi após a release `v2.1.6` (`T-070`). |
+
+## Pesquisa QoS de 18/11/2026
+
+- [Fontes primárias Linux/OpenWrt](audit/batches/035-qos-primary-sources-2026-11-18.md).
+- [Verificação das alegações RPS, cake_mq e HFSC](audit/batches/036-qos-claims-review-2026-11-18.md).

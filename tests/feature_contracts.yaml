@@ -1,5 +1,5 @@
 metadata:
-  version: 2.2.7
+  version: 2.2.14
   schema_version: '1.0'
   total_features: 74
   canonical_repo: GitHub/luci-app-ark-router
@@ -908,15 +908,21 @@ features:
   - tests/test_wan_matrix.py
   real_hw_required: false
 - id: ARK-IPV6-001
-  name: IPv6 Nativo Dual-Stack e Delegação de Prefixo
-  purpose: Prover conectividade IPv6 nativa via DHCPv6-PD / SLAAC com anúncio de roteador (RA) para clientes LAN.
+  name: IPv6 Nativo Dual-Stack, Seletivo e IPv6 Puro por Dispositivo
+  purpose: Prover conectividade IPv6 nativa via DHCPv6-PD / SLAAC com anúncio de roteador (RA) e controle individual por
+    aparelho (Pilha Dupla, IPv4 Puro e IPv6 Puro sem DHCPv4).
   state: funcional
   files:
   - root/usr/lib/ark/modules/network.sh
+  - root/usr/lib/ark/modules/network_ipv6_mwan.sh
+  - root/usr/lib/ark/modules/devices.sh
+  - src/modules/devices.js
   actions:
   - ipv6-status
   - ipv6-mode-set
+  - ipv6-device-toggle
   - sync-ipv6-firewall
+  - device-save
   rpc_endpoints:
   - /usr/sbin/equipe-dashboard-control ipv6-*
   acls:
@@ -932,22 +938,34 @@ features:
   - package: dhcp
     sections:
     - lan
+    - host
+  - package: equipe_devices
+    sections:
+    - device
   services:
   - network
   - odhcpd
+  - dnsmasq
+  - firewall
   persistent_data:
   - /etc/config/network
   - /etc/config/dhcp
+  - /etc/config/equipe_devices
+  - /etc/ark/ark_ipv6_selective.sh
   temp_data:
   - /var/run/odhcpd/
-  boot_behavior: odhcp6c solicita prefixo no boot se a WAN possuir IPv6 habilitado.
+  boot_behavior: odhcp6c solicita prefixo no boot se a WAN possuir IPv6 habilitado e firewall.ark_ipv6_selective reaplica
+    os filtros por MAC (fw4/fw3).
   can_modify:
   - network.wan.ipv6
   - network.wan6
   - dhcp.lan.ra
   - dhcp.lan.dhcpv6
+  - dhcp.@host[].ip
+  - equipe_devices.@device[].ip_protocol
+  - firewall.ark_ipv6_selective
   cannot_modify:
-  - regras IPv4
+  - regras IPv4 de dispositivos nao marcados como ipv6_only
   relations:
   - ARK-WAN-001
   - ARK-FW-001

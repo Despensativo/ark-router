@@ -25,6 +25,11 @@ if command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1; then
 		sleep 3
 		ark_ipv6_prefix_hygiene
 		command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes
+		if [ -f /usr/lib/ark/validation.sh ] && [ -f /usr/lib/ark/modules/network_ipv6_mwan.sh ]; then
+			. /usr/lib/ark/validation.sh
+			. /usr/lib/ark/modules/network_ipv6_mwan.sh
+			command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns
+		fi
 	) >/dev/null 2>&1 &
 fi
 

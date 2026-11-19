@@ -499,23 +499,23 @@ flowchart TD
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
-### `ARK-IPV6-001` — IPv6 Nativo Dual-Stack e Delegação de Prefixo
+### `ARK-IPV6-001` — IPv6 Nativo Dual-Stack, Seletivo e IPv6 Puro por Dispositivo
 - **1. Identificador**: `ARK-IPV6-001`
-- **2. Nome**: IPv6 Nativo Dual-Stack e Delegação de Prefixo
-- **3. Objetivo**: Prover conectividade IPv6 nativa via DHCPv6-PD / SLAAC com anúncio de roteador (RA) para clientes LAN.
+- **2. Nome**: IPv6 Nativo Dual-Stack, Seletivo e IPv6 Puro por Dispositivo
+- **3. Objetivo**: Prover conectividade IPv6 nativa via DHCPv6-PD / SLAAC com anúncio de roteador (RA) e controle individual por aparelho (Pilha Dupla, IPv4 Puro e IPv6 Puro sem DHCPv4).
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/network.sh`
-- **6. Comandos e Ações**: `ipv6-status`, `ipv6-mode-set`, `sync-ipv6-firewall`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/network.sh`, `root/usr/lib/ark/modules/network_ipv6_mwan.sh`, `root/usr/lib/ark/modules/devices.sh`, `src/modules/devices.js`
+- **6. Comandos e Ações**: `ipv6-status`, `ipv6-mode-set`, `ipv6-device-toggle`, `sync-ipv6-firewall`, `device-save`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control ipv6-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `odhcpd`, `odhcp6c`
-- **10. Configurações UCI**: `network`, `dhcp`
-- **11. Serviços e Daemons**: `network`, `odhcpd`
-- **12. Dados Persistentes**: `/etc/config/network`, `/etc/config/dhcp`
+- **10. Configurações UCI**: `network`, `dhcp`, `equipe_devices`
+- **11. Serviços e Daemons**: `network`, `odhcpd`, `dnsmasq`, `firewall`
+- **12. Dados Persistentes**: `/etc/config/network`, `/etc/config/dhcp`, `/etc/config/equipe_devices`, `/etc/ark/ark_ipv6_selective.sh`
 - **13. Dados Temporários em /tmp ou Memória**: `/var/run/odhcpd/`
-- **14. Comportamento no Boot**: odhcp6c solicita prefixo no boot se a WAN possuir IPv6 habilitado.
-- **15. Recursos que Pode Alterar**: network.wan.ipv6, network.wan6, dhcp.lan.ra, dhcp.lan.dhcpv6
-- **16. Recursos que NÃO Pode Alterar**: regras IPv4
+- **14. Comportamento no Boot**: odhcp6c solicita prefixo no boot se a WAN possuir IPv6 habilitado e firewall.ark_ipv6_selective reaplica os filtros por MAC (fw4/fw3).
+- **15. Recursos que Pode Alterar**: network.wan.ipv6, network.wan6, dhcp.lan.ra, dhcp.lan.dhcpv6, dhcp.@host[].ip, equipe_devices.@device[].ip_protocol, firewall.ark_ipv6_selective
+- **16. Recursos que NÃO Pode Alterar**: regras IPv4 de dispositivos nao marcados como ipv6_only
 - **17. Relações e Dependências**: `ARK-WAN-001`, `ARK-FW-001`
 - **18. Limitações por Hardware**: Depende de suporte do provedor de acesso.
 - **19. Limitações por Versão do OpenWrt**: Universal.

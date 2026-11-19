@@ -568,7 +568,7 @@ enable_ipv6_dual_stack() {
 		uci -q set dhcp.lan.dhcpv6='relay'
 		uci -q set dhcp.lan.ra='relay'
 		uci -q set dhcp.lan.ndp='relay'
-		uci -q set dhcp.wan.dhcpv6='relay'
+		uci -q delete dhcp.wan.dhcpv6 2>/dev/null || true
 		uci -q set dhcp.wan.ra='relay'
 		uci -q set dhcp.wan.ndp='relay'
 		uci -q set dhcp.wan.master='1'
@@ -609,14 +609,252 @@ enable_ipv6_dual_stack() {
 	uci commit network
 	uci commit dhcp
 	uci commit firewall
+	ark_sync_lan_ipv6_dns no_restart
 
 	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
 	sync_adguard_ipv6 true
 }
 
+ark_has_per_device_ipv6_only() {
+	local eq_file sections s
+	eq_file="${ARK_ROOT:-}/etc/config/equipe_devices"
+	[ -f "$eq_file" ] || [ -f /etc/config/equipe_devices ] || return 1
+	sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
+	for s in $sections; do
+		if [ "$(uci -q get "equipe_devices.$s.ip_protocol" || true)" = "ipv6_only" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+ark_sync_ipv6_doh_fastfail() {
+	local cur_mode doh_pref
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	doh_pref="$(uci -q get equipe_perf.settings.dns_doh_enabled || echo 0)"
+	if [ "$cur_mode" != "ipv4_only" ] && [ "$doh_pref" != "1" ]; then
+		uci -q set firewall.ark_doh_v6_fix=rule
+		uci -q set firewall.ark_doh_v6_fix.name='ARK-FastFail-LAN-DoH-Relay-v6'
+		uci -q set firewall.ark_doh_v6_fix.src='lan'
+		uci -q set firewall.ark_doh_v6_fix.dest='wan'
+		uci -q set firewall.ark_doh_v6_fix.family='ipv6'
+		uci -q set firewall.ark_doh_v6_fix.proto='tcp udp'
+		uci -q set firewall.ark_doh_v6_fix.dest_port='443 853'
+		uci -q delete firewall.ark_doh_v6_fix.dest_ip 2>/dev/null || true
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2606:4700:4700::1111'
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2606:4700:4700::1001'
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2606:4700:4700::64'
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2606:4700:4700::6400'
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2001:4860:4860::8888'
+		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2001:4860:4860::8844'
+		uci -q set firewall.ark_doh_v6_fix.target='REJECT'
+		uci commit firewall 2>/dev/null || true
+	fi
+}
+
+ark_sync_nat64_jool() {
+	local cur_mode need_nat64 ark_etc_dir nat64_sh
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	need_nat64=0
+	if [ "$cur_mode" = "ipv6_only" ]; then
+		need_nat64=1
+	elif [ "$cur_mode" != "ipv4_only" ] && [ "$cur_mode" != "ipv6_clat" ] && ark_has_per_device_ipv6_only; then
+		need_nat64=1
+	fi
+
+	ark_etc_dir="${ARK_ROOT:-}/etc/ark"
+	nat64_sh="${ark_etc_dir}/ark_nat64.sh"
+
+	if [ "$need_nat64" = "1" ]; then
+		ark_sync_ipv6_doh_fastfail
+		if [ -z "${ARK_ROOT:-}" ] && ! command -v jool >/dev/null 2>&1; then
+			if command -v apk >/dev/null 2>&1; then
+				apk add kmod-jool-netfilter jool-tools-netfilter >/dev/null 2>&1 || true
+			elif command -v opkg >/dev/null 2>&1; then
+				opkg install kmod-jool-netfilter jool-tools-netfilter >/dev/null 2>&1 || true
+			fi
+		fi
+		if [ -n "${ARK_ROOT:-}" ] || command -v jool >/dev/null 2>&1; then
+			mkdir -p "$ark_etc_dir"
+			cat << 'EOF' > "$nat64_sh"
+#!/bin/sh
+command -v jool >/dev/null 2>&1 || exit 0
+modprobe jool 2>/dev/null || true
+if ! jool -i ark_nat64 instance status >/dev/null 2>&1; then
+	jool instance add "ark_nat64" --netfilter --pool6 64:ff9b::/96 2>/dev/null || true
+	jool -i "ark_nat64" global update lowest-ipv6-mtu 1280 2>/dev/null || true
+fi
+EOF
+			chmod +x "$nat64_sh"
+			[ -z "${ARK_ROOT:-}" ] && /bin/sh "$nat64_sh" 2>/dev/null || true
+			uci -q set firewall.ark_nat64=include
+			uci -q set firewall.ark_nat64.type=script
+			uci -q set firewall.ark_nat64.path='/etc/ark/ark_nat64.sh'
+			is_fw4 && uci -q set firewall.ark_nat64.fw4_compatible='1'
+			uci commit firewall 2>/dev/null || true
+		fi
+	else
+		if [ -z "${ARK_ROOT:-}" ] && command -v jool >/dev/null 2>&1; then
+			jool instance remove "ark_nat64" >/dev/null 2>&1 || true
+		fi
+		rm -f "$nat64_sh" 2>/dev/null || true
+		if [ -n "$(uci -q get firewall.ark_nat64 || true)" ]; then
+			uci -q delete firewall.ark_nat64 2>/dev/null || true
+			uci commit firewall 2>/dev/null || true
+		fi
+	fi
+}
+
+ark_sync_lan_ipv6_dns() {
+	local no_restart cur_mode lan_dev isp_v6_list isp_raw tok ula_ip6 ula_pfx added_isp=0
+	local resolv_file desired_dns desired_pref64 cur_dns cur_pref64 cur_dhcpv6 cur_dns_svc cur_wan_v6
+	no_restart="${1:-}"
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	[ "$cur_mode" != "ipv4_only" ] || return 0
+
+	lan_dev="$(uci -q get network.lan.device || echo '')"
+	if [ -z "$lan_dev" ]; then
+		if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
+			lan_dev="br-lan"
+		else
+			lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
+		fi
+	fi
+
+	# Modo global ipv6_only: anuncia DNS64 Cloudflare + PREF64 para toda a LAN;
+	# demais modos (dual_stack/selective/nptv6): anuncia DNS normal para nao afetar aparelhos Pilha Dupla
+	# (aparelhos individuais ipv6_only recebem DNS64 cirurgico via prerouting_dns64 no nftables)
+	desired_pref64=""
+	if [ "$cur_mode" = "ipv6_only" ]; then
+		desired_dns="2606:4700:4700::64 2606:4700:4700::6400"
+		desired_pref64="64:ff9b::/96"
+	else
+		# Coleta apenas entradas de "dns-server" globais da operadora (wan6 ubus + resolv.conf.auto), ignorando fe80:: link-local
+		isp_v6_list=""
+		isp_raw=""
+		if [ -z "${ARK_ROOT:-}" ] && command -v ubus >/dev/null 2>&1; then
+			isp_raw="$(ubus call network.interface.wan6 status 2>/dev/null | awk '
+				/"dns-server"[ \t]*:[ \t]*\[/ { in_dns=1; next }
+				in_dns && /\]/ { in_dns=0; next }
+				in_dns {
+					gsub(/[^0-9a-fA-F:]/, " ")
+					for (i = 1; i <= NF; i++) if (index($i, ":") > 0) print $i
+				}
+			' || true)"
+		fi
+		resolv_file="${ARK_ROOT:-}/tmp/resolv.conf.d/resolv.conf.auto"
+		[ -f "$resolv_file" ] || resolv_file="/tmp/resolv.conf.d/resolv.conf.auto"
+		if [ -f "$resolv_file" ]; then
+			isp_raw="$isp_raw $(awk '/^nameserver[ \t]+.*:/ {print $2}' "$resolv_file" 2>/dev/null || true)"
+		fi
+		for tok in $isp_raw; do
+			case "$tok" in
+				*:*:*) ;;
+				*) continue ;;
+			esac
+			case "$tok" in
+				fe80:*|FE80:*|::1|::|ff*|FF*|2606:4700:4700::1111|2606:4700:4700::1001|2606:4700:4700::64|2606:4700:4700::6400) continue ;;
+			esac
+			valid_ipv6 "$tok" || continue
+			case " $isp_v6_list " in
+				*" $tok "*) continue ;;
+			esac
+			isp_v6_list="${isp_v6_list:+$isp_v6_list }$tok"
+			added_isp=$((added_isp + 1))
+			[ "$added_isp" -ge 2 ] && break
+		done
+
+		ula_ip6=""
+		if [ -z "${ARK_ROOT:-}" ]; then
+			ula_ip6="$(ip -6 addr show dev "$lan_dev" scope global 2>/dev/null | awk '/inet6 fd[0-9a-fA-F]{2}:/ {sub(/\/.*/, "", $2); print $2; exit}' || true)"
+		fi
+		if [ -z "$ula_ip6" ]; then
+			ula_pfx="$(uci -q get network.globals.ula_prefix || true)"
+			case "$ula_pfx" in
+				fd*::/*|FD*::/*) ula_ip6="${ula_pfx%%/*}1" ;;
+			esac
+		fi
+
+		desired_dns="2606:4700:4700::1111"
+		for tok in $isp_v6_list; do
+			desired_dns="$desired_dns $tok"
+		done
+		if [ -z "$isp_v6_list" ] && [ -n "$ula_ip6" ]; then
+			desired_dns="$desired_dns $ula_ip6"
+		fi
+		desired_dns="$desired_dns 2606:4700:4700::1001"
+	fi
+
+	cur_dns="$(uci -q get dhcp.lan.dns || true)"
+	cur_pref64="$(uci -q get dhcp.lan.ra_pref64 || true)"
+	cur_dhcpv6="$(uci -q get dhcp.lan.dhcpv6 || true)"
+	cur_dns_svc="$(uci -q get dhcp.lan.dns_service || true)"
+	cur_wan_v6="$(uci -q get dhcp.wan.dhcpv6 || true)"
+
+	if [ "$cur_dns" = "$desired_dns" ] && [ "$cur_pref64" = "$desired_pref64" ] && [ "$cur_dhcpv6" = "server" ] && [ "$cur_dns_svc" = "1" ] && [ "$cur_wan_v6" != "relay" ]; then
+		return 0
+	fi
+
+	uci -q set dhcp.lan.dhcpv6='server'
+	uci -q set dhcp.lan.dns_service='1'
+	if [ "$cur_wan_v6" = "relay" ]; then
+		uci -q delete dhcp.wan.dhcpv6 2>/dev/null || true
+	fi
+	if [ -n "$desired_pref64" ]; then
+		uci -q set "dhcp.lan.ra_pref64=$desired_pref64"
+	else
+		uci -q delete dhcp.lan.ra_pref64 2>/dev/null || true
+	fi
+	uci -q delete dhcp.lan.dns 2>/dev/null || true
+	for tok in $desired_dns; do
+		uci -q add_list "dhcp.lan.dns=$tok"
+	done
+	uci commit dhcp 2>/dev/null || true
+
+	if [ "$no_restart" != "no_restart" ] && [ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/odhcpd ]; then
+		/etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+	fi
+}
+
+ark_release_per_device_ipv6_only_dhcp() {
+	local sections s proto mac host cur_ip cur_tag saved_ip dhcp_changed=0 dev_changed=0 eq_file
+	eq_file="${ARK_ROOT:-}/etc/config/equipe_devices"
+	[ -f "$eq_file" ] || [ -f /etc/config/equipe_devices ] || return 0
+	sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
+	for s in $sections; do
+		proto="$(uci -q get "equipe_devices.$s.ip_protocol" || true)"
+		[ "$proto" = "ipv6_only" ] || continue
+		mac="$(uci -q get "equipe_devices.$s.mac" | tr 'a-f' 'A-F')"
+		saved_ip="$(uci -q get "equipe_devices.$s.saved_v4_ip" || true)"
+		if [ -n "$mac" ]; then
+			host="$(find_dhcp_host "$mac")"
+			if [ -n "$host" ]; then
+				cur_ip="$(uci -q get "dhcp.$host.ip" || true)"
+				cur_tag="$(uci -q get "dhcp.$host.tag" || true)"
+				if [ "$cur_ip" = "ignore" ] || [ "$cur_tag" = "ark_v6only" ]; then
+					uci -q delete "dhcp.$host.tag" 2>/dev/null || true
+					if [ -n "$saved_ip" ] && valid_ipv4 "$saved_ip"; then
+						uci -q set "dhcp.$host.ip=$saved_ip"
+					else
+						uci -q delete "dhcp.$host" 2>/dev/null || true
+					fi
+					dhcp_changed=1
+				fi
+			fi
+		fi
+		uci -q set "equipe_devices.$s.saved_ip_protocol=ipv6_only"
+		uci -q set "equipe_devices.$s.ip_protocol=ipv4_only"
+		uci -q set "equipe_devices.$s.ipv6_allowed=0"
+		dev_changed=1
+	done
+	[ "$dhcp_changed" = 1 ] && uci commit dhcp 2>/dev/null || true
+	[ "$dev_changed" = 1 ] && uci commit equipe_devices 2>/dev/null || true
+}
+
 clean_ipv6_selective_firewall() {
-	local t lan_dev
+	local t lan_dev ark_etc_dir
+	ark_etc_dir="${ARK_ROOT:-}/etc/ark"
 	if is_fw4; then
 		if command -v nft >/dev/null 2>&1; then
 			nft delete table inet ark_ipv6_selective 2>/dev/null || true
@@ -625,29 +863,38 @@ clean_ipv6_selective_firewall() {
 			done
 		fi
 	elif is_fw3; then
-		if command -v ip6tables >/dev/null 2>&1; then
-			lan_dev="$(uci -q get network.lan.device || echo '')"
-			if [ -z "$lan_dev" ]; then
-				if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
-					lan_dev="br-lan"
-				else
-					lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
-				fi
+		lan_dev="$(uci -q get network.lan.device || echo '')"
+		if [ -z "$lan_dev" ]; then
+			if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
+				lan_dev="br-lan"
+			else
+				lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
 			fi
+		fi
+		if command -v ip6tables >/dev/null 2>&1; then
 			ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
 			ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
 			ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
 		fi
+		if command -v iptables >/dev/null 2>&1; then
+			iptables -D FORWARD -i "$lan_dev" -j ARK_IPV4_BLK 2>/dev/null || true
+			iptables -F ARK_IPV4_BLK 2>/dev/null || true
+			iptables -X ARK_IPV4_BLK 2>/dev/null || true
+			iptables -D INPUT -i "$lan_dev" -j ARK_IPV4_BLK_IN 2>/dev/null || true
+			iptables -F ARK_IPV4_BLK_IN 2>/dev/null || true
+			iptables -X ARK_IPV4_BLK_IN 2>/dev/null || true
+		fi
 	fi
-	rm -f /etc/ark/ark_ipv6_selective.* 2>/dev/null || true
+	rm -f "${ark_etc_dir}/ark_ipv6_selective."* 2>/dev/null || true
 	uci -q delete firewall.ark_ipv6_selective
 	uci commit firewall
 }
 
 sync_ipv6_selective_firewall() {
-	local lan_dev cur_mode allowed_macs blocked_macs sections s val m tmp_nft nft_file apply_sh elements_str
-	local elements_line
-	mkdir -p /etc/ark
+	local lan_dev cur_mode allowed_macs blocked_macs ipv6_only_macs sections s val proto m t tmp_nft nft_file apply_sh
+	local allowed_str blocked_str v6only_str ark_etc_dir nft_bin eq_file
+	ark_etc_dir="${ARK_ROOT:-}/etc/ark"
+	mkdir -p "$ark_etc_dir" "${ARK_ROOT:-}/tmp"
 	lan_dev="$(uci -q get network.lan.device || echo '')"
 	if [ -z "$lan_dev" ]; then
 		if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
@@ -660,13 +907,23 @@ sync_ipv6_selective_firewall() {
 
 	allowed_macs=""
 	blocked_macs=""
-	if [ -f /etc/config/equipe_devices ]; then
+	ipv6_only_macs=""
+	eq_file="${ARK_ROOT:-}/etc/config/equipe_devices"
+	if [ -f "$eq_file" ] || [ -f /etc/config/equipe_devices ]; then
 		sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
 		for s in $sections; do
-			val="$(uci -q get "equipe_devices.$s.ipv6_allowed")"
+			val="$(uci -q get "equipe_devices.$s.ipv6_allowed" || true)"
+			proto="$(uci -q get "equipe_devices.$s.ip_protocol" || true)"
 			m="$(uci -q get "equipe_devices.$s.mac" | tr 'A-F' 'a-f')"
 			[ -n "$m" ] || continue
-			if [ "$val" = "1" ]; then
+			if [ "$proto" = "ipv6_only" ]; then
+				ipv6_only_macs="$ipv6_only_macs $m"
+				allowed_macs="$allowed_macs $m"
+			elif [ "$proto" = "ipv4_only" ]; then
+				blocked_macs="$blocked_macs $m"
+			elif [ "$proto" = "dual_stack" ]; then
+				allowed_macs="$allowed_macs $m"
+			elif [ "$val" = "1" ]; then
 				allowed_macs="$allowed_macs $m"
 			elif [ "$val" = "0" ]; then
 				blocked_macs="$blocked_macs $m"
@@ -676,84 +933,105 @@ sync_ipv6_selective_firewall() {
 
 	if [ "$cur_mode" = "ipv4_only" ] || [ "$cur_mode" = "ipv6_only" ] || [ "$cur_mode" = "ipv6_clat" ]; then
 		clean_ipv6_selective_firewall
+		ark_sync_nat64_jool
 		return 0
 	fi
 
+	ark_sync_nat64_jool
+
+	if [ -n "$ipv6_only_macs" ] && [ -z "$(uci -q get dhcp.lan.dns || true)" ]; then
+		ark_sync_lan_ipv6_dns
+	fi
+
 	if is_fw4; then
-		tmp_nft="/tmp/ark_ipv6_selective.nft"
-		nft_file="/etc/ark/ark_ipv6_selective.nft"
-		apply_sh="/etc/ark/ark_ipv6_selective.sh"
+		tmp_nft="${ARK_ROOT:-}/tmp/ark_ipv6_selective.nft"
+		nft_file="${ark_etc_dir}/ark_ipv6_selective.nft"
+		apply_sh="${ark_etc_dir}/ark_ipv6_selective.sh"
+		nft_bin="$(command -v nft 2>/dev/null || echo /usr/sbin/nft)"
 
-		if [ "$cur_mode" = "selective" ]; then
-			elements_str=""
-			for m in $allowed_macs; do
-				[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
-			done
-			elements_line=""
-			[ -n "$elements_str" ] && elements_line="		elements = { $elements_str }"
-
-			cat << EOF > "$tmp_nft"
-table inet ark_ipv6_selective
-delete table inet ark_ipv6_selective
-table inet ark_ipv6_selective {
-	set allowed_macs {
-		type ether_addr
-$elements_line
-	}
-	chain forward_ipv6_selective {
-		type filter hook forward priority filter - 4; policy accept;
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs reject with icmpv6 type admin-prohibited
-	}
-	chain input_ipv6_selective {
-		type filter hook input priority filter - 4; policy accept;
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs udp dport 53 reject with icmpv6 type admin-prohibited
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs tcp dport 53 reject with icmpv6 type admin-prohibited
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs icmpv6 type nd-router-solicit drop
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs udp dport 547 drop
-	}
-}
-EOF
-		else
-			# Modo 2 (dual_stack): Pilha Dupla com Bloqueio Direto Individual para dispositivos desativados
-			if [ -z "$blocked_macs" ]; then
-				clean_ipv6_selective_firewall
-				return 0
-			fi
-			elements_str=""
-			for m in $blocked_macs; do
-				[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
-			done
-			elements_line="		elements = { $elements_str }"
-
-			cat << EOF > "$tmp_nft"
-table inet ark_ipv6_selective
-delete table inet ark_ipv6_selective
-table inet ark_ipv6_selective {
-	set blocked_macs {
-		type ether_addr
-$elements_line
-	}
-	chain forward_ipv6_selective {
-		type filter hook forward priority filter - 4; policy accept;
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs reject with icmpv6 type admin-prohibited
-	}
-	chain input_ipv6_selective {
-		type filter hook input priority filter - 4; policy accept;
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs udp dport 53 reject with icmpv6 type admin-prohibited
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs tcp dport 53 reject with icmpv6 type admin-prohibited
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs icmpv6 type nd-router-solicit drop
-		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs udp dport 547 drop
-	}
-}
-EOF
+		if [ "$cur_mode" != "selective" ] && [ -z "$blocked_macs" ] && [ -z "$ipv6_only_macs" ]; then
+			clean_ipv6_selective_firewall
+			return 0
 		fi
 
-		# Limpeza preventiva de tabelas netdev legadas que bloqueavam portas inteiras da bridge
-		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
-			nft delete table netdev "$t" 2>/dev/null || true
+		allowed_str=""
+		for m in $allowed_macs; do
+			[ -z "$allowed_str" ] && allowed_str="$m" || allowed_str="$allowed_str, $m"
+		done
+		blocked_str=""
+		for m in $blocked_macs; do
+			[ -z "$blocked_str" ] && blocked_str="$m" || blocked_str="$blocked_str, $m"
+		done
+		v6only_str=""
+		for m in $ipv6_only_macs; do
+			[ -z "$v6only_str" ] && v6only_str="$m" || v6only_str="$v6only_str, $m"
 		done
 
-		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
+		{
+			printf 'table inet ark_ipv6_selective\n'
+			printf 'delete table inet ark_ipv6_selective\n'
+			printf 'table inet ark_ipv6_selective {\n'
+			if [ "$cur_mode" = "selective" ]; then
+				printf '\tset allowed_macs {\n\t\ttype ether_addr\n'
+				[ -n "$allowed_str" ] && printf '\t\telements = { %s }\n' "$allowed_str"
+				printf '\t}\n'
+			elif [ -n "$blocked_str" ]; then
+				printf '\tset blocked_macs {\n\t\ttype ether_addr\n'
+				printf '\t\telements = { %s }\n' "$blocked_str"
+				printf '\t}\n'
+			fi
+			if [ -n "$v6only_str" ]; then
+				printf '\tset ipv6_only_macs {\n\t\ttype ether_addr\n'
+				printf '\t\telements = { %s }\n' "$v6only_str"
+				printf '\t}\n'
+				# DNS64 cirurgico via DNAT IPv6 apenas para aparelhos IPv6 Puro (Pilha Dupla permanece intacta em DNS normal)
+				if [ -n "${ARK_ROOT:-}" ] || command -v jool >/dev/null 2>&1; then
+					printf '\tchain prerouting_dns64 {\n'
+					printf '\t\ttype nat hook prerouting priority dstnat; policy accept;\n'
+					printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @ipv6_only_macs udp dport 53 dnat ip6 to 2606:4700:4700::64\n' "$lan_dev"
+					printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @ipv6_only_macs tcp dport 53 dnat ip6 to 2606:4700:4700::64\n' "$lan_dev"
+					printf '\t}\n'
+				fi
+			fi
+			printf '\tchain forward_ipv6_selective {\n'
+			printf '\t\ttype filter hook forward priority filter - 4; policy accept;\n'
+			if [ "$cur_mode" = "selective" ]; then
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr != @allowed_macs reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+			elif [ -n "$blocked_str" ]; then
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @blocked_macs reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+			fi
+			if [ -n "$v6only_str" ]; then
+				printf '\t\tmeta nfproto ipv4 iifname "%s" ether saddr @ipv6_only_macs reject with icmp type admin-prohibited\n' "$lan_dev"
+			fi
+			printf '\t}\n'
+			printf '\tchain input_ipv6_selective {\n'
+			printf '\t\ttype filter hook input priority filter - 4; policy accept;\n'
+			if [ "$cur_mode" = "selective" ]; then
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr != @allowed_macs udp dport 53 reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr != @allowed_macs tcp dport 53 reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr != @allowed_macs icmpv6 type nd-router-solicit drop\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr != @allowed_macs udp dport 547 drop\n' "$lan_dev"
+			elif [ -n "$blocked_str" ]; then
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @blocked_macs udp dport 53 reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @blocked_macs tcp dport 53 reject with icmpv6 type admin-prohibited\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @blocked_macs icmpv6 type nd-router-solicit drop\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @blocked_macs udp dport 547 drop\n' "$lan_dev"
+			fi
+			if [ -n "$v6only_str" ]; then
+				# Nota: UDP 67 permanece liberado para o dnsmasq entregar RFC 8925 Option 108 (IPv6-Only Preferred)
+				printf '\t\tmeta nfproto ipv4 iifname "%s" ether saddr @ipv6_only_macs udp dport 53 reject with icmp type admin-prohibited\n' "$lan_dev"
+				printf '\t\tmeta nfproto ipv4 iifname "%s" ether saddr @ipv6_only_macs tcp dport 53 reject with icmp type admin-prohibited\n' "$lan_dev"
+			fi
+			printf '\t}\n'
+			printf '}\n'
+		} > "$tmp_nft"
+
+		# Limpeza preventiva de tabelas netdev legadas que bloqueavam portas inteiras da bridge
+		for t in $("$nft_bin" list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			"$nft_bin" delete table netdev "$t" 2>/dev/null || true
+		done
+
+		if ! "$nft_bin" -c -f "$tmp_nft" 2>/dev/null; then
 			rm -f "$tmp_nft"
 			echo "Erro de sintaxe nftables no filtro IPv6" >&2
 			return 1
@@ -764,54 +1042,86 @@ EOF
 [ -f /etc/ark/ark_ipv6_selective.nft ] && /usr/sbin/nft -f /etc/ark/ark_ipv6_selective.nft 2>/dev/null || true
 EOF
 		chmod +x "$apply_sh"
-		nft delete table inet ark_ipv6_selective 2>/dev/null || true
-		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
-			nft delete table netdev "$t" 2>/dev/null || true
+		"$nft_bin" delete table inet ark_ipv6_selective 2>/dev/null || true
+		for t in $("$nft_bin" list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			"$nft_bin" delete table netdev "$t" 2>/dev/null || true
 		done
-		nft -f "$nft_file" 2>/dev/null || true
+		"$nft_bin" -f "$nft_file" 2>/dev/null || true
 		uci -q set firewall.ark_ipv6_selective=include
 		uci -q set firewall.ark_ipv6_selective.type=script
-		uci -q set "firewall.ark_ipv6_selective.path=$apply_sh"
+		uci -q set "firewall.ark_ipv6_selective.path=/etc/ark/ark_ipv6_selective.sh"
 		uci -q set firewall.ark_ipv6_selective.fw4_compatible='1'
 		uci commit firewall
 
-	elif is_fw3 && command -v ip6tables >/dev/null 2>&1; then
-		apply_sh="/etc/ark/ark_ipv6_selective.sh"
-		if [ "$cur_mode" = "selective" ]; then
-			cat << EOF > "$apply_sh"
+	elif is_fw3; then
+		apply_sh="${ark_etc_dir}/ark_ipv6_selective.sh"
+		if [ "$cur_mode" != "selective" ] && [ -z "$blocked_macs" ] && [ -z "$ipv6_only_macs" ]; then
+			clean_ipv6_selective_firewall
+			return 0
+		fi
+		cat << EOF > "$apply_sh"
 #!/bin/sh
 lan_dev="\$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+EOF
+		if command -v ip6tables >/dev/null 2>&1; then
+			if [ "$cur_mode" = "selective" ]; then
+				cat << 'EOF' >> "$apply_sh"
 ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
-ip6tables -D FORWARD -i "\$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
-ip6tables -I FORWARD 1 -i "\$lan_dev" -j ARK_IPV6_SEL
+ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -I FORWARD 1 -i "$lan_dev" -j ARK_IPV6_SEL
 EOF
-			for m in $allowed_macs; do
-				printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j RETURN\n' "$m" >> "$apply_sh"
-			done
-			cat << 'EOF' >> "$apply_sh"
-ip6tables -A ARK_IPV6_SEL -j REJECT --reject-with icmp6-adm-prohibited
+				for m in $allowed_macs; do
+					printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j RETURN\n' "$m" >> "$apply_sh"
+				done
+				printf 'ip6tables -A ARK_IPV6_SEL -j REJECT --reject-with icmp6-adm-prohibited\n' >> "$apply_sh"
+			elif [ -n "$blocked_macs" ]; then
+				cat << 'EOF' >> "$apply_sh"
+ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
+ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -I FORWARD 1 -i "$lan_dev" -j ARK_IPV6_SEL
 EOF
-		else
-			if [ -z "$blocked_macs" ]; then
-				clean_ipv6_selective_firewall
-				return 0
+				for m in $blocked_macs; do
+					printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j REJECT --reject-with icmp6-adm-prohibited\n' "$m" >> "$apply_sh"
+				done
+			else
+				cat << 'EOF' >> "$apply_sh"
+ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
+EOF
 			fi
-			cat << EOF > "$apply_sh"
-#!/bin/sh
-lan_dev="\$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
-ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
-ip6tables -D FORWARD -i "\$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
-ip6tables -I FORWARD 1 -i "\$lan_dev" -j ARK_IPV6_SEL
+		fi
+		if is_fw3 && command -v iptables >/dev/null 2>&1; then
+			if [ -n "$ipv6_only_macs" ]; then
+				cat << 'EOF' >> "$apply_sh"
+iptables -F ARK_IPV4_BLK 2>/dev/null || iptables -N ARK_IPV4_BLK 2>/dev/null
+iptables -D FORWARD -i "$lan_dev" -j ARK_IPV4_BLK 2>/dev/null || true
+iptables -I FORWARD 1 -i "$lan_dev" -j ARK_IPV4_BLK
+iptables -F ARK_IPV4_BLK_IN 2>/dev/null || iptables -N ARK_IPV4_BLK_IN 2>/dev/null
+iptables -D INPUT -i "$lan_dev" -j ARK_IPV4_BLK_IN 2>/dev/null || true
+iptables -I INPUT 1 -i "$lan_dev" -j ARK_IPV4_BLK_IN
 EOF
-			for m in $blocked_macs; do
-				printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j REJECT --reject-with icmp6-adm-prohibited\n' "$m" >> "$apply_sh"
-			done
+				for m in $ipv6_only_macs; do
+					printf 'iptables -A ARK_IPV4_BLK -m mac --mac-source %s -j REJECT --reject-with icmp-admin-prohibited\n' "$m" >> "$apply_sh"
+					printf 'iptables -A ARK_IPV4_BLK_IN -m mac --mac-source %s -p udp --dport 53 -j REJECT --reject-with icmp-admin-prohibited\n' "$m" >> "$apply_sh"
+					printf 'iptables -A ARK_IPV4_BLK_IN -m mac --mac-source %s -p tcp --dport 53 -j REJECT --reject-with icmp-admin-prohibited\n' "$m" >> "$apply_sh"
+				done
+			else
+				cat << 'EOF' >> "$apply_sh"
+iptables -D FORWARD -i "$lan_dev" -j ARK_IPV4_BLK 2>/dev/null || true
+iptables -F ARK_IPV4_BLK 2>/dev/null || true
+iptables -X ARK_IPV4_BLK 2>/dev/null || true
+iptables -D INPUT -i "$lan_dev" -j ARK_IPV4_BLK_IN 2>/dev/null || true
+iptables -F ARK_IPV4_BLK_IN 2>/dev/null || true
+iptables -X ARK_IPV4_BLK_IN 2>/dev/null || true
+EOF
+			fi
 		fi
 		chmod +x "$apply_sh"
-		/bin/sh "$apply_sh" 2>/dev/null || true
+		[ -z "${ARK_ROOT:-}" ] && /bin/sh "$apply_sh" 2>/dev/null || true
 		uci -q set firewall.ark_ipv6_selective=include
 		uci -q set firewall.ark_ipv6_selective.type=script
-		uci -q set "firewall.ark_ipv6_selective.path=$apply_sh"
+		uci -q set "firewall.ark_ipv6_selective.path=/etc/ark/ark_ipv6_selective.sh"
 		uci commit firewall
 	fi
 }
@@ -1141,14 +1451,18 @@ set_ipv6_mode() {
 			clean_ipv6_clat_tunnel
 			disable_ipv6_full
 			clean_ipv6_selective_firewall
+			ark_release_per_device_ipv6_only_dhcp
 			clean_nptv6_firewall
 			if ! ark_is_satellite_or_ap; then
 				local prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
 				[ "$prev_v6" = "ipv6_only" ] && uci -q delete dhcp.lan.ignore && uci commit dhcp
 			fi
+			uci -q delete dhcp.lan.ra_pref64 2>/dev/null || true
+			uci commit dhcp 2>/dev/null || true
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
 			uci commit equipe_dashboard
+			ark_sync_nat64_jool
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1156,12 +1470,13 @@ set_ipv6_mode() {
 			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
-			sync_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
 			uci commit dhcp
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
 			uci commit equipe_dashboard
+			ark_sync_lan_ipv6_dns
+			sync_ipv6_selective_firewall
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1169,12 +1484,13 @@ set_ipv6_mode() {
 			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
-			sync_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
 			uci commit dhcp
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='selective'
 			uci commit equipe_dashboard
+			ark_sync_lan_ipv6_dns
+			sync_ipv6_selective_firewall
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1197,6 +1513,8 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='nptv6'
 			uci commit equipe_dashboard
+			ark_sync_lan_ipv6_dns no_restart
+			ark_sync_nat64_jool
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1210,6 +1528,8 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
 			uci commit equipe_dashboard
+			ark_sync_nat64_jool
+			ark_sync_lan_ipv6_dns
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1262,10 +1582,10 @@ set_ipv6_relay() {
 
 	if [ "$mode" != "ipv4_only" ]; then
 		if [ "$state" = 1 ]; then
-			uci -q set dhcp.lan.dhcpv6='relay'
+			uci -q set dhcp.lan.dhcpv6='server'
 			uci -q set dhcp.lan.ra='relay'
 			uci -q set dhcp.lan.ndp='relay'
-			uci -q set dhcp.wan.dhcpv6='relay'
+			uci -q delete dhcp.wan.dhcpv6 2>/dev/null || true
 			uci -q set dhcp.wan.ra='relay'
 			uci -q set dhcp.wan.ndp='relay'
 			uci -q set dhcp.wan.master='1'
@@ -1280,38 +1600,52 @@ set_ipv6_relay() {
 			uci -q delete dhcp.wan.master
 		fi
 		uci commit dhcp
+		ark_sync_lan_ipv6_dns no_restart
 		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
 	fi
 	echo ok
 }
 
 toggle_ipv6_device() {
-	local mac name_section mode
+	local mac name_section mode state ip_proto
 	mac="$(printf '%s' "$1" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"
 	valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
-	case "$2" in 1|true) state=1 ;; *) state=0 ;; esac
+	case "$2" in
+		ipv6_only|2) state=1; ip_proto='ipv6_only' ;;
+		1|true|dual_stack) state=1; ip_proto='dual_stack' ;;
+		*) state=0; ip_proto='ipv4_only' ;;
+	esac
 	name_section="device_$(printf '%s' "$mac" | tr -d ':')"
 	uci -q set "equipe_devices.$name_section=device"
 	uci -q set "equipe_devices.$name_section.mac=$mac"
 	uci -q set "equipe_devices.$name_section.ipv6_allowed=$state"
+	uci -q set "equipe_devices.$name_section.ip_protocol=$ip_proto"
 	uci commit equipe_devices
 
 	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
-	if [ "$mode" = "selective" ]; then
+	if [ "$mode" = "selective" ] || [ "$mode" = "dual_stack" ] || [ "$mode" = "nptv6" ]; then
 		sync_ipv6_selective_firewall
 	fi
 	echo ok
 }
 
 get_ipv6_status() {
-	local mode relay wan6_proto wan6_dev lan_dev prefix_delegated lan_ip6 ula_ip6 ula_prefix filter_aaaa odhcpd_active allowed_macs
-	local first sections s mac zone masq6 clat_engine saved_prev_mode
+	local mode relay wan6_proto wan6_dev lan_dev prefix_delegated lan_ip6 ula_ip6 ula_prefix filter_aaaa odhcpd_active allowed_macs ipv6_only_macs
+	local first first_v6o sections s mac proto zone masq6 clat_engine saved_prev_mode eq_file jool_installed nat64_active
 	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo 'dual_stack')"
 	relay="$(uci -q get equipe_dashboard.ipv6.relay || echo '0')"
 	clat_engine="$(uci -q get equipe_dashboard.ipv6.clat_engine || echo 'none')"
 	saved_prev_mode="$(uci -q get equipe_dashboard.ipv6.saved_clat_prev_mode || echo 'dual_stack')"
 	wan6_proto="$(uci -q get network.wan6.proto || echo 'none')"
 	wan6_dev="$(uci -q get network.wan6.device || echo '')"
+	jool_installed=false
+	command -v jool >/dev/null 2>&1 && jool_installed=true
+	nat64_active=false
+	if [ "$jool_installed" = "true" ] && [ -z "${ARK_ROOT:-}" ]; then
+		jool -i ark_nat64 instance status >/dev/null 2>&1 && nat64_active=true
+	elif [ -f "${ARK_ROOT:-}/etc/ark/ark_nat64.sh" ]; then
+		nat64_active=true
+	fi
 	
 	lan_dev="$(uci -q get network.lan.device || echo '')"
 	if [ -z "$lan_dev" ]; then
@@ -1329,16 +1663,23 @@ get_ipv6_status() {
 	odhcpd_active="$(pidof odhcpd >/dev/null && echo 'true' || echo 'false')"
 
 	allowed_macs=""
+	ipv6_only_macs=""
 	first=1
-	if [ -f /etc/config/equipe_devices ]; then
+	first_v6o=1
+	eq_file="${ARK_ROOT:-}/etc/config/equipe_devices"
+	if [ -f "$eq_file" ] || [ -f /etc/config/equipe_devices ]; then
 		sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
 		for s in $sections; do
-			if [ "$(uci -q get "equipe_devices.$s.ipv6_allowed")" = "1" ]; then
-				mac="$(uci -q get "equipe_devices.$s.mac")"
-				if [ -n "$mac" ]; then
-					[ "$first" = 1 ] && first=0 || allowed_macs="$allowed_macs,"
-					allowed_macs="$allowed_macs\"$mac\""
-				fi
+			mac="$(uci -q get "equipe_devices.$s.mac")"
+			[ -n "$mac" ] || continue
+			proto="$(uci -q get "equipe_devices.$s.ip_protocol" || true)"
+			if [ "$proto" = "ipv6_only" ] || [ "$(uci -q get "equipe_devices.$s.ipv6_allowed")" = "1" ]; then
+				[ "$first" = 1 ] && first=0 || allowed_macs="$allowed_macs,"
+				allowed_macs="$allowed_macs\"$mac\""
+			fi
+			if [ "$proto" = "ipv6_only" ]; then
+				[ "$first_v6o" = 1 ] && first_v6o=0 || ipv6_only_macs="$ipv6_only_macs,"
+				ipv6_only_macs="$ipv6_only_macs\"$mac\""
 			fi
 		done
 	fi
@@ -1361,7 +1702,10 @@ get_ipv6_status() {
   "ula_prefix": "${ula_prefix:-none}",
   "filter_aaaa": $([ "$filter_aaaa" = "1" ] && echo true || echo false),
   "odhcpd_active": $odhcpd_active,
-  "selective_allowed_macs": [$allowed_macs]
+  "jool_installed": $jool_installed,
+  "nat64_active": $nat64_active,
+  "selective_allowed_macs": [$allowed_macs],
+  "ipv6_only_macs": [$ipv6_only_macs]
 }
 EOF
 }

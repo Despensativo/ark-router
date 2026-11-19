@@ -2700,6 +2700,62 @@ button.is-error {
 	color: #34d399;
 }
 
+/* Category Tabs Filter Bar */
+.ex-category-tabs {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 2px 14px;
+	margin-bottom: 8px;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+}
+
+.ex-category-tabs::-webkit-scrollbar {
+	display: none;
+}
+
+.ex-cat-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border-radius: 9999px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	color: #94a3b8;
+	font-size: 0.85rem;
+	font-weight: 650;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: all 0.18s ease;
+	flex-shrink: 0;
+}
+
+.ex-cat-tab:hover {
+	background: rgba(255, 255, 255, 0.08);
+	color: #f1f5f9;
+	border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ex-cat-tab.is-active {
+	background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(59, 130, 246, 0.14) 100%);
+	color: #ffffff;
+	border-color: rgba(56, 189, 248, 0.45);
+	box-shadow: 0 2px 10px rgba(56, 189, 248, 0.2);
+}
+
+.ex-cat-tab-icon {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.ex-cat-tab-label {
+	font-size: 0.85rem;
+	line-height: 1;
+}
+
 /* V2 Physical Switch Ports Card */
 .ex-v2-switch-ports-card {
 	margin-bottom: 18px;

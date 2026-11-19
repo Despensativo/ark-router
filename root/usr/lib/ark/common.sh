@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.2.7"
+ARK_ROUTER_VERSION="2.2.14"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -367,7 +367,7 @@ running() {
 		usteer) pidof usteerd >/dev/null 2>&1 ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 ;;
 		nlbwmon) pidof nlbwmon >/dev/null 2>&1 ;;
-		ksmbd|ksmbd-server) pidof ksmbd.mountd >/dev/null 2>&1 || pgrep -f ksmbd >/dev/null 2>&1 || { [ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] && "${ARK_ROOT}/etc/init.d/ksmbd" status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } || { [ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } ;;
+		ksmbd|ksmbd-server) pidof ksmbd.mountd >/dev/null 2>&1 || pgrep -x ksmbd.mountd >/dev/null 2>&1 || { [ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] && "${ARK_ROOT}/etc/init.d/ksmbd" status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } || { [ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } ;;
 		wol|etherwake) installed wol ;;
 		*)
 			pidof "$1" >/dev/null 2>&1 || pgrep -x "$1" >/dev/null 2>&1 || {
@@ -1797,16 +1797,115 @@ ark_ensure_wan_mtu_fix() {
 	fi
 }
 
-# Calcula o menor MTU real de Camada 3 entre as WANs ativas (PPPoE, DHCP, Static, 4G/5G QMI/MBIM/NCM, Starlink)
+# Sondagem ativa de Path MTU (PMTUD) com pacote Don't Fragment (DF) em IPv4 e IPv6
+# Descobre o teto exato da conexao (1500, 1492, 1480, 1460, 1428, 1420, 1380, 1280 ou ate 2000)
+ark_probe_path_mtu() {
+	local iface="${1:-wan}"
+	local custom_target="$2"
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	# Se em sandbox mock / teste sem rede real
+	if [ -n "$root_prefix" ] && [ ! -d "/sys/class/net" ]; then
+		local cached_mtu="$(cat "${root_prefix}/tmp/ark-mtu-probed-$iface" 2>/dev/null || echo '')"
+		if [ -n "$cached_mtu" ]; then
+			printf '%s' "$cached_mtu"
+			return 0
+		fi
+		local proto="$($uci_cmd get "network.$iface.proto")"
+		[ "$proto" = "pppoe" ] && printf '1492' || printf '1500'
+		return 0
+	fi
+
+	local dev=""
+	local proto="$($uci_cmd get "network.$iface.proto")"
+	case "$proto" in
+		pppoe) dev="pppoe-$iface" ;;
+		*) dev="$($uci_cmd get "network.$iface.device" || $uci_cmd get "network.$iface.ifname")" ;;
+	esac
+	[ -n "$dev" ] || dev="$iface"
+
+	# Obtem o MTU maximo atual da interface para nao estourar o limite local no teste
+	local if_mtu="$(cat "${root_prefix}/sys/class/net/$dev/mtu" 2>/dev/null || cat "/sys/class/net/$dev/mtu" 2>/dev/null || echo 1500)"
+	case "$if_mtu" in ''|*[!0-9]*) if_mtu=1500 ;; esac
+
+	# Define o alvo do teste (alvos publicos Anycast ultrarrápidos com baixa latência)
+	local target="$custom_target"
+	if [ -z "$target" ] && command -v traceroute >/dev/null 2>&1; then
+		for h in 1.1.1.1 8.8.8.8 9.9.9.9; do
+			if traceroute -4 -n -q 1 -w 1 -m 2 "$h" 64 >/dev/null 2>&1; then
+				target="$h"
+				break
+			fi
+		done
+	fi
+
+	# Se nao houver conectividade IPv4 publica ou traceroute indisponivel, tenta fallback
+	if [ -z "$target" ] || ! command -v traceroute >/dev/null 2>&1; then
+		local fallback=1500
+		[ "$proto" = "pppoe" ] && fallback=1492
+		[ -n "$root_prefix" ] && mkdir -p "${root_prefix}/tmp" 2>/dev/null || true
+		printf '%s\n' "$fallback" > "${root_prefix}/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+		[ -z "$root_prefix" ] && printf '%s\n' "$fallback" > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+		printf '%s' "$fallback"
+		return 0
+	fi
+
+	local cand out extracted
+	local best_mtu=""
+
+	# Se a interface suportar Jumbo (ex: 2000B) e if_mtu >= 2000, inclui no teste
+	local test_candidates="1500 1492 1480 1460 1428 1420 1380 1280"
+	if [ "$if_mtu" -ge 2000 ] 2>/dev/null; then
+		test_candidates="2000 $test_candidates"
+	fi
+
+	for cand in $test_candidates; do
+		# Pula se o candidato for maior que o MTU da interface local
+		[ "$cand" -le "$if_mtu" ] 2>/dev/null || continue
+
+		out="$(traceroute -4 -F -n -q 1 -w 1 -m 2 "$target" "$cand" 2>&1)"
+
+		# Se o roteador/ONT intermediario retornou Frag Needed com MTU recomendado (ex: !F-1492)
+		extracted="$(printf '%s' "$out" | sed -n 's/.*!F-\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+		if [ -n "$extracted" ] && [ "$extracted" -ge 1280 ] 2>/dev/null; then
+			best_mtu="$extracted"
+			break
+		fi
+
+		# Se retornou !F sem MTU explicito, este tamanho falhou, tenta o proximo candidato menor
+		if printf '%s' "$out" | grep -q '!F'; then
+			continue
+		fi
+
+		# Se obteve resposta sem flag de fragmentacao (!F), este MTU passou com sucesso
+		if printf '%s' "$out" | grep -qE '^[[:space:]]*[12][[:space:]]'; then
+			best_mtu="$cand"
+			break
+		fi
+	done
+
+	[ -n "$best_mtu" ] || best_mtu=1492
+	[ -n "$root_prefix" ] && mkdir -p "${root_prefix}/tmp" 2>/dev/null || true
+	printf '%s\n' "$best_mtu" > "${root_prefix}/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+	[ -z "$root_prefix" ] && printf '%s\n' "$best_mtu" > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+	printf '%s' "$best_mtu"
+	return 0
+}
+
+# Calcula o menor MTU real de Camada 3 entre as WANs ativas (PPPoE, DHCP, Static, 4G/5G QMI/MBIM/NCM, Starlink, Manual 1280-2000)
 ark_get_min_wan_mtu() {
 	local root_prefix="${ARK_ROOT:-}"
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
-	local min_wan_mtu=1500
-	local w proto w_mtu u_mtu w_dev k_mtu
+	local min_wan_mtu=""
+	local w proto w_mtu u_mtu man_mtu w_dev k_mtu p_mtu
 	for w in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
 		proto="$($uci_cmd get "network.$w.proto")"
 		w_mtu=""
 		u_mtu="$($uci_cmd get "network.$w.mtu")"
+		man_mtu="$($uci_cmd get "equipe_dashboard.wan_profiles.${w}_manual_mtu" 2>/dev/null || true)"
+		[ -n "$man_mtu" ] && u_mtu="$man_mtu"
+
 		case "$proto" in
 			pppoe)
 				if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/pppoe-$w/mtu" ]; then
@@ -1828,7 +1927,13 @@ ark_get_min_wan_mtu() {
 				[ -n "$w_mtu" ] || w_mtu=1492
 				;;
 			dhcp|static|qmi|mbim|ncm|wwan|3g|modemmanager)
-				w_mtu="$($uci_cmd get "network.$w.mtu")"
+				w_mtu="$u_mtu"
+				if [ -z "$w_mtu" ]; then
+					if [ -f "${root_prefix}/tmp/ark-mtu-probed-$w" ]; then
+						p_mtu="$(cat "${root_prefix}/tmp/ark-mtu-probed-$w" 2>/dev/null)"
+						[ -n "$p_mtu" ] && [ "$p_mtu" -ge 1280 ] 2>/dev/null && w_mtu="$p_mtu"
+					fi
+				fi
 				if [ -z "$w_mtu" ]; then
 					w_dev="$($uci_cmd get "network.$w.device" || $uci_cmd get "network.$w.ifname")"
 					if [ -n "$w_dev" ] && [ -f "${root_prefix}/sys/class/net/$w_dev/mtu" ]; then
@@ -1850,10 +1955,13 @@ ark_get_min_wan_mtu() {
 		case "$w_mtu" in
 			''|*[!0-9]*) w_mtu=1500 ;;
 		esac
-		if [ "$w_mtu" -ge 1280 ] && [ "$w_mtu" -lt "$min_wan_mtu" ]; then
-			min_wan_mtu="$w_mtu"
+		if [ "$w_mtu" -ge 1280 ] 2>/dev/null; then
+			if [ -z "$min_wan_mtu" ] || [ "$w_mtu" -lt "$min_wan_mtu" ]; then
+				min_wan_mtu="$w_mtu"
+			fi
 		fi
 	done
+	[ -n "$min_wan_mtu" ] || min_wan_mtu=1500
 	printf '%s' "$min_wan_mtu"
 }
 
@@ -1897,9 +2005,13 @@ ark_sync_lan_ipv6_ra_mtu() {
 	local min_wan_mtu opt_wg_mtu cur_ra_mtu wg_if cur_wg_mtu net_changed=0
 	min_wan_mtu="$(ark_get_min_wan_mtu)"
 
+	# Clampa ra_mtu no maximo em 1500 para clientes da LAN nao quebrarem comunicacao local L2
+	local ra_target="$min_wan_mtu"
+	[ "$ra_target" -gt 1500 ] 2>/dev/null && ra_target=1500
+
 	cur_ra_mtu="$($uci_cmd get dhcp.lan.ra_mtu 2>/dev/null)"
-	if [ "$cur_ra_mtu" != "$min_wan_mtu" ]; then
-		$uci_cmd set "dhcp.lan.ra_mtu=$min_wan_mtu"
+	if [ "$cur_ra_mtu" != "$ra_target" ]; then
+		$uci_cmd set "dhcp.lan.ra_mtu=$ra_target"
 		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 		[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
 	fi
@@ -2181,11 +2293,11 @@ sync_adguard_ipv6() {
 	cp -f "$yaml" "${yaml}.bak_ipv6" 2>/dev/null || true
 	if [ "$enable_ipv6" = "1" ] || [ "$enable_ipv6" = "true" ]; then
 		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: false/' "$yaml"
-		if ! grep -q "2606:4700:4700::1111" "$yaml"; then
-			sed -i '/^[[:space:]]*upstream_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
-		fi
-		if ! sed -n '/^[[:space:]]*bootstrap_dns:/,/^[a-z_]/p' "$yaml" | grep -q "2606:4700:4700::1111"; then
+		if ! sed -n '/^[[:space:]]*bootstrap_dns:/,/^[[:space:]]*[a-z_]*:/p' "$yaml" | grep -q "2606:4700:4700::1111"; then
 			sed -i '/^[[:space:]]*bootstrap_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
+		fi
+		if grep -q '^[[:space:]]*fallback_dns:' "$yaml" && ! sed -n '/^[[:space:]]*fallback_dns:/,/^[[:space:]]*[a-z_]*:/p' "$yaml" | grep -q "2606:4700:4700::1111"; then
+			sed -i '/^[[:space:]]*fallback_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
 		fi
 	else
 		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: true/' "$yaml"
@@ -2750,7 +2862,7 @@ ark_is_readonly_action() {
 		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
-		sqm-resource-plan|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
+		sqm-resource-plan|dns-turbo-benchmark|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
 	esac
@@ -2844,6 +2956,140 @@ ark_restore_mutation_trap() {
 	else
 		trap - EXIT INT TERM HUP
 	fi
+}
+
+# Lista SSIDs de interfaces AP LAN ativas elegíveis para o usteer (1 por linha, ordenado).
+# Em local_mode=1, inclui apenas SSIDs multi-banda (>= 2 rádios locais ativos) para não sobrescrever
+# entradas estáticas 802.11k (rrm_nr_set) de APs cabeados externos em SSIDs exclusivos de 5 GHz.
+ark_usteer_expected_ssids() {
+	local root_prefix uci_cmd local_mode all_ssids multi_ssids sec mode dis net ssid
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	local_mode="$($uci_cmd get usteer.@usteer[0].local_mode 2>/dev/null || echo '1')"
+	all_ssids="$(
+		for sec in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+			mode="$($uci_cmd get "wireless.$sec.mode" 2>/dev/null || echo 'ap')"
+			[ "$mode" = "ap" ] || continue
+			dis="$($uci_cmd get "wireless.$sec.disabled" 2>/dev/null || echo '0')"
+			[ "$dis" = "1" ] && continue
+			net="$($uci_cmd get "wireless.$sec.network" 2>/dev/null || echo 'lan')"
+			[ -n "$net" ] || net='lan'
+			[ "$net" = "lan" ] || continue
+			ssid="$($uci_cmd get "wireless.$sec.ssid" 2>/dev/null || echo '')"
+			[ -n "$ssid" ] && printf '%s\n' "$ssid"
+		done
+	)"
+	[ -n "$all_ssids" ] || return 0
+	if [ "$local_mode" = "0" ]; then
+		printf '%s\n' "$all_ssids" | sort -u
+	else
+		multi_ssids="$(printf '%s\n' "$all_ssids" | sort | uniq -d)"
+		if [ -n "$multi_ssids" ]; then
+			printf '%s\n' "$multi_ssids"
+		else
+			printf '%s\n' "$all_ssids" | sort -u
+		fi
+	fi
+}
+
+# Lista SSIDs configurados atualmente em usteer.@usteer[0].ssid_list (1 por linha, ordenado)
+ark_usteer_configured_ssids() {
+	local root_prefix uci_cmd
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	$uci_cmd show usteer 2>/dev/null | awk '
+		/^usteer\.[^.]+\.ssid_list=/ {
+			sub(/^[^=]*=/, "")
+			while (length($0) > 0) {
+				sub(/^[ \t]+/, "")
+				if (length($0) == 0) break
+				if (substr($0, 1, 1) == "\047") {
+					rest = substr($0, 2)
+					idx = index(rest, "\047")
+					if (idx > 0) {
+						val = substr(rest, 1, idx - 1)
+						if (val != "") print val
+						$0 = substr(rest, idx + 1)
+					} else {
+						if (rest != "") print rest
+						break
+					}
+				} else {
+					n = match($0, /[ \t]/)
+					if (n > 0) {
+						val = substr($0, 1, n - 1)
+						if (val != "") print val
+						$0 = substr($0, n + 1)
+					} else {
+						print $0
+						break
+					}
+				}
+			}
+		}
+	' | sort -u
+}
+
+# Retorna 0 quando usteer.ssid_list diverge dos SSIDs LAN ativos (desincronizado)
+ark_usteer_ssids_dirty() {
+	local exp_ssids cur_ssids
+	exp_ssids="$(ark_usteer_expected_ssids)"
+	[ -n "$exp_ssids" ] || return 1
+	cur_ssids="$(ark_usteer_configured_ssids)"
+	[ "$cur_ssids" != "$exp_ssids" ]
+}
+
+# Sincroniza usteer.@usteer[0].ssid_list com os SSIDs LAN ativos sem duplicar entradas
+ark_usteer_sync_ssids() {
+	local force_sync root_prefix uci_cmd exp_ssids s_item
+	force_sync="${1:-0}"
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || return 0
+	if [ "$force_sync" != "1" ]; then
+		[ "$($uci_cmd get equipe_dashboard.wifi.usteer_enabled 2>/dev/null || echo '1')" != "0" ] || return 0
+	fi
+	exp_ssids="$(ark_usteer_expected_ssids)"
+	[ -n "$exp_ssids" ] || return 0
+	if ark_usteer_ssids_dirty; then
+		$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
+		while IFS= read -r s_item; do
+			[ -n "$s_item" ] && $uci_cmd add_list "usteer.@usteer[0].ssid_list=$s_item"
+		done <<EOF
+$exp_ssids
+EOF
+		$uci_cmd commit usteer 2>/dev/null || true
+	fi
+	return 0
+}
+
+# Aplica calibração canônica não-destrutiva do usteer e sincroniza ssid_list
+ark_usteer_apply_defaults() {
+	local root_prefix uci_cmd usteer_cfg
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	usteer_cfg="${root_prefix}/etc/config/usteer"
+	[ -n "$root_prefix" ] || mkdir -p /etc/config 2>/dev/null || true
+	[ -f "$usteer_cfg" ] || touch "$usteer_cfg" 2>/dev/null || true
+	[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
+	$uci_cmd set usteer.@usteer[0].network='lan'
+	$uci_cmd set usteer.@usteer[0].syslog='1'
+	$uci_cmd set usteer.@usteer[0].local_mode='1'
+	$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
+	$uci_cmd set usteer.@usteer[0].min_snr='0'
+	$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+	$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+	$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+	$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
+	$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
+	$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
+	$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
+	$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
+	$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
+	$uci_cmd set usteer.@usteer[0].max_retries='3'
+	$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
+	$uci_cmd commit usteer 2>/dev/null || true
+	ark_usteer_sync_ssids 1
 }
 
 

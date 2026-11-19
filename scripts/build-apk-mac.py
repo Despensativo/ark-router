@@ -12,7 +12,7 @@ REPO_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 VERSION_FILE = os.path.join(REPO_DIR, "VERSION")
 
 LITE_DEPENDS = "attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full"
-FULL_DEPENDS = "attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full zerotier"
+FULL_DEPENDS = "attendedsysupgrade-common irqbalance iwinfo jool-tools-netfilter kmod-ifb kmod-jool-netfilter kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full zerotier"
 
 def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False):
     depends = augment_qos_dependencies(depends, "apk")

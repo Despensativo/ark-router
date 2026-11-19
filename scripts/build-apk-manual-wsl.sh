@@ -159,7 +159,7 @@ EOF
 }
 
 lite_depends="attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full"
-full_depends="attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full zerotier"
+full_depends="attendedsysupgrade-common irqbalance iwinfo jool-tools-netfilter kmod-ifb kmod-jool-netfilter kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full zerotier"
 
 build_variant "${PKG_BASE_NAME}" "$lite_depends" "ARK Router Lite dashboard for OpenWrt with per-device traffic and complete guest upload/download limiting. Heavy modules remain optional from the panel."
 build_variant "${PKG_BASE_NAME}-full" "$full_depends" "ARK Router Full dashboard for OpenWrt with traffic, guest limiting, SQM/CAKE, Multi-WAN, UPnP, uHTTPd, ZeroTier and VPN tunnel support."

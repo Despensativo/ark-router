@@ -1,5 +1,67 @@
 # Changelog
 
+## 2.2.14
+
+- **IPv6 Puro (Por Dispositivo & Global) com Fallback Automático NAT64/DNS64 em Kernel (Jool) + ARK Doctor IPv6 Inteligente (19/11/2026)**:
+  - **Empacotamento Nativo Jool NAT64 (`Makefile`, `scripts/build-apk-mac.py`, `scripts/build-apk-manual-wsl.sh`)**:
+    - Dependências `kmod-jool-netfilter` e `jool-tools-netfilter` integradas nativamente ao pacote `luci-app-ark-router-full` (versão Lite preservada sem dependência fixa para 16 MB SPI Flash / instalação sob demanda).
+  - **IPv6 Puro Individual por Dispositivo (RFC 8925 Option 108) & Modo Global `ipv6_only` (`root/usr/lib/ark/modules/devices.sh`, `network_ipv6_mwan.sh`, `src/modules/devices.js`, `network_modals.js`)**:
+    - Novo seletor tri-estado por dispositivo (`⚡ Pilha Dupla` / `🟣 IPv6 Puro (Sem IPv4)` / `🚫 IPv4 Puro`) com badge dedicado, bloqueio automático de conflitos IPv4, snapshot `saved_v4_ip` (Anti-Blind-Restore), RFC 8925 Option 108 (`dhcp.ark_v6only`) compatível com iPadOS/iOS/macOS/Android/Windows e isolamento `fw4` (`nftables` `set ipv6_only_macs`) + `fw3` (`iptables`).
+    - Ativação automática sob demanda do **Jool Kernel NAT64** (`ark_nat64`, prefixo `64:ff9b::/96`, `lowest-ipv6-mtu 1280`, persistência `/etc/ark/ark_nat64.sh` + `firewall.ark_nat64`) e **DNS64** em dois cenários inteligentes:
+      - **Por dispositivo em rede Pilha Dupla**: redirecionamento cirúrgico por MAC (`chain prerouting_dns64` -> `2606:4700:4700::64`) mantendo todos os demais dispositivos Dual-Stack 100% intactos (`2606:4700:4700::1111`).
+      - **Modo Global `ipv6_only` (IPv6 como primário na LAN)**: anuncia `dhcp.lan.dns` DNS64 (`2606:4700:4700::64`, `2606:4700:4700::6400`) + `dhcp.lan.ra_pref64='64:ff9b::/96'` para suporte nativo a 464XLAT/CLAT.
+      - Desligamento e limpeza automáticos do Jool NAT64 (0% CPU em standby) quando nenhum dispositivo ou modo IPv6 Puro estiver ativo.
+    - **Higiene DNSv6 em Modo Relay / AllServers / Hotplug (`network_ipv6_mwan.sh`, `system.sh`, `15-ark-ipv6-hygiene`)**:
+      - Nova função idempotente `ark_sync_lan_ipv6_dns()` impede vazamento de `fe80::1` link-local em modo Relay IPv6 (configurando `dhcpv6=server` local com Cloudflare IPv6 + fallback automático para DNS IPv6 global da operadora / ULA) e regra `ARK-FastFail-LAN-DoH-Relay-v6` para evitar fallback lento de DoT porta 853.
+  - **ARK Doctor Inteligente — Zero Falsos Positivos em IPv6/NAT64 & Higiene (`root/usr/lib/ark/modules/doctor.sh`, `common.sh`)**:
+    - Nova auditoria autônoma **`NAT64 / DNS64 (Jool IPv6 Puro)`** com auto-reparo (`--fix`) para standby limpo, instância Jool, persistência `/etc/ark/ark_nat64.sh`, `prerouting_dns64`, DNS64 e `ra_pref64`.
+    - `Coerência IPv6 (Dashboard vs LAN)` atualizada para reconhecer `ra=relay` + `dhcpv6=server` como válido, auditar `fe80::` e `PREF64`/`DNS64` em `ipv6_only`, e `Tabela de Clientes` isenta de falso aviso quando `dhcp.lan.ignore=1` é intencional no modo `ipv6_only`.
+    - Correção de falso positivo em `running ksmbd` (`pgrep -f ksmbd` -> `pgrep -x ksmbd.mountd`).
+  - **Testes & Cobertura i18n (`tests/test_wan_matrix.py`, `po/{en,es,pt-br}/ark.po`)**:
+    - Adicionados `test_37` a `test_41` cobrindo IPv6 Puro (`fw4`/`fw3`), DNSv6 Relay/AllServers, ciclo completo Jool NAT64/DNS64 e ARK Doctor zero falso positivo + auto-reparo; 100% traduzido em PT-BR, EN e ES.
+
+## 2.2.13
+
+- **Atualização Incremental v2.2.13 (19/11/2026)**:
+  - Ajustes incrementais pré-integração NAT64/DNS64.
+
+## 2.2.12
+
+- **Atualização Incremental v2.2.12 (18/11/2026)**:
+  - Correção do botão Editar Internet (inicialização de field antes de vlanField).
+  - **Auto-MTU Inteligente Universal & Modo Manual Soberano (1280 a 2000B, incluindo Mini Jumbo)**:
+    - **Backend (`root/usr/lib/ark/common.sh`, `root/usr/lib/ark/modules/network.sh`)**:
+      - Nova função `ark_probe_path_mtu` para sondagem ativa PMTUD com flag Don't Fragment (`-F`) detectando diretamente respostas ICMP `!F-<mtu>` em <0.1s.
+      - Novo comando RPC `wan-probe-mtu` para teste sob demanda na interface web.
+      - Suporte a `mtu_mode` (`auto` | `manual`) e `manual_mtu` (1280 a 2000B) em `wan-optimize-status` e `wan-optimize-set`, com ajuste automático da porta física (incluindo Baby Jumbo 1508B e Mini Jumbo até 2000B).
+      - Sincronização em cascata para TCP MSS Clamping (`firewall mtu_fix=1`), IPv6 Router Advertisement (`dhcp.lan.ra_mtu`, com clamping seguro $\le 1500$ na LAN) e túneis WireGuard (`wg0`/`wgclient` em $\text{MTU} - 80$, ex.: 1412B para WAN 1492B).
+    - **Hotplug Universal (`root/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo`)**:
+      - Generalizado para atuar em todas as WANs (PPPoE, DHCP, IP Fixo atrás de ONT, 4G/5G, Starlink) no evento `ifup`, garantindo persistência do MTU manual ou sondagem assíncrona no boot.
+    - **Frontend (`src/modules/network_modals.js` & bundle `overview.js`)**:
+      - Novo seletor no modal de Otimização de Conexão entre **Automático Inteligente (Fast PMTUD)** com botão de sondagem ao vivo e **Modo Manual / Personalizado** com chips rápidos (`1492`, `1500`, `1460`, `1420`, `1380`, `2000`), campo numérico livre (1280–2000B) e preview dinâmico da cascata TCP MSS / IPv6 RA / WireGuard.
+    - **Testes & Homologação (`tests/test_wan_matrix.py`)**:
+      - Adicionado `test_38_universal_auto_and_manual_mtu` (38/38 testes aprovados) e validação em hardware real (Acer Predator W6x) pós-reboot com LAN 1500B, WAN 1492B, IPv6 RA 1492B e WireGuard 1412B (0% perda sem fragmentação).
+
+## 2.2.11
+
+- **Atualização Incremental v2.2.11 (18/11/2026)**:
+  - Compilação e atualização incremental de pacote.
+
+## 2.2.10
+
+- **Atualização Incremental v2.2.10 (18/11/2026)**:
+  - Adiciona assistente de VLAN WAN, filtro de abas e correcoes de toasts e status
+
+## 2.2.9
+
+- **Atualização Incremental v2.2.9 (17/11/2026)**:
+  - Compilação e atualização incremental de pacote.
+
+## 2.2.8
+
+- **Atualização Incremental v2.2.8 (16/11/2026)**:
+  - Compilação e atualização incremental de pacote.
+
 ## 2.2.7
 
 - **Atualização Incremental v2.2.7 (12/11/2026)**:

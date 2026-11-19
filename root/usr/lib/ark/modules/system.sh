@@ -611,7 +611,7 @@ dns_turbo_save() {
 		valid_ip "$ip" || continue
 		valid_servers="${valid_servers:+$valid_servers }$ip"
 	done
-	[ -n "$valid_servers" ] || valid_servers="1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4"
+	[ -n "$valid_servers" ] || valid_servers="1.1.1.1 8.8.8.8"
 
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
@@ -643,6 +643,7 @@ dns_turbo_save() {
 
 	uci -q delete dhcp.@dnsmasq[0].server
 
+	local agh_local_active=0
 	if [ "$blocker_name" = "AdGuard Home" ]; then
 		local agh_socket_ok=0
 		if [ -n "${ARK_ROOT:-}" ]; then
@@ -651,9 +652,11 @@ dns_turbo_save() {
 			agh_socket_ok=1
 		fi
 		if [ "$agh_socket_ok" = "1" ]; then
+			agh_local_active=1
 			command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "disable" || true
 			uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
 			uci -q set dhcp.@dnsmasq[0].noresolv='1'
+			uci -q set dhcp.@dnsmasq[0].cachesize='0'
 		else
 			logger -t ark-system "Aviso: AdGuard Home detectado mas porta 5335 inacessivel. Mantendo DNS padrao." 2>/dev/null || true
 			for ip in $valid_servers; do
@@ -694,13 +697,22 @@ dns_turbo_save() {
 			apply_lan_dhcp_dns "$lan_ip"
 		fi
 	fi
+	if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+		[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+	fi
+	command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns || true
 	if [ -n "$cache_sz" ]; then
 		case "$cache_sz" in
 			''|*[!0-9]*) cache_sz=10000 ;;
 		esac
 		[ "$cache_sz" -lt 150 ] && cache_sz=150
 		[ "$cache_sz" -gt 50000 ] && cache_sz=50000
-		uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+		if [ "$agh_local_active" = "1" ]; then
+			uci -q set "equipe_perf.settings.saved_dns_cachesize=$cache_sz"
+			uci commit equipe_perf
+		else
+			uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+		fi
 	fi
 	command -v sanitize_dhcp_hostnames >/dev/null 2>&1 && sanitize_dhcp_hostnames
 	uci commit dhcp
@@ -753,6 +765,103 @@ dns_turbo_doh_toggle() {
 	s4="${4:-}"
 	dns_turbo_save "$alls" "$s1" "$s2" "$s3" "$s4" "$fallback" "$cache_sz" >/dev/null
 	dns_turbo_status_json
+}
+
+_ark_dns_now_ms() {
+	if [ -r /proc/uptime ]; then
+		awk '{printf "%.0f\n", $1 * 1000}' /proc/uptime 2>/dev/null
+	else
+		printf '%s000\n' "$(date +%s 2>/dev/null || echo 0)"
+	fi
+}
+
+dns_turbo_benchmark_json() {
+	local domain="${ARK_DNS_BENCHMARK_DOMAIN:-cloudflare.com}"
+	local tmp_res="/tmp/ark-dns-bench.$$"
+	local candidates isp_ip rfile line entry name ip t0 t1 ms ok out ans_count
+	local first=1 rec1="" rec2=""
+
+	candidates="Cloudflare|1.1.1.1 Google|8.8.8.8 Quad9|9.9.9.9 ControlD|76.76.2.0 AdGuard|94.140.14.14"
+
+	# Detecta 1 DNS valido do provedor (WAN) se disponivel e distinto da lista padrao
+	isp_ip=""
+	for rfile in "${ARK_ROOT:-}/tmp/resolv.conf.d/resolv.conf.auto" "${ARK_ROOT:-}/tmp/resolv.conf.auto"; do
+		[ -r "$rfile" ] || continue
+		while IFS= read -r line; do
+			case "$line" in
+				nameserver*)
+					isp_ip="$(printf '%s' "$line" | awk '{print $2}' | tr -d '\r\n\t ')"
+					case "$isp_ip" in
+						''|127.*|0.0.0.0*|::1*|1.1.1.1|8.8.8.8|9.9.9.9|76.76.2.0|94.140.14.14)
+							isp_ip=""
+							continue
+							;;
+					esac
+					if valid_ip "$isp_ip"; then
+						candidates="$candidates Provedor_ISP|$isp_ip"
+						break
+					fi
+					isp_ip=""
+					;;
+			esac
+		done < "$rfile"
+		[ -n "$isp_ip" ] && break
+	done
+
+	: > "$tmp_res"
+	for entry in $candidates; do
+		name="${entry%%|*}"
+		ip="${entry#*|}"
+		t0="$(_ark_dns_now_ms)"
+		out=""
+		if command -v timeout >/dev/null 2>&1; then
+			out="$(timeout 2 nslookup "$domain" "$ip" 2>/dev/null || true)"
+		else
+			out="$(nslookup -timeout=2 "$domain" "$ip" 2>/dev/null || nslookup "$domain" "$ip" 2>/dev/null || true)"
+		fi
+		t1="$(_ark_dns_now_ms)"
+		ans_count="$(printf '%s\n' "$out" | grep -c '^Address' 2>/dev/null || echo 0)"
+		if [ "$ans_count" -ge 2 ] 2>/dev/null || printf '%s\n' "$out" | grep -q 'Name:'; then
+			ok=1
+			ms=$((t1 - t0))
+			[ "$ms" -lt 1 ] && ms=1
+			printf '%06d|1|%s|%s|%d\n' "$ms" "$name" "$ip" "$ms" >> "$tmp_res"
+		else
+			printf '999999|0|%s|%s|0\n' "$name" "$ip" >> "$tmp_res"
+		fi
+	done
+
+	printf '{"ok":true,"domain":"%s","results":[' "$(json_escape "$domain")"
+	while IFS='|' read -r _sort ok name ip ms; do
+		[ -n "$ip" ] || continue
+		name="$(printf '%s' "$name" | tr '_' ' ')"
+		if [ "$first" = "1" ]; then
+			first=0
+		else
+			printf ','
+		fi
+		if [ "$ok" = "1" ]; then
+			printf '{"name":"%s","ip":"%s","ms":%s,"ok":true}' "$(json_escape "$name")" "$(json_escape "$ip")" "$ms"
+			if [ -z "$rec1" ]; then
+				rec1="$ip"
+			elif [ -z "$rec2" ] && [ "$ip" != "$rec1" ]; then
+				rec2="$ip"
+			fi
+		else
+			printf '{"name":"%s","ip":"%s","ms":null,"ok":false}' "$(json_escape "$name")" "$(json_escape "$ip")"
+		fi
+	done <<EOF_BENCH
+$(sort "$tmp_res" 2>/dev/null || cat "$tmp_res")
+EOF_BENCH
+	rm -f "$tmp_res" 2>/dev/null || true
+
+	printf '],"recommended":['
+	if [ -n "$rec1" ] && [ -n "$rec2" ]; then
+		printf '"%s","%s"' "$(json_escape "$rec1")" "$(json_escape "$rec2")"
+	elif [ -n "$rec1" ]; then
+		printf '"%s"' "$(json_escape "$rec1")"
+	fi
+	printf ']}\n'
 }
 
 network_capacity_status_json() {
@@ -897,6 +1006,10 @@ system_perf_save() {
 			uci commit dhcp
 			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
+		if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+			[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+		fi
+		command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns || true
 	fi
 
 	sysctl_dir="/etc/sysctl.d"
@@ -1461,6 +1574,9 @@ handle_system() {
 		shift
 		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true
 		dns_turbo_doh_toggle "$@"
+		;;
+	dns-turbo-benchmark)
+		dns_turbo_benchmark_json
 		;;
 	network-capacity-status)
 		network_capacity_status_json

@@ -140,6 +140,282 @@ wireless.radio1.htmode='HE160'
         self.assertIn('[ "$enable_2g" = 0 ] && [ "$enable_5g" = 0 ]', content)
         self.assertIn('[ -z "$radio6" ] || [ "$enable_6g" = 0 ]', content)
 
+    def _setup_usteer_sandbox(self):
+        import json
+        from pathlib import Path
+        from test_harness import RouterSandbox
+        sb = RouterSandbox()
+        root = Path(sb.temp_dir)
+        for cmd_name, body in [("sleep", "exit 0"), ("wifi", "exit 0")]:
+            p = Path(sb.bin_dir) / cmd_name
+            p.unlink(missing_ok=True)
+            p.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+            p.chmod(0o755)
+        init_usteer = root / "etc/init.d/usteer"
+        init_usteer.parent.mkdir(parents=True, exist_ok=True)
+        init_usteer.write_text(
+            '#!/bin/sh\n'
+            'if [ "$1" = "enabled" ]; then exit 0; fi\n'
+            'echo "$1" >> "$ARK_ROOT/state/usteer_init.log"\n'
+            'exit 0\n',
+            encoding="utf-8"
+        )
+        init_usteer.chmod(0o755)
+        return sb, root, json
+
+    def test_06_doctor_detects_and_fixes_stale_usteer_ssid_list(self):
+        """Verifies doctor-run warns on stale usteer.ssid_list and doctor-fix resyncs it with auth_cache=1."""
+        sb, root, json = self._setup_usteer_sandbox()
+        try:
+            with open(os.path.join(sb.etc_config, "wireless"), "w", encoding="utf-8") as f:
+                f.write("""
+config wifi-device 'radio0'
+\toption type 'mac80211'
+\toption band '2g'
+\toption he_twt_required '0'
+\toption legacy_rates '0'
+
+config wifi-device 'radio1'
+\toption type 'mac80211'
+\toption band '5g'
+\toption he_twt_required '0'
+
+config wifi-iface 'default_radio0'
+\toption device 'radio0'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disassoc_low_ack '0'
+\toption wpa_group_rekey '0'
+\toption skip_inactivity_poll '0'
+\toption max_inactivity '600'
+\toption multicast_to_unicast '0'
+\toption dtim_period '1'
+\toption ieee80211k '1'
+\toption bss_transition '1'
+\toption rnr '1'
+
+config wifi-iface 'default_radio1'
+\toption device 'radio1'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disassoc_low_ack '0'
+\toption wpa_group_rekey '0'
+\toption skip_inactivity_poll '0'
+\toption max_inactivity '600'
+\toption multicast_to_unicast '1'
+\toption ieee80211k '1'
+\toption bss_transition '1'
+\toption rnr '1'
+
+config wifi-iface 'pessoal_radio0'
+\toption device 'radio0'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'Casa_Ark_6G'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disassoc_low_ack '0'
+\toption wpa_group_rekey '0'
+\toption skip_inactivity_poll '0'
+\toption max_inactivity '600'
+\toption multicast_to_unicast '0'
+\toption dtim_period '1'
+\toption ieee80211k '1'
+\toption bss_transition '1'
+\toption rnr '1'
+
+config wifi-iface 'pessoal_radio1'
+\toption device 'radio1'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'Casa_Ark_6G'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disassoc_low_ack '0'
+\toption wpa_group_rekey '0'
+\toption skip_inactivity_poll '0'
+\toption max_inactivity '600'
+\toption multicast_to_unicast '1'
+\toption ieee80211k '1'
+\toption bss_transition '1'
+\toption rnr '1'
+""")
+            with open(os.path.join(sb.etc_config, "usteer"), "w", encoding="utf-8") as f:
+                f.write("""
+config usteer
+\toption network 'lan'
+\toption syslog '1'
+\toption local_mode '1'
+\toption ipv6 '0'
+\toption min_snr '0'
+\toption band_steering_min_snr '-70'
+\toption roam_scan_snr '-74'
+\toption roam_trigger_snr '-78'
+\toption load_kick_enabled '0'
+\toption link_measurement_interval '0'
+\tlist ssid_list 'CASA_ARK_2+5'
+""")
+            sb.uci_set("equipe_dashboard.wifi=settings")
+            sb.uci_set("equipe_dashboard.wifi.usteer_enabled=1")
+
+            res_run = sb.run_control("doctor-run")
+            self.assertEqual(res_run.returncode, 0, res_run.stderr)
+            checks = json.loads(res_run.stdout).get("checks", [])
+            u_chk = next((c for c in checks if c.get("name") == "Band Steering (usteer)"), None)
+            self.assertIsNotNone(u_chk)
+            self.assertEqual(u_chk["status"], "WARN")
+            self.assertIn("ssid_list", u_chk["message"])
+            self.assertEqual(sb.uci_get("usteer.@usteer[0].ssid_list"), "CASA_ARK_2+5")
+
+            res_fix = sb.run_control("doctor-fix")
+            self.assertEqual(res_fix.returncode, 0, res_fix.stderr)
+            checks_fix = json.loads(res_fix.stdout).get("checks", [])
+            u_fix = next((c for c in checks_fix if c.get("name") == "Band Steering (usteer)"), None)
+            self.assertIsNotNone(u_fix)
+            self.assertEqual(u_fix["status"], "FIXED")
+            self.assertEqual(sorted(sb.uci_get("usteer.@usteer[0].ssid_list").split()), ["CASA_ARK", "Casa_Ark_6G"])
+            for sec in ("default_radio0", "default_radio1", "pessoal_radio0", "pessoal_radio1"):
+                self.assertEqual(sb.uci_get(f"wireless.{sec}.auth_cache"), "1")
+            self.assertIn("restart", (root / "state/usteer_init.log").read_text(encoding="utf-8"))
+
+            res_ok = sb.run_control("doctor-run")
+            self.assertEqual(res_ok.returncode, 0, res_ok.stderr)
+            checks_ok = json.loads(res_ok.stdout).get("checks", [])
+            u_ok = next((c for c in checks_ok if c.get("name") == "Band Steering (usteer)"), None)
+            self.assertIsNotNone(u_ok)
+            self.assertEqual(u_ok["status"], "OK")
+        finally:
+            sb.cleanup()
+
+    def test_07_wifi_mutations_keep_usteer_ssid_list_synced(self):
+        """Verifies wifi-settings, wifi-add (including SSIDs with spaces), and wifi-delete keep usteer.ssid_list updated."""
+        sb, _, _ = self._setup_usteer_sandbox()
+        try:
+            with open(os.path.join(sb.etc_config, "wireless"), "w", encoding="utf-8") as f:
+                f.write("""
+config wifi-device 'radio0'
+\toption type 'mac80211'
+\toption band '2g'
+
+config wifi-device 'radio1'
+\toption type 'mac80211'
+\toption band '5g'
+
+config wifi-iface 'default_radio0'
+\toption device 'radio0'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+
+config wifi-iface 'default_radio1'
+\toption device 'radio1'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+""")
+            with open(os.path.join(sb.etc_config, "usteer"), "w", encoding="utf-8") as f:
+                f.write("""
+config usteer
+\toption network 'lan'
+\toption local_mode '1'
+\tlist ssid_list 'CASA_ARK'
+""")
+            sb.uci_set("equipe_dashboard.wifi=settings")
+            sb.uci_set("equipe_dashboard.wifi.usteer_enabled=1")
+
+            r_set = sb.run_control("wifi-settings", "main", "ssid=CasaNova")
+            self.assertEqual(r_set.returncode, 0, r_set.stderr)
+            self.assertEqual(sb.uci_get("usteer.@usteer[0].ssid_list"), "CasaNova")
+
+            r_add = sb.run_control("wifi-add", "Casa Extra", "SenhaForte123", "lan", "both", "psk2", "0")
+            self.assertEqual(r_add.returncode, 0, r_add.stderr)
+            usteer_txt = (sb.etc_config + "/usteer")
+            with open(usteer_txt, "r", encoding="utf-8") as f:
+                raw_usteer = f.read()
+            self.assertIn("list ssid_list 'Casa Extra'", raw_usteer)
+            self.assertIn("list ssid_list 'CasaNova'", raw_usteer)
+
+            r_del = sb.run_control("wifi-delete", "extra_casaextr")
+            self.assertEqual(r_del.returncode, 0, r_del.stderr)
+            self.assertEqual(sb.uci_get("usteer.@usteer[0].ssid_list"), "CasaNova")
+        finally:
+            sb.cleanup()
+
+    def test_08_single_band_5g_ssid_excluded_in_local_mode_preserving_external_rrm_nr(self):
+        """Verifies local_mode=1 excludes single-band SSIDs (e.g. pure 5G AP) so usteer does not wipe external 802.11k rrm_nr."""
+        sb, _, json = self._setup_usteer_sandbox()
+        try:
+            with open(os.path.join(sb.etc_config, "wireless"), "w", encoding="utf-8") as f:
+                f.write("""
+config wifi-device 'radio0'
+\toption type 'mac80211'
+\toption band '2g'
+
+config wifi-device 'radio1'
+\toption type 'mac80211'
+\toption band '5g'
+
+config wifi-iface 'default_radio0'
+\toption device 'radio0'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+
+config wifi-iface 'default_radio1'
+\toption device 'radio1'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'CASA_ARK'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+
+config wifi-iface 'pessoal_radio0'
+\toption device 'radio0'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'Casa_Ark_6G'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disabled '1'
+
+config wifi-iface 'pessoal_radio1'
+\toption device 'radio1'
+\toption network 'lan'
+\toption mode 'ap'
+\toption ssid 'Casa_Ark_6G'
+\toption encryption 'psk2'
+\toption key 'SenhaForte123'
+\toption disabled '0'
+""")
+            with open(os.path.join(sb.etc_config, "usteer"), "w", encoding="utf-8") as f:
+                f.write("""
+config usteer
+\toption network 'lan'
+\toption local_mode '1'
+\tlist ssid_list 'CASA_ARK'
+\tlist ssid_list 'Casa_Ark_6G'
+""")
+            sb.uci_set("equipe_dashboard.wifi=settings")
+            sb.uci_set("equipe_dashboard.wifi.usteer_enabled=1")
+
+            r_fix = sb.run_control("doctor-fix")
+            self.assertEqual(r_fix.returncode, 0, r_fix.stderr)
+            self.assertEqual(sb.uci_get("usteer.@usteer[0].ssid_list"), "CASA_ARK")
+        finally:
+            sb.cleanup()
+
 if __name__ == "__main__":
     unittest.main()
 

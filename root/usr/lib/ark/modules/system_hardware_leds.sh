@@ -1427,6 +1427,8 @@ EOF
 		cur_dns_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 		if ark_is_satellite_or_ap; then
 			dns_cache=150
+		elif [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ] && uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '127\.0\.0\.1#5335'; then
+			dns_cache=0
 		elif [ "$effective_ram_tier" != "ultra_low" ] && [ "$effective_ram_tier" != "low" ]; then
 			if [ -n "$cur_dns_cache" ] && [ "$cur_dns_cache" -gt "$dns_cache" ] 2>/dev/null; then
 				dns_cache="$cur_dns_cache"

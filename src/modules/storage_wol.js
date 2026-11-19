@@ -336,38 +336,58 @@ const storageWolMethods = {
 							class: 'ex-mini-button',
 							style: 'background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35); font-weight:700;',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'start']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD iniciado e compartilhamentos sincronizados.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'start'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD iniciado e compartilhamentos sincronizados.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['▶️ Iniciar / Ativar']),
 						E('button', {
 							class: 'ex-mini-button',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'restart']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD reiniciado.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'restart'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD reiniciado.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🔄 Reiniciar']),
 						E('button', {
 							class: 'ex-mini-button',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'pause']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD pausado temporariamente.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'pause'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD pausado temporariamente.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['⏸️ Pausar']),
 						E('button', {
 							class: 'ex-mini-button',
 							style: 'background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'disable']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD parado e desativado no boot.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'disable'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD parado e desativado no boot.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🛑 Desativar'])
 					])
@@ -549,20 +569,30 @@ const storageWolMethods = {
 						if (z.key === 'wan' && desired) {
 							input.checked = false;
 							self.openKsmbdWanWarningModal(function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', 'wan', '1']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Porta 445 liberada na WAN.']), 'warning');
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', 'wan', '1'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Porta 445 liberada na WAN.']), 'warning');
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}, function() {
 								self.openKsmbdModal();
 							});
 							return;
 						}
 						input.disabled = true;
-						fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', z.key, desired ? '1' : '0']).then(function() {
-							ui.addNotification(null, E('p', {}, ['Acesso KSMBD na rede ' + z.title + (desired ? ' ativado.' : ' bloqueado.')]));
-							self.openKsmbdModal();
-						});
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', z.key, desired ? '1' : '0'])
+							.then(checkControlResult)
+							.then(function() {
+								ui.addNotification(null, E('p', {}, ['Acesso KSMBD na rede ' + z.title + (desired ? ' ativado.' : ' bloqueado.')]));
+								self.openKsmbdModal();
+							}).catch(function(err) {
+								ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+								self.openKsmbdModal();
+							});
 					}
 				});
 				zChk.checked = isAllowed;
@@ -619,20 +649,30 @@ const storageWolMethods = {
 							style: 'margin-right:6px;',
 							click: function() {
 								const nextPerm = isRo ? 'rw' : 'ro';
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'permission', u.username, nextPerm]).then(function() {
-									ui.addNotification(null, E('p', {}, ['Permissão de ' + u.username + ' alterada para ' + nextPerm.toUpperCase() + '.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'permission', u.username, nextPerm])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Permissão de ' + u.username + ' alterada para ' + nextPerm.toUpperCase() + '.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, [isRo ? 'Mudar p/ Leitura+Gravação' : 'Mudar p/ Só Leitura']),
 						E('button', {
 							class: 'ex-mini-button',
 							style: 'background:rgba(239,68,68,0.15); color:#f87171;',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'delete', u.username]).then(function() {
-									ui.addNotification(null, E('p', {}, ['Conta SMB ' + u.username + ' removida.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'delete', u.username])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Conta SMB ' + u.username + ' removida.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🗑️ Remover'])
 					])

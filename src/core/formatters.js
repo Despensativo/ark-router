@@ -585,6 +585,29 @@ function redirectToRouter(ip, message, delay) {
 	window.setTimeout(function() { window.location.href = window.location.protocol + '//' + ip + path; }, delay || 1000);
 }
 
+function checkControlResult(res, fallbackErrorMsg) {
+	if (!res) {
+		throw new Error(fallbackErrorMsg || 'Falha na comunicação com o roteador.');
+	}
+	if (typeof res.code === 'number' && res.code !== 0) {
+		const detail = (res.stderr && res.stderr.trim()) || (res.stdout && res.stdout.trim()) || ('Código de saída ' + res.code);
+		throw new Error((fallbackErrorMsg ? fallbackErrorMsg + ': ' : '') + detail);
+	}
+	if (typeof res.stdout === 'string' && res.stdout.trim().charAt(0) === '{') {
+		try {
+			const j = JSON.parse(res.stdout.trim());
+			if (j && (j.ok === false || j.status === 'error' || j.error)) {
+				throw new Error(j.error || j.message || fallbackErrorMsg || 'Erro retornado pelo roteador.');
+			}
+		} catch(e) {
+			if (e.message && (e.message.indexOf('Erro retornado') !== -1 || (fallbackErrorMsg && e.message.indexOf(fallbackErrorMsg) !== -1))) {
+				throw e;
+			}
+		}
+	}
+	return res;
+}
+
 installArkTransactionCoordinator();
 
 if (typeof window !== 'undefined') {
@@ -595,5 +618,6 @@ if (typeof window !== 'undefined') {
 	window.isPollingSuppressed = isPollingSuppressed;
 	window.forceReleaseMutationLock = forceReleaseMutationLock;
 	window.installArkTransactionCoordinator = installArkTransactionCoordinator;
+	window.checkControlResult = checkControlResult;
 }
 

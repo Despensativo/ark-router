@@ -132,7 +132,7 @@ ark_promote_cake_mq() {
 					[ -w "$ifb_q" ] && echo 3 > "$ifb_q" 2>/dev/null || true
 				done
 			fi
-			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus /sys/class/net/ifb*/queues/rx-*/rps_cpus; do
+			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
 				[ -w "$ifb_q" ] && echo "$rps_mask" > "$ifb_q" 2>/dev/null || true
 			done
 			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
@@ -182,10 +182,10 @@ ark_promote_cake_mq() {
 		upload="$(uci -q get "sqm.$sec.upload" || echo 0)"
 		[ "$upload" -gt 0 ] 2>/dev/null || continue
 
-		# NUNCA ativar cake_mq em IFB virtual (ifb4*) ou tunel PPPoE mono-fila:
-		# no kernel 6.12, cake_mq + ingress em IFB virtual zera capacity estimate (0bit)
-		# e causa ~9% de drops/ECN marks prematuros (limitando Fast.com a ~88 Mbps).
-		# Promover exclusivamente em NICs fisicas multi-fila reais (queues/tx-1).
+		# Manter cake_mq restrito a interfaces com multiplas filas TX reais (queues/tx-1):
+		# Em interfaces virtuais mono-fila (IFB virtual ifb4* ou tunel PPPoE), instanciar
+		# cake_mq nao traz beneficio de paralelismo e o sub-qdisc nao herda o estimador de
+		# capacidade informativo (avg_peak_bandwidth = 0bit). Promover apenas onde houver fila tx-1.
 		tx1_dir="${ARK_ROOT:-}/sys/class/net/${iface}/queues/tx-1"
 		[ -d "$tx1_dir" ] || tx1_dir="/sys/class/net/${iface}/queues/tx-1"
 		[ -d "$tx1_dir" ] || continue
@@ -323,10 +323,10 @@ ark_sync_gaming_ports_and_bql() {
 table inet fw4 {
 	chain ark_gaming_ports {
 		type filter hook prerouting priority mangle - 4; policy accept;
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-17500, 19132-19133, 20000-60000, 61455-61458 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-17500, 19132-19133, 20000-60000, 61455-61458 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 51413 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv4 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 51413 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv6 Priority"
 		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv4"
 		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv6"
 	}
@@ -340,7 +340,9 @@ EOF
 			elif is_fw3; then
 				iptables -t mangle -N ARK_GAMING_PORTS 2>/dev/null || iptables -t mangle -F ARK_GAMING_PORTS 2>/dev/null || true
 				iptables -t mangle -C PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || iptables -t mangle -A PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || true
-				iptables -t mangle -A ARK_GAMING_PORTS -p udp -m multiport --dports 88,500,3074:3079,3544,3658:3659,4379:4380,4500,5000:5500,7000:8100,27000:27100 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
+				iptables -t mangle -A ARK_GAMING_PORTS -p udp -m multiport --dports 88,500,1119,3074:3079,3544,3658:3659,4379:4380,4500,5000:5500 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
+				iptables -t mangle -A ARK_GAMING_PORTS -p udp -m multiport --dports 6000:6190,6672,7000:8100,9000:14100,17000:41640,41642:51412,51414:51819 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
+				iptables -t mangle -A ARK_GAMING_PORTS -p udp --dport 51821:65535 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
 			fi
 			sysctl -w net.netfilter.nf_conntrack_udp_timeout=60 >/dev/null 2>&1 || true
 			sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=240 >/dev/null 2>&1 || true
@@ -608,7 +610,7 @@ ensure_sqm_section() {
 	[ -n "$(uci -q get "sqm.$section.ingress_ecn")" ] || uci -q set "sqm.$section.ingress_ecn=ECN"
 	[ -n "$(uci -q get "sqm.$section.egress_ecn")" ] || uci -q set "sqm.$section.egress_ecn=NOECN"
 	# Mantem use_mq=0 para evitar que create_ifb() instancie cake_mq na interface virtual ifb4* (ingress),
-	# pois cake_mq + ingress no kernel 6.12 zera capacity estimate (0bit) e derruba o download TCP.
+	# preservando a criacao mono-fila estavel compativel com o script de SQM padrao.
 	uci -q set "sqm.$section.use_mq=0"
 	local cur_eq="$(uci -q get "sqm.$section.eqdisc_opts")"
 	if [ -z "$cur_eq" ]; then

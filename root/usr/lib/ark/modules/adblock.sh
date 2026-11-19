@@ -988,7 +988,7 @@ adblock_mark_enabled() {
 
 adblock_enable() {
 	local chosen_mode provider cache_mb protection parental safesearch cloud_cache web_port zt_access custom_blacklist nextdns_id custom_whitelist
-	local dns_intercept mem_total_kb overlay_free_kb cur_servers clean_cur s clean_s cur_allservers cur_noresolv cur_dhcp_fallback agh_ready _i
+	local dns_intercept mem_total_kb overlay_free_kb cur_servers clean_cur s clean_s cur_allservers cur_noresolv cur_cachesize cur_dhcp_fallback agh_ready _i
 	local cur_ipv6
 	chosen_mode="${1:-auto}"
 	provider="${2:-adguard_dns}"
@@ -1060,6 +1060,15 @@ adblock_enable() {
 	uci -q set "equipe_perf.settings.saved_dns_allservers=$cur_allservers"
 	cur_noresolv="$(uci -q get dhcp.@dnsmasq[0].noresolv || echo 0)"
 	uci -q set "equipe_perf.settings.saved_noresolv=$cur_noresolv"
+	cur_cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
+	case "$cur_cachesize" in
+		''|0|*[!0-9]*) ;;
+		*)
+			if [ -z "$(uci -q get equipe_perf.settings.saved_dns_cachesize || true)" ]; then
+				uci -q set "equipe_perf.settings.saved_dns_cachesize=$cur_cachesize"
+			fi
+			;;
+	esac
 	cur_dhcp_fallback=0
 	case "$(uci -q get dhcp.lan.dhcp_option || true)" in
 		*1.1.1.1*) cur_dhcp_fallback=1 ;;
@@ -1100,15 +1109,17 @@ dns:
   upstream_dns:
     - h3://dns.cloudflare.com/dns-query
     - h3://dns.google/dns-query
-    - https://dns.cloudflare.com/dns-query
-    - https://dns.google/dns-query
-    - 1.1.1.1
-    - 8.8.8.8
+    - https://dns.quad9.net/dns-query
   bootstrap_dns:
     - 1.1.1.1
     - 8.8.8.8
-  all_servers: false
-  fastest_addr: true
+    - 9.9.9.9
+  fallback_dns:
+    - 1.1.1.1
+    - 8.8.8.8
+    - 9.9.9.9
+  upstream_mode: parallel
+  fastest_addr: false
   cache_size: 67108864
   cache_ttl_min: 0
   cache_ttl_max: 0
@@ -1165,6 +1176,7 @@ EOF
 		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
 		uci -q set dhcp.@dnsmasq[0].noresolv='1'
 		uci -q set dhcp.@dnsmasq[0].allservers='0'
+		uci -q set dhcp.@dnsmasq[0].cachesize='0'
 		cur_ipv6="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
 		if [ "$cur_ipv6" = "ipv4_only" ]; then
 			uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
@@ -1288,11 +1300,18 @@ adblock_restore_dns() {
 		uci -q set "dhcp.@dnsmasq[0].allservers=$target_allservers"
 		uci -q set "dhcp.@dnsmasq[0].noresolv=$target_noresolv"
 	fi
-	uci -q set dhcp.@dnsmasq[0].cachesize='1000'
+	local target_cachesize
+	target_cachesize="$(uci -q get equipe_perf.settings.saved_dns_cachesize || true)"
+	case "$target_cachesize" in
+		''|0|*[!0-9]*) target_cachesize="1000" ;;
+	esac
+	[ "$target_cachesize" -lt 150 ] && target_cachesize="150"
+	[ "$target_cachesize" -gt 50000 ] && target_cachesize="50000"
+	uci -q set "dhcp.@dnsmasq[0].cachesize=$target_cachesize"
 	uci commit dhcp
 
 	# 5. Mantem equipe_perf sincronizado com a configuracao real do usuario
-	if [ -f /etc/config/equipe_perf ]; then
+	if [ -f /etc/config/equipe_perf ] || [ -n "${UCI_CONFIG_DIR:-}" -a -f "${UCI_CONFIG_DIR}/equipe_perf" ] || [ -n "${ARK_ROOT:-}" -a -f "${ARK_ROOT}/etc/config/equipe_perf" ]; then
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci -q set "equipe_perf.settings.dns_allservers=$target_allservers"
 		uci -q set "equipe_perf.settings.dns_servers=$clean_restore_servers"
@@ -1301,6 +1320,7 @@ adblock_restore_dns() {
 		uci -q delete equipe_perf.settings.saved_dns_allservers
 		uci -q delete equipe_perf.settings.saved_noresolv
 		uci -q delete equipe_perf.settings.saved_dhcp_fallback
+		uci -q delete equipe_perf.settings.saved_dns_cachesize
 		uci commit equipe_perf
 	fi
 

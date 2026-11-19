@@ -20,6 +20,21 @@ if [ -f "${_lib}/modules/network.sh" ] && ! command -v ensure_mwan3_ark_config >
 fi
 unset _lib
 
+_ark_dns_probe_local_port() {
+	local port="${1:-53}" domain="${2:-cloudflare.com}" out="" ans_count=0
+	[ -n "${ARK_ROOT:-}" ] && [ "${ARK_DOCTOR_FORCE_DNS_PROBE:-0}" != "1" ] && return 0
+	command -v nslookup >/dev/null 2>&1 || return 0
+	if command -v timeout >/dev/null 2>&1; then
+		out="$(timeout 2 nslookup -port="$port" "$domain" 127.0.0.1 2>/dev/null || true)"
+	else
+		out="$(nslookup -port="$port" "$domain" 127.0.0.1 2>/dev/null || true)"
+	fi
+	ans_count="$(printf '%s\n' "$out" | grep -c '^Address' 2>/dev/null || echo 0)"
+	[ "$ans_count" -ge 2 ] 2>/dev/null && return 0
+	printf '%s\n' "$out" | grep -q 'Name:' && return 0
+	return 1
+}
+
 ark_doctor_audit() {
 	local auto_fix format log_details root_prefix uci_cmd mem_total_kb mem_free_kb mem_total_mb mem_free_mb top_proc pid max_p
 	local max_r p overlay_free_kb sqm_has_active wan proto wan_dev expected_sqm_dev sqm_sec sqm_enabled cur_sqm_iface cur_ov
@@ -35,6 +50,9 @@ ark_doctor_audit() {
 	local t_dev user_wifi_disabled total_radios disabled_radios r sec1 other_sec fix_sec chk_sec kv_sec chk_iface cur_year
 	local cur_date_str cur_tz clock_has_fake_rtc ntp_srv_en intercept_status intercept_desc ct_count ct_max ct_pct dist_target has_native_hw_queues cpu_cores_chk
 	local irq_running ap_conflict_found ap_conflict_svcs xlat_found xlat_secs xlat_s wan_proto_v4 mwan_cnt w_auto w_dis w_proto
+	local usteer_ssid_mismatch kv_enc u_init_script
+	local doc_v6_mode lan_v6_ok lan_dns_v6 lan_dns_bad lan_pref64 nat64_per_dev_cnt nat64_s nat64_required nat64_scope
+	local nat64_sh_path nat64_fw_inc nat64_nft_path nat64_jool_bin nat64_issues nat64_pref64 nat64_lan_dns nat64_stale
 	auto_fix="${1:-0}"
 	format="${2:-text}"
 	errors=0
@@ -588,7 +606,12 @@ ark_doctor_audit() {
 			add_check "Tabela de Clientes" "FAIL" "Servidor DHCP/DNS (dnsmasq) inativo! Clientes podem ficar sem IP."
 		fi
 	elif ! ark_is_satellite_or_ap && [ "$lan_dhcp_ignore" = "1" ]; then
-		add_check "Tabela de Clientes" "WARN" "Servidor DHCP local desativado (dhcp.lan.ignore=1). Aparelhos locais exigem IP estatico."
+		doc_v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo 'dual_stack')"
+		if [ "$doc_v6_mode" = "ipv6_only" ]; then
+			add_check "Tabela de Clientes" "OK" "Modo IPv6-Only Global ativo: DHCPv4 desativado intencionalmente (endereçamento via RA/DHCPv6 + NAT64)."
+		else
+			add_check "Tabela de Clientes" "WARN" "Servidor DHCP local desativado (dhcp.lan.ignore=1). Aparelhos locais exigem IP estatico."
+		fi
 	else
 		lease_file="/tmp/dhcp.leases"
 		[ -f "$lease_file" ] || lease_file="/var/dhcp.leases"
@@ -1187,12 +1210,22 @@ ark_doctor_audit() {
 				expected_service="relay"
 			fi
 
-			if [ "$lan_ra" != "$expected_service" ] || [ "$lan_dhcpv6" != "$expected_service" ] || [ "$filter_aaaa" = "1" ]; then
+			lan_v6_ok=1
+			if [ "$relay" = "1" ] && [ "$ipv6_mode" != "nptv6" ]; then
+				# Em modo relay, ra=relay + ndp=relay com dhcpv6=server (ou relay) e valido para servir DNSv6 local/Cloudflare sem repassar fe80::1
+				[ "$lan_ra" = "relay" ] || lan_v6_ok=0
+				case "$lan_dhcpv6" in server|relay) ;; *) lan_v6_ok=0 ;; esac
+			else
+				[ "$lan_ra" = "$expected_service" ] && [ "$lan_dhcpv6" = "$expected_service" ] || lan_v6_ok=0
+			fi
+
+			if [ "$lan_v6_ok" != "1" ] || [ "$filter_aaaa" = "1" ]; then
 				if [ "$auto_fix" = 1 ]; then
 					if [ "$relay" = "1" ]; then
 						$uci_cmd set dhcp.lan.ra='relay'
-						$uci_cmd set dhcp.lan.dhcpv6='relay'
+						$uci_cmd set dhcp.lan.dhcpv6='server'
 						$uci_cmd set dhcp.lan.ndp='relay'
+						$uci_cmd delete dhcp.wan.dhcpv6 2>/dev/null || true
 					else
 						$uci_cmd set dhcp.lan.ra='server'
 						$uci_cmd set dhcp.lan.dhcpv6='server'
@@ -1204,6 +1237,10 @@ ark_doctor_audit() {
 					$uci_cmd set equipe_dashboard.ipv6.mode="$ipv6_mode"
 					$uci_cmd commit dhcp
 					$uci_cmd commit equipe_dashboard
+					if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+						[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+					fi
+					command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns no_restart || true
 					[ -z "$root_prefix" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
 					[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd enable >/dev/null 2>&1 || true
 					[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
@@ -1213,7 +1250,45 @@ ark_doctor_audit() {
 					add_check "Coerência IPv6 (Dashboard vs LAN)" "FAIL" "Modo $ipv6_mode ativo com IPv6 na WAN, mas anúncios RA/DHCPv6 na LAN estão desativados (blackhole de IPv6)."
 				fi
 			else
-				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode devidamente alinhado entre WAN e anúncios da LAN ($expected_service)."
+				lan_dns_v6="$($uci_cmd get dhcp.lan.dns 2>/dev/null || echo '')"
+				lan_dns_bad=0
+				case "$lan_dns_v6" in
+					*fe80:*|*FE80:*) lan_dns_bad=1 ;;
+				esac
+				if [ "$ipv6_mode" = "ipv6_only" ]; then
+					lan_pref64="$($uci_cmd get dhcp.lan.ra_pref64 2>/dev/null || echo '')"
+					if [ "$lan_dns_bad" = "1" ] || [ "$lan_pref64" != "64:ff9b::/96" ] || ! printf ' %s ' "$lan_dns_v6" | grep -q ' 2606:4700:4700::64 '; then
+						if [ "$auto_fix" = 1 ]; then
+							if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+								[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+							fi
+							command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns no_restart || true
+							[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+							fixes_applied=$((fixes_applied + 1))
+							add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "DNS64 (2606:4700:4700::64) e PREF64 (64:ff9b::/96) sincronizados na LAN para o modo IPv6-Only Global."
+						else
+							add_check "Coerência IPv6 (Dashboard vs LAN)" "WARN" "Modo ipv6_only ativo sem DNS64/PREF64 completo anunciado na LAN (sites legados IPv4 podem falhar)."
+						fi
+					else
+						add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo ipv6_only alinhado com RA/DHCPv6, DNS64 (2606:4700:4700::64) e PREF64 (64:ff9b::/96)."
+					fi
+				elif [ "$lan_dns_bad" = "1" ]; then
+					if [ "$auto_fix" = 1 ]; then
+						if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+							[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+						fi
+						command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns no_restart || true
+						[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "DNS IPv6 link-local (fe80::) removido de dhcp.lan.dns e substituído por DNSv6 global + fallback."
+					else
+						add_check "Coerência IPv6 (Dashboard vs LAN)" "WARN" "dhcp.lan.dns contém endereço link-local (fe80::) inalcançável pela LAN."
+					fi
+				elif [ "$relay" = "1" ] && [ "$lan_dhcpv6" = "server" ]; then
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode em Relay IPv6 com DNSv6 gerenciado localmente (ra=relay, dhcpv6=server, sem vazamento fe80::1)."
+				else
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode devidamente alinhado entre WAN e anúncios da LAN ($expected_service)."
+				fi
 			fi
 
 			if [ "$ipv6_mode" = "nptv6" ]; then
@@ -1276,6 +1351,102 @@ ark_doctor_audit() {
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "WARN" "Modo $ipv6_mode ativo na LAN, mas nenhuma WAN possui IPv6 configurado."
 			else
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode preservado aguardando conectividade IPv6 na WAN."
+			fi
+		fi
+
+		# 11c.2 Integridade Inteligente de Fallback NAT64 / DNS64 (Jool para IPv6 Puro)
+		nat64_per_dev_cnt=0
+		for nat64_s in $($uci_cmd show equipe_devices 2>/dev/null | sed -n 's/^equipe_devices\.\([a-zA-Z0-9_]*\)=device$/\1/p'); do
+			if [ "$($uci_cmd get "equipe_devices.$nat64_s.ip_protocol" 2>/dev/null || echo '')" = "ipv6_only" ]; then
+				nat64_per_dev_cnt=$((nat64_per_dev_cnt + 1))
+			fi
+		done
+		nat64_required=0
+		nat64_scope=""
+		if [ "$ipv6_mode" = "ipv6_only" ]; then
+			nat64_required=1
+			nat64_scope="IPv6-Only Global"
+		elif [ "$ipv6_mode" != "ipv4_only" ] && [ "$ipv6_mode" != "ipv6_clat" ] && [ "$nat64_per_dev_cnt" -gt 0 ]; then
+			nat64_required=1
+			nat64_scope="${nat64_per_dev_cnt} dispositivo(s) IPv6 Puro"
+		fi
+		nat64_sh_path="${root_prefix}/etc/ark/ark_nat64.sh"
+		nat64_fw_inc="$($uci_cmd get firewall.ark_nat64.path 2>/dev/null || echo '')"
+		nat64_nft_path="${root_prefix}/etc/ark/ark_ipv6_selective.nft"
+		nat64_jool_bin=0
+		command -v jool >/dev/null 2>&1 && nat64_jool_bin=1
+
+		if [ "$nat64_required" = "1" ]; then
+			nat64_issues=""
+			if [ -z "$root_prefix" ]; then
+				if [ "$nat64_jool_bin" = "0" ]; then
+					nat64_issues="pacotes Jool NAT64 ausentes (kmod-jool-netfilter / jool-tools-netfilter)"
+				elif ! jool -i ark_nat64 instance status >/dev/null 2>&1; then
+					nat64_issues="${nat64_issues:+$nat64_issues; }instância Jool ark_nat64 inativa"
+				fi
+			fi
+			[ -x "$nat64_sh_path" ] || nat64_issues="${nat64_issues:+$nat64_issues; }script /etc/ark/ark_nat64.sh ausente"
+			[ "$nat64_fw_inc" = "/etc/ark/ark_nat64.sh" ] || nat64_issues="${nat64_issues:+$nat64_issues; }include firewall.ark_nat64 ausente"
+			if [ "$ipv6_mode" != "ipv6_only" ] && [ "$nat64_per_dev_cnt" -gt 0 ] && is_fw4; then
+				if [ ! -f "$nat64_nft_path" ] || ! grep -q "prerouting_dns64" "$nat64_nft_path" 2>/dev/null; then
+					nat64_issues="${nat64_issues:+$nat64_issues; }chain prerouting_dns64 ausente no firewall"
+				fi
+			fi
+			if [ "$ipv6_mode" = "ipv6_only" ]; then
+				nat64_pref64="$($uci_cmd get dhcp.lan.ra_pref64 2>/dev/null || echo '')"
+				nat64_lan_dns="$($uci_cmd get dhcp.lan.dns 2>/dev/null || echo '')"
+				[ "$nat64_pref64" = "64:ff9b::/96" ] || nat64_issues="${nat64_issues:+$nat64_issues; }ra_pref64 ausente na LAN"
+				printf ' %s ' "$nat64_lan_dns" | grep -q ' 2606:4700:4700::64 ' || nat64_issues="${nat64_issues:+$nat64_issues; }DNS64 ausente na LAN"
+			fi
+
+			if [ -n "$nat64_issues" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					if ! command -v ark_sync_nat64_jool >/dev/null 2>&1; then
+						[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+					fi
+					command -v ark_sync_nat64_jool >/dev/null 2>&1 && ark_sync_nat64_jool || true
+					command -v sync_ipv6_selective_firewall >/dev/null 2>&1 && sync_ipv6_selective_firewall || true
+					command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns no_restart || true
+					if [ -z "$root_prefix" ]; then
+						[ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1 || true
+						[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+					fi
+					if [ -z "$root_prefix" ] && ! command -v jool >/dev/null 2>&1; then
+						add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "WARN" "Fallback NAT64 requerido ($nat64_scope), mas pacotes kmod-jool-netfilter/jool-tools-netfilter não puderam ser instalados offline."
+					else
+						fixes_applied=$((fixes_applied + 1))
+						add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "FIXED" "Fallback NAT64/DNS64 restaurado automaticamente para $nat64_scope ($nat64_issues)."
+					fi
+				elif [ -z "$root_prefix" ] && [ "$nat64_jool_bin" = "0" ]; then
+					add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "WARN" "Cenário ativo ($nat64_scope), mas $nat64_issues."
+				else
+					add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "FAIL" "Cenário ativo ($nat64_scope) com inconsistência no NAT64/DNS64: $nat64_issues."
+				fi
+			else
+				add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "OK" "Fallback NAT64 (64:ff9b::/96) + DNS64 operacional para $nat64_scope (Pilha Dupla intacta)."
+			fi
+		else
+			nat64_stale=0
+			[ -f "$nat64_sh_path" ] && nat64_stale=1
+			[ -n "$nat64_fw_inc" ] && nat64_stale=1
+			if [ -z "$root_prefix" ] && [ "$nat64_jool_bin" = "1" ] && jool -i ark_nat64 instance status >/dev/null 2>&1; then
+				nat64_stale=1
+			fi
+			if [ "$nat64_stale" = "1" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					if ! command -v ark_sync_nat64_jool >/dev/null 2>&1; then
+						[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+					fi
+					command -v ark_sync_nat64_jool >/dev/null 2>&1 && ark_sync_nat64_jool || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "FIXED" "Instância/script residual do Jool NAT64 desativado (nenhum cenário IPv6 Puro ativo)."
+				else
+					add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "WARN" "Persistência/instância residual do Jool NAT64 ativa sem modo ou dispositivo IPv6 Puro."
+				fi
+			elif [ "$nat64_jool_bin" = "1" ]; then
+				add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "OK" "Jool NAT64 instalado e pronto em standby (0% CPU; ativa automaticamente ao usar IPv6 Puro)."
+			else
+				add_check "NAT64 / DNS64 (Jool IPv6 Puro)" "OK" "Em standby (nenhum dispositivo ou modo IPv6 Puro ativo)."
 			fi
 		fi
 	fi
@@ -1571,12 +1742,18 @@ ark_doctor_audit() {
 		[ -n "$overlay_free_kb" ] || overlay_free_kb=0
 
 		local usteer_installed=0
-		if [ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -x /etc/init.d/usteer ]; then
+		u_init_script="${root_prefix}/etc/init.d/usteer"
+		if [ -x "${root_prefix}/sbin/usteerd" ] || [ -x "${root_prefix}/usr/sbin/usteerd" ] || [ -x "$u_init_script" ] || \
+		   [ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -x /etc/init.d/usteer ]; then
 			usteer_installed=1
 		fi
 
 		local usteer_active=0
-		if pgrep -x usteerd >/dev/null 2>&1; then
+		if [ -n "$root_prefix" ]; then
+			if [ -x "$u_init_script" ] && "$u_init_script" enabled >/dev/null 2>&1; then
+				usteer_active=1
+			fi
+		elif pgrep -x usteerd >/dev/null 2>&1; then
 			usteer_active=1
 		elif [ -x /etc/init.d/usteer ]; then
 			if /etc/init.d/usteer enabled >/dev/null 2>&1; then
@@ -1588,7 +1765,7 @@ ark_doctor_audit() {
 		ark_hostapd_has_wnm && wnm_capable=1
 
 		if [ "$usteer_installed" = 1 ] && [ "$usteer_active" = 1 ]; then
-			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado), RNR e anti-desconexão (disassoc_low_ack=0) estão configurados nas seções AP LAN
+			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado), RNR, auth_cache e anti-desconexão (disassoc_low_ack=0) estão configurados nas seções AP LAN
 			local missing_kv_secs=""
 			for chk_sec in $ap_sections; do
 				local d_ack="$($uci_cmd get "wireless.$chk_sec.disassoc_low_ack" 2>/dev/null || echo 1)"
@@ -1601,7 +1778,12 @@ ark_doctor_audit() {
 				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
 				local bt="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
 				local rnr_v="$($uci_cmd get "wireless.$chk_sec.rnr" 2>/dev/null || echo 0)"
+				local ac_v="$($uci_cmd get "wireless.$chk_sec.auth_cache" 2>/dev/null || echo '')"
+				kv_enc="$($uci_cmd get "wireless.$chk_sec.encryption" 2>/dev/null || echo 'none')"
+				[ -n "$kv_enc" ] || kv_enc='none'
 				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ]; then
+					missing_kv_secs="$missing_kv_secs $chk_sec"
+				elif [ "$kv_enc" != "none" ] && [ "$ac_v" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
 				elif [ "$wnm_capable" = 1 ] && [ "$bt" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
@@ -1611,7 +1793,7 @@ ark_doctor_audit() {
 				fi
 			done
 
-			# Verifica se a calibração de alta velocidade, roaming suave 802.11v e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, roam -74/-78 dBm, zero chutes, zero link_measurement_interval)
+			# Verifica se a calibração de alta velocidade, roaming suave 802.11v, ssid_list e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, roam -74/-78 dBm, zero chutes, zero link_measurement_interval)
 			local usteer_snr="$($uci_cmd get usteer.@usteer[0].band_steering_min_snr 2>/dev/null || echo '')"
 			local usteer_min_snr="$($uci_cmd get usteer.@usteer[0].min_snr 2>/dev/null || echo '0')"
 			local usteer_roam_scan="$($uci_cmd get usteer.@usteer[0].roam_scan_snr 2>/dev/null || echo '')"
@@ -1620,8 +1802,13 @@ ark_doctor_audit() {
 			local usteer_lmi="$($uci_cmd get usteer.@usteer[0].link_measurement_interval 2>/dev/null || echo '')"
 			local usteer_lm="$($uci_cmd get usteer.@usteer[0].local_mode 2>/dev/null || echo '')"
 			local usteer_needs_calib=0
+			usteer_ssid_mismatch=0
 			if [ "$usteer_snr" != "-70" ] || [ "$usteer_min_snr" != "0" ] || [ "$usteer_roam_scan" != "-74" ] || [ "$usteer_roam_trigger" != "-78" ] || [ "$usteer_lk" != "0" ] || [ "$usteer_lmi" != "0" ] || [ "$usteer_lm" != "1" ]; then
 				usteer_needs_calib=1
+			fi
+			if ark_usteer_ssids_dirty; then
+				usteer_needs_calib=1
+				usteer_ssid_mismatch=1
 			fi
 
 			if [ -n "$missing_kv_secs" ] || [ "$usteer_needs_calib" = 1 ]; then
@@ -1634,6 +1821,9 @@ ark_doctor_audit() {
 							$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 							$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 							$uci_cmd set "wireless.$kv_sec.rnr=1"
+							kv_enc="$($uci_cmd get "wireless.$kv_sec.encryption" 2>/dev/null || echo 'none')"
+							[ -n "$kv_enc" ] || kv_enc='none'
+							[ "$kv_enc" != "none" ] && $uci_cmd set "wireless.$kv_sec.auth_cache=1"
 							if [ "$wnm_capable" = 1 ]; then
 								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 								$uci_cmd set "wireless.$kv_sec.bss_transition=1"
@@ -1649,43 +1839,18 @@ ark_doctor_audit() {
 					}
 
 					if [ "$usteer_needs_calib" = 1 ]; then
-						touch /etc/config/usteer 2>/dev/null || true
-						[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
-						$uci_cmd set usteer.@usteer[0].network='lan'
-						$uci_cmd set usteer.@usteer[0].syslog='1'
-						$uci_cmd set usteer.@usteer[0].local_mode='1'
-						$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
-						$uci_cmd set usteer.@usteer[0].min_snr='0'
-						$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
-						$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
-						$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-						$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
-						$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-						$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
-						$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
-						$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
-						$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
-						$uci_cmd set usteer.@usteer[0].max_retries='3'
-						$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-						$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
-						local seen_u_ssids=""
-						for kv_sec in $ap_sections; do
-							[ "$($uci_cmd get "wireless.$kv_sec.network" 2>/dev/null || echo lan)" = "lan" ] || continue
-							local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
-							[ -n "$u_ssid" ] || continue
-							case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
-								$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
-								seen_u_ssids="$seen_u_ssids $u_ssid"
-							;; esac
-						done
-						$uci_cmd commit usteer 2>/dev/null || true
-						/etc/init.d/usteer restart >/dev/null 2>&1 || true
+						ark_usteer_apply_defaults
+						[ -x "$u_init_script" ] && "$u_init_script" restart >/dev/null 2>&1 || /etc/init.d/usteer restart >/dev/null 2>&1 || true
 					fi
 
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), roaming suave 802.11v (-74/-78 dBm), zero chutes forçados (min_snr=0, load_kick=0) e subida para 5GHz (-70 dBm)."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com ssid_list sincronizado, histerese (8 dB), roaming suave 802.11v (-74/-78 dBm), zero chutes forçados (min_snr=0, load_kick=0) e subida para 5GHz (-70 dBm)."
 				else
-					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, histerese ou anti-chute descalibrados."
+					if [ "$usteer_ssid_mismatch" = 1 ]; then
+						add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas lista ssid_list desatualizada em relação aos SSIDs LAN ativos (impede 802.11k/v e band steering)."
+					else
+						add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, auth_cache, histerese ou anti-chute descalibrados."
+					fi
 				fi
 			else
 				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11v (bss_transition -74/-78 dBm), histerese (8 dB), zero chutes forçados e calibração de alta velocidade."
@@ -1694,26 +1859,6 @@ ark_doctor_audit() {
 		elif [ "$usteer_installed" = 1 ]; then
 			# usteer está instalado mas desativado (cenário típico de aparelhos presos em 2.4GHz)
 			if [ "$auto_fix" = 1 ]; then
-				touch /etc/config/usteer 2>/dev/null || true
-				[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
-				$uci_cmd set usteer.@usteer[0].network='lan'
-				$uci_cmd set usteer.@usteer[0].syslog='1'
-				$uci_cmd set usteer.@usteer[0].local_mode='1'
-				$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
-				$uci_cmd set usteer.@usteer[0].min_snr='0'
-				$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
-				$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
-				$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-				$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
-				$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-				$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
-				$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
-				$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
-				$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
-				$uci_cmd set usteer.@usteer[0].max_retries='3'
-				$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-				$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
-				local seen_u_ssids=""
 				for kv_sec in $ap_sections; do
 					$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
 					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
@@ -1722,6 +1867,9 @@ ark_doctor_audit() {
 					$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 					$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 					$uci_cmd set "wireless.$kv_sec.rnr=1"
+					kv_enc="$($uci_cmd get "wireless.$kv_sec.encryption" 2>/dev/null || echo 'none')"
+					[ -n "$kv_enc" ] || kv_enc='none'
+					[ "$kv_enc" != "none" ] && $uci_cmd set "wireless.$kv_sec.auth_cache=1"
 					if [ "$wnm_capable" = 1 ]; then
 						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 						$uci_cmd set "wireless.$kv_sec.bss_transition=1"
@@ -1729,18 +1877,13 @@ ark_doctor_audit() {
 						$uci_cmd delete "wireless.$kv_sec.ieee80211v" 2>/dev/null || true
 						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 					fi
-					local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
-					if [ -n "$u_ssid" ]; then
-						case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
-							$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
-							seen_u_ssids="$seen_u_ssids $u_ssid"
-						;; esac
-					fi
 				done
-				$uci_cmd commit usteer 2>/dev/null || true
 				$uci_cmd commit wireless 2>/dev/null || true
-				/etc/init.d/usteer enable >/dev/null 2>&1 || true
-				/etc/init.d/usteer restart >/dev/null 2>&1 || true
+				ark_usteer_apply_defaults
+				[ -x "$u_init_script" ] && {
+					"$u_init_script" enable >/dev/null 2>&1 || true
+					"$u_init_script" restart >/dev/null 2>&1 || true
+				}
 				$uci_cmd set equipe_dashboard.wifi=settings 2>/dev/null || true
 				$uci_cmd set equipe_dashboard.wifi.usteer_enabled=1
 				$uci_cmd commit equipe_dashboard 2>/dev/null || true
@@ -1774,26 +1917,6 @@ ark_doctor_audit() {
 						fi
 
 						if [ "$inst_ok" = 1 ]; then
-							touch /etc/config/usteer 2>/dev/null || true
-							[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
-							$uci_cmd set usteer.@usteer[0].network='lan'
-							$uci_cmd set usteer.@usteer[0].syslog='1'
-							$uci_cmd set usteer.@usteer[0].local_mode='1'
-							$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
-							$uci_cmd set usteer.@usteer[0].min_snr='0'
-							$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
-							$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
-							$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-							$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
-							$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-							$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
-							$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
-							$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
-							$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
-							$uci_cmd set usteer.@usteer[0].max_retries='3'
-							$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-							$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
-							local seen_u_ssids=""
 							for kv_sec in $ap_sections; do
 								$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
 								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
@@ -1802,6 +1925,9 @@ ark_doctor_audit() {
 								$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 								$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 								$uci_cmd set "wireless.$kv_sec.rnr=1"
+								kv_enc="$($uci_cmd get "wireless.$kv_sec.encryption" 2>/dev/null || echo 'none')"
+								[ -n "$kv_enc" ] || kv_enc='none'
+								[ "$kv_enc" != "none" ] && $uci_cmd set "wireless.$kv_sec.auth_cache=1"
 								if [ "$wnm_capable" = 1 ]; then
 									$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 									$uci_cmd set "wireless.$kv_sec.bss_transition=1"
@@ -1809,16 +1935,9 @@ ark_doctor_audit() {
 									$uci_cmd delete "wireless.$kv_sec.ieee80211v" 2>/dev/null || true
 									$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 								fi
-								local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
-								if [ -n "$u_ssid" ]; then
-									case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
-										$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
-										seen_u_ssids="$seen_u_ssids $u_ssid"
-									;; esac
-								fi
 							done
-							$uci_cmd commit usteer 2>/dev/null || true
 							$uci_cmd commit wireless 2>/dev/null || true
+							ark_usteer_apply_defaults
 							/etc/init.d/usteer enable >/dev/null 2>&1 || true
 							/etc/init.d/usteer restart >/dev/null 2>&1 || true
 							$uci_cmd set equipe_dashboard.wifi=settings 2>/dev/null || true
@@ -2425,8 +2544,54 @@ EOF
 					else
 						add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem o daemon https-dns-proxy nao esta em execucao."
 					fi
+				elif ! _ark_dns_probe_local_port 5053 && ! _ark_dns_probe_local_port 5054; then
+					if [ "$auto_fix" = 1 ]; then
+						[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ] && /etc/init.d/https-dns-proxy restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Transporte Criptografado Dual-DoH" "FIXED" "Proxy Dual-DoH (5053/5054) nao respondia resolucao real e foi reiniciado."
+					else
+						add_check "Transporte Criptografado Dual-DoH" "WARN" "Processo https-dns-proxy ativo, porem portas 5053/5054 falharam no teste de resolucao real."
+					fi
 				else
-					add_check "Transporte Criptografado Dual-DoH" "OK" "Tunel TLS 1.3 Dual-DoH (127.0.0.1:5053 e :5054) ativo e vinculado ao dnsmasq."
+					add_check "Transporte Criptografado Dual-DoH" "OK" "Tunel TLS 1.3 Dual-DoH (127.0.0.1:5053 e :5054) ativo e resolvendo consultas."
+				fi
+			fi
+		fi
+	fi
+
+	# 26b. Auditoria de Saude Real do AdGuard Home Local & Cache Duplicado no dnsmasq
+	if ! ark_is_satellite_or_ap && [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+		local _agh_srv _agh_dm_cache
+		_agh_srv="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || echo '')"
+		if printf '%s' "$_agh_srv" | grep -q '127\.0\.0\.1#5335'; then
+			if ! _ark_dns_probe_local_port 5335; then
+				if [ "$auto_fix" = 1 ]; then
+					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Resolucao Real AdGuard Home" "FIXED" "AdGuard Home (127.0.0.1:5335) falhou na sonda DNS real e foi reiniciado."
+				else
+					add_check "Resolucao Real AdGuard Home" "WARN" "AdGuard Home configurado na porta 5335, porem nao respondeu a sonda DNS real."
+				fi
+			fi
+			_agh_dm_cache="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].cachesize || echo 150)"
+			if [ "$_agh_dm_cache" != "0" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					case "$_agh_dm_cache" in
+						''|0|*[!0-9]*) ;;
+						*)
+							if [ -z "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.saved_dns_cachesize || true)" ]; then
+								uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set "equipe_perf.settings.saved_dns_cachesize=$_agh_dm_cache"
+								uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit equipe_perf 2>/dev/null || true
+							fi
+							;;
+					esac
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].cachesize='0'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
+					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Deduplicacao de Cache DNS" "FIXED" "Cache duplicado do dnsmasq (cachesize=$_agh_dm_cache) zerado para liberar prefetch otimista do AdGuard Home."
+				else
+					add_check "Deduplicacao de Cache DNS" "WARN" "dnsmasq esta com cachesize=$_agh_dm_cache na frente do AdGuard Home (reduz eficacia do cache otimista)."
 				fi
 			fi
 		fi

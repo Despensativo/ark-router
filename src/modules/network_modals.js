@@ -81,6 +81,166 @@ const networkModalsMethods = {
 			const presetBtns = [];
 			const chipBtns = [];
 
+			let mtuMode = opt.mtu_mode || (opt.baby_jumbo ? 'auto' : (Number(opt.manual_mtu) > 0 ? 'manual' : 'auto'));
+			let manualMtu = Number(opt.manual_mtu || opt.l3_mtu || (opt.proto === 'pppoe' ? 1492 : 1500));
+			if (manualMtu < 1280 || manualMtu > 2000) manualMtu = (opt.proto === 'pppoe' ? 1492 : 1500);
+
+			const mtuChips = [
+				{ val: 1492, label: '⚡ 1492 (Fibra PPPoE)' },
+				{ val: 1500, label: '🌐 1500 (Ethernet Padrão)' },
+				{ val: 1460, label: '🔌 1460 (Túneis / 6in4)' },
+				{ val: 1420, label: '📡 1420 (VPN / 4G / 5G)' },
+				{ val: 1380, label: '🛰️ 1380 (Starlink)' },
+				{ val: 2000, label: '🚀 2000 (Mini Jumbo)' }
+			];
+			const mtuChipBtns = [];
+
+			const mtuModeAutoBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button',
+				style: 'font-weight:700;font-size:12px;padding:6px 14px;border-radius:8px;',
+				click: function() { mtuMode = 'auto'; babyJumbo = true; updateUI(); }
+			}, ['✨ Automático Inteligente (Fast PMTUD)']);
+
+			const mtuModeManualBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button',
+				style: 'font-weight:700;font-size:12px;padding:6px 14px;border-radius:8px;',
+				click: function() { mtuMode = 'manual'; updateUI(); }
+			}, ['✍️ Modo Manual / Personalizado']);
+
+			const mtuAutoContainer = E('div', { style: 'margin-top:10px;' });
+			const mtuManualContainer = E('div', { style: 'margin-top:10px;' });
+			const mtuCascadeHint = E('div', { class: 'ex-opt-requirement ready', style: 'margin-top:10px;font-size:11.5px;line-height:1.4;' });
+
+			const mtuManualInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 1280,
+				max: 2000,
+				value: manualMtu,
+				style: 'width:110px;font-weight:700;font-size:14px;text-align:center;display:inline-block;margin-right:8px;'
+			});
+
+			const updateMtuCascadeHint = function() {
+				const m = Number(mtuManualInput.value) || manualMtu;
+				const mss4 = Math.max(m - 40, 536);
+				const mss6 = Math.max(m - 60, 1220);
+				const ra = Math.min(m, 1500);
+				const wg = Math.min(Math.max(m - 80, 1280), 1420);
+				while (mtuCascadeHint.firstChild) mtuCascadeHint.removeChild(mtuCascadeHint.firstChild);
+				mtuCascadeHint.appendChild(E('div', {}, [
+					E('strong', { style: 'display:block;margin-bottom:3px;font-size:12px;' }, ['🛡️ Sincronização em Cascata Ativa (Zero Fragmentação):']),
+					'• TCP MSS Clamping: ', E('b', {}, ['IPv4: ' + mss4 + 'B']), ' / ', E('b', {}, ['IPv6: ' + mss6 + 'B']), ' (evita travamento de sites e downloads)', E('br'),
+					'• Anúncio de Rota IPv6 (odhcpd ra_mtu): ', E('b', {}, [ra + 'B']), ' (calibra dispositivos LAN sem alterar rede local)', E('br'),
+					'• Túneis WireGuard (wg0/wgclient): ', E('b', {}, [wg + 'B']), ' (margem segura contra overhead)'
+				]));
+			};
+
+			mtuManualInput.addEventListener('input', function() {
+				let val = parseInt(mtuManualInput.value, 10);
+				if (!isNaN(val)) {
+					if (val >= 1280 && val <= 2000) {
+						manualMtu = val;
+						mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+					}
+					updateMtuCascadeHint();
+				}
+			});
+
+			const mtuChipGrid = E('div', { class: 'ex-opt-chip-grid', style: 'margin-bottom:10px;' });
+			mtuChips.forEach(function(c) {
+				const b = E('button', {
+					type: 'button',
+					class: 'ex-opt-chip',
+					click: function() {
+						manualMtu = c.val;
+						mtuManualInput.value = c.val;
+						mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+						updateMtuCascadeHint();
+					}
+				}, [c.label]);
+				mtuChipBtns.push({ val: c.val, btn: b });
+				mtuChipGrid.appendChild(b);
+			});
+
+			const probeBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button cbi-button-action',
+				style: 'font-size:12px;margin-top:8px;font-weight:600;'
+			}, ['🔍 Testar MTU da Rota Agora (PMTUD)']);
+			const probeStatus = E('div', { style: 'margin-top:6px;' });
+
+			probeBtn.addEventListener('click', function() {
+				probeBtn.disabled = true;
+				probeBtn.textContent = '⏳ Sondando MTU na rota…';
+				while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+				probeStatus.appendChild(E('small', { class: 'ex-muted' }, ['Enviando pacotes de teste com bit DF (Don\'t Fragment) via IPv4 e IPv6…']));
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['wan-probe-mtu', 'iface=' + opt.iface]).then(function(res) {
+					probeBtn.disabled = false;
+					probeBtn.textContent = '🔍 Testar MTU da Rota Novamente';
+					let data = {};
+					try { data = JSON.parse(res.stdout || '{}'); } catch(e) {}
+					const detectedMtu = Number(data.mtu) || 1492;
+					while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+					if (detectedMtu >= 1500) {
+						probeStatus.appendChild(E('small', { class: 'ex-opt-requirement ready', style: 'display:block;font-weight:600;' }, [
+							'✅ Sondagem Concluída: MTU ' + detectedMtu + 'B validado sem fragmentação! Conexão suporta quadro completo (Baby Jumbo).'
+						]));
+					} else {
+						probeStatus.appendChild(E('small', { class: 'ex-opt-requirement ready', style: 'display:block;font-weight:600;' }, [
+							'🛡️ Sondagem Concluída: Concentrador upstream limitou a rota em MTU ' + detectedMtu + ' bytes. O Auto-MTU calibrará TCP MSS e IPv6 para ' + detectedMtu + 'B (zero perda / sem travar sites).'
+						]));
+					}
+				}).catch(function(err) {
+					probeBtn.disabled = false;
+					probeBtn.textContent = '🔍 Testar MTU da Rota Agora (PMTUD)';
+					while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+					probeStatus.appendChild(E('small', { class: 'ex-opt-requirement warning', style: 'display:block;' }, [
+						'⚠️ Falha na sondagem: ' + (err.message || 'Sem resposta do alvo')
+					]));
+				});
+			});
+
+			(function() {
+				const physMtu = Number(opt.current_mtu || 1500);
+				const l3Mtu = Number(opt.l3_mtu || 0);
+				const probedMtu = Number(opt.probed_mtu || 0);
+				const effMtu = probedMtu || l3Mtu || (opt.proto === 'pppoe' ? 1492 : 1500);
+
+				mtuAutoContainer.appendChild(E('div', { class: 'ex-opt-module-info' }, [
+					E('p', { class: 'ex-muted', style: 'font-size:11.5px;margin-bottom:6px;' }, [
+						'O sistema executa sondagem ativa ultrarrápida (PMTUD com flag DF) para descobrir o maior MTU real da sua conexão sem fragmentação. Se a operadora suportar RFC 4638, eleva a porta para 1508B para entregar MTU 1500 real; se limitar a sessão (ex: 1492B), alinha TCP MSS e IPv6 instantaneamente.'
+					]),
+					(function() {
+						if (effMtu >= 1500) {
+							return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:4px;font-weight:600;' }, [
+								'✅ Status Atual: MTU ' + effMtu + 'B real sem fragmentação na porta ' + (opt.wan_dev || 'WAN') + '.'
+							]);
+						}
+						return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:4px;font-weight:600;' }, [
+							'🛡️ Status Atual: Sessão operando em MTU ' + effMtu + ' bytes (sincronizado com o concentrador da operadora, zero perdas).'
+						]);
+					})(),
+					probeBtn,
+					probeStatus
+				]));
+
+				mtuManualContainer.appendChild(E('div', {}, [
+					E('p', { class: 'ex-muted', style: 'font-size:11.5px;margin-bottom:8px;' }, [
+						'Escolha um valor predefinido comum ou digite o tamanho de MTU desejado (entre 1280 e 2000 bytes). O valor será gravado no kernel e propagado em cascata para todas as camadas de rede.'
+					]),
+					mtuChipGrid,
+					E('div', { style: 'display:flex;align-items:center;margin-top:8px;gap:8px;' }, [
+						E('span', { style: 'font-weight:600;font-size:12.5px;' }, ['MTU Personalizado:']),
+						mtuManualInput,
+						E('span', { class: 'ex-muted', style: 'font-size:12px;' }, ['bytes (intervalo 1280 a 2000)'])
+					]),
+					mtuCascadeHint
+				]));
+			})();
+
 			const tcpInput = E('input', { type: 'checkbox' });
 			const flowInput = E('input', { type: 'checkbox' });
 			const jumboInput = E('input', { type: 'checkbox' });
@@ -88,7 +248,7 @@ const networkModalsMethods = {
 			const igmpInput = E('input', { type: 'checkbox', change: function() { igmpSnooping = igmpInput.checked; updateUI(); } });
 			const igmpNotice = E('small', { class: 'ex-opt-requirement', style: 'display:none;margin-top:6px;' });
 			const enableSqmInput = E('input', { type: 'checkbox', checked: '' });
-			enableSqmInput.checked = true;
+			enableSqmInput.checked = (sqmActive || sqmAnyActive) && !flowOffload;
 			const sqmDependency = E('div', { class: 'ex-opt-sqm-dependency' });
 			const selectedSummary = E('div', { class: 'ex-opt-selected-summary' });
 			const globalWarning = E('small', { class: 'ex-muted' });
@@ -116,7 +276,7 @@ const networkModalsMethods = {
 					if (saveButton) saveButton.textContent = '💾 Salvar e Aplicar Otimizações';
 					return;
 				}
-				const required = linklayerProfile !== 'none';
+				const required = linklayerProfile !== 'none' && !flowOffload;
 				sqmDependency.style.display = required ? 'flex' : 'none';
 				sqmDependency.className = 'ex-opt-sqm-dependency' + (sqmActive ? ' active' : (!sqmInstalled ? ' missing' : ' warning'));
 				while (sqmDependency.firstChild) sqmDependency.removeChild(sqmDependency.firstChild);
@@ -148,6 +308,12 @@ const networkModalsMethods = {
 				tcpInput.checked = tcpTurbo;
 				flowInput.checked = flowOffload;
 				jumboInput.checked = babyJumbo;
+				mtuModeAutoBtn.className = 'btn cbi-button ' + (mtuMode === 'auto' ? 'cbi-button-positive active' : 'cbi-button-neutral');
+				mtuModeManualBtn.className = 'btn cbi-button ' + (mtuMode === 'manual' ? 'cbi-button-positive active' : 'cbi-button-neutral');
+				mtuAutoContainer.style.display = (mtuMode === 'auto') ? 'block' : 'none';
+				mtuManualContainer.style.display = (mtuMode === 'manual') ? 'block' : 'none';
+				mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+				updateMtuCascadeHint();
 				irqInput.checked = !isSingleCore && (irqBalance || isNativeHwIrq);
 				irqInput.disabled = isSingleCore || isNativeHwIrq || !opt.irqbalance_installed;
 				flowInput.disabled = false;
@@ -191,8 +357,8 @@ const networkModalsMethods = {
 				}
 
 				const isSatNode = isSatelliteOrAp(self.currentData);
-				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked || linklayerProfile !== 'none');
-				if (flowOffload && isSqmOn) {
+				const isSqmConfigured = !isSatNode && (enableSqmInput.checked || (!flowOffload && (sqmActive || sqmAnyActive)));
+				if (flowOffload && isSatNode) {
 					flowOffload = false;
 					flowInput.checked = false;
 				}
@@ -200,7 +366,7 @@ const networkModalsMethods = {
 					flowNotice.style.display = 'block';
 					flowNotice.className = 'ex-opt-requirement ready';
 					flowNotice.textContent = '✓ Pronto e ativo: tráfego acelerado no kernel com menor uso de CPU. SQM/CAKE mantido desligado para evitar conflitos.';
-				} else if (isSqmOn) {
+				} else if (isSqmConfigured) {
 					flowNotice.style.display = 'block';
 					flowNotice.className = 'ex-opt-requirement warning';
 					flowNotice.textContent = '🛡️ Desativado: SQM / CAKE ativo. Fastpath desabilitado para não desviar pacotes da fila anti-bufferbloat.';
@@ -222,9 +388,9 @@ const networkModalsMethods = {
 						babyJumbo = !!effective.jumbo;
 					}
 					if (linklayerProfile !== 'none') {
-						flowOffload = false;
-						flowInput.checked = false;
-						enableSqmInput.checked = true;
+						if (!flowOffload && (sqmActive || sqmInstalled)) {
+							enableSqmInput.checked = true;
+						}
 					}
 				}
 				updateUI();
@@ -274,9 +440,9 @@ const networkModalsMethods = {
 			flowInput.addEventListener('change', function() {
 				flowOffload = flowInput.checked;
 				if (flowOffload) {
-					linklayerProfile = 'none';
 					enableSqmInput.checked = false;
 				}
+				updateSqmDependency();
 				updateUI();
 			});
 			jumboInput.addEventListener('change', function() { babyJumbo = jumboInput.checked; updateUI(); });
@@ -320,36 +486,19 @@ const networkModalsMethods = {
 					]),
 					presetGrid,
 					selectedSummary,
-					E('details', { class: 'ex-opt-advanced', open: babyJumbo ? '' : null, style: 'margin-top:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(127,127,127,0.15);' }, [
-						E('summary', { style: 'cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ex-muted);' }, ['⚙️ Auto-MTU Inteligente PPPoE e Overhead de Pacotes (Avançado)']),
-						E('p', { class: 'ex-muted', style: 'margin-top:8px;margin-bottom:10px;font-size:11.5px;' }, ['Estes parâmetros já foram calibrados pelo perfil escolhido acima. Você pode ativar o Auto-MTU Inteligente abaixo para testar MTU 1500 real na fibra com fallback automático seguro.']),
+					E('details', { class: 'ex-opt-advanced', open: (mtuMode === 'manual' || babyJumbo) ? '' : null, style: 'margin-top:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(127,127,127,0.15);' }, [
+						E('summary', { style: 'cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ex-muted);' }, ['⚙️ Calibração de MTU e Overhead de Pacotes (Avançado)']),
+						E('p', { class: 'ex-muted', style: 'margin-top:8px;margin-bottom:10px;font-size:11.5px;' }, ['Estes parâmetros calibram o tamanho exato de pacote da sua conexão para eliminar fragmentação e latência oculta.']),
 						E('strong', { style: 'display:block;font-size:12px;margin-bottom:6px;' }, ['Perfil de overhead no SQM / CAKE']),
 						chipGrid,
-						E('div', { class: 'ex-opt-module-card', style: 'margin-top:10px;' }, [
-							E('div', { class: 'ex-opt-module-info' }, [
-								E('strong', {}, ['⚡ Auto-MTU Inteligente & Baby Jumbo PPPoE (1500 / 1492 Automático)']),
-								E('p', {}, ['Ativa a sondagem automática de MTU na fibra PPPoE: negocia Baby Jumbo (porta em 1508B / RFC 4638) para entregar MTU 1500 real sem fragmentação; se a operadora limitar a sessão, ajusta sozinho para MTU 1492 (ou o teto exato da fibra) sincronizando TCP MSS e IPv6 sem risco de travar sites. Desligado: fixa em MTU 1492 padrão.']),
-								(function() {
-									const physMtu = Number(opt.current_mtu || 1500);
-									const l3Mtu = Number(opt.l3_mtu || 0);
-									const probedMtu = Number(opt.probed_mtu || 0);
-									const effMtu = probedMtu || l3Mtu || 1492;
-									if (opt.baby_jumbo) {
-										if (effMtu >= 1500) {
-											return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-												'✅ Sondagem Concluída: Sua operadora aceitou Baby Jumbo (RFC 4638)! Porta ' + (opt.wan_dev || 'WAN') + ' em ' + physMtu + 'B e sessão PPPoE operando em MTU 1500 real sem fragmentação.'
-											]);
-										}
-										return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-											'🛡️ Sondagem Concluída: Porta ' + (opt.wan_dev || 'WAN') + ' aberta em ' + physMtu + 'B, mas o concentrador da operadora limitou a sessão PPPoE em ' + effMtu + ' bytes. O Auto-MTU ajustou o túnel PPPoE, o TCP MSS e o IPv6 automaticamente para ' + effMtu + ' bytes (zero fragmentação / sem risco de travar sites).'
-										]);
-									}
-									return E('small', { class: 'ex-muted', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-										'⚪ Modo Fixo Atual: Sessão operando em MTU ' + (l3Mtu || 1492) + ' bytes (porta ' + (opt.wan_dev || 'WAN') + ' em ' + physMtu + 'B, sem sondagem RFC 4638).'
-									]);
-								})()
+						E('div', { class: 'ex-opt-module-card', style: 'margin-top:12px;padding:12px;' }, [
+							E('strong', { style: 'display:block;font-size:13px;margin-bottom:8px;' }, ['🌐 Controle de MTU da Conexão']),
+							E('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;' }, [
+								mtuModeAutoBtn,
+								mtuModeManualBtn
 							]),
-							E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])
+							mtuAutoContainer,
+							mtuManualContainer
 						]),
 						sqmDependency
 					])
@@ -398,13 +547,13 @@ const networkModalsMethods = {
 					' ',
 					(saveButton = E('button', { class: 'btn cbi-button cbi-button-positive', click: L.bind(function(ev) {
 						const btn = ev.currentTarget;
-						const requiresSqm = linklayerProfile !== 'none';
+						const isSatNode = isSatelliteOrAp(this.currentData);
+						const requiresSqm = linklayerProfile !== 'none' && !flowOffload;
 						if (requiresSqm && !sqmInstalled) {
 							this.installFeature('sqm');
 							return;
 						}
-						const isSatNode = isSatelliteOrAp(this.currentData);
-						const isSqmOn = !isSatNode && (requiresSqm || (sqmActive && enableSqmInput.checked) || enableSqmInput.checked);
+						const isSqmOn = !isSatNode && !flowOffload && (requiresSqm || (sqmActive && enableSqmInput.checked) || enableSqmInput.checked);
 						const activateSqm = !isSatNode && requiresSqm && !sqmActive && enableSqmInput.checked;
 						const effectiveFlowOffload = (!isSqmOn && flowOffload);
 
@@ -418,6 +567,8 @@ const networkModalsMethods = {
 							'flow_offload=' + (effectiveFlowOffload ? '1' : '0'),
 							'linklayer_profile=' + (effectiveFlowOffload ? 'none' : linklayerProfile),
 							'baby_jumbo=' + (babyJumbo ? '1' : '0'),
+							'mtu_mode=' + mtuMode,
+							'manual_mtu=' + manualMtu,
 							'enable_sqm=' + (isSqmOn ? '1' : '0'),
 							'irqbalance=' + (irqBalance ? '1' : '0'),
 							'igmp_snooping=' + (igmpSnooping ? '1' : '0')
@@ -782,6 +933,14 @@ const networkModalsMethods = {
 								? clatEngineLabel
 								: ((st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado')
 						])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fallback NAT64 (Jool): ']),
+						E('strong', { style: 'color: ' + (st.nat64_active ? '#a855f7' : '#94a3b8') }, [
+							st.nat64_active
+								? ('Ativo (64:ff9b::/96' + ((st.ipv6_only_macs && st.ipv6_only_macs.length) ? (' • ' + st.ipv6_only_macs.length + ' IPv6 Puro') : '') + ')')
+								: (st.jool_installed ? 'Pronto em Standby (0% CPU)' : 'Sob Demanda')
+						])
 					])
 				])
 			]);
@@ -900,11 +1059,12 @@ const networkModalsMethods = {
 					],
 					curMode === 'ipv4_only'
 				),
-				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only (Futurista)', 'Single-Stack',
-					'LAN operando puramente em IPv6 sem concessões DHCP IPv4 locais, com síntese DNS64 no dnsmasq.',
+				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only + NAT64/DNS64 (Jool)', 'Single-Stack + Fallback',
+					'LAN operando 100% em IPv6 como primário (sem DHCP IPv4), com DNS64 + NAT64 em kernel (Jool 64:ff9b::/96) e PREF64 apenas como fallback automático para sites/apps IPv4-only.',
 					[
-						'Ideal para laboratórios, testes de novas tecnologias e transição pura para a próxima geração.',
-						'Apenas dispositivos compatíveis com IPv6 navegarão na rede local.'
+						'Sites com IPv6 saem 100% nativos direto (com aceleração PPE em hardware); destinos exclusivamente IPv4 são traduzidos transparentemente pelo Jool NAT64.',
+						'Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 11 via PREF64 e ipv4only.arpa.',
+						'Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS.'
 					],
 					curMode === 'ipv6_only'
 				)

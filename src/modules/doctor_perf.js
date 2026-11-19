@@ -244,7 +244,7 @@ const doctorPerfMethods = {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); }
+					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); }
 				}, ['⚡ Cloudflare + Google (IPv4)']),
 				E('button', {
 					type: 'button',
@@ -271,6 +271,53 @@ const doctorPerfMethods = {
 					click: function(){ applyPreset(['208.67.222.222', '208.67.220.220', '', '']); }
 				}, ['🌐 Cisco OpenDNS'])
 			];
+
+			const benchmarkResultsBox = E('div', {
+				style: 'display: none; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.06); font-size: 0.8rem; line-height: 1.45;'
+			}, []);
+
+			const benchmarkBtn = E('button', {
+				class: 'ex-mini-button ex-dns-benchmark-btn',
+				type: 'button',
+				style: 'padding: 8px 14px; font-weight: 750;',
+				click: function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Testando resolução DNS…';
+					benchmarkResultsBox.style.display = 'block';
+					benchmarkResultsBox.textContent = 'Medindo tempo real de resolução DNS (Cloudflare, Google, Quad9, ControlD, AdGuard e ISP)…';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-benchmark']).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao executar benchmark DNS');
+						let data = {};
+						try { data = JSON.parse(res.stdout || '{}'); } catch(e) { data = {}; }
+						const list = Array.isArray(data.results) ? data.results : [];
+						const rec = Array.isArray(data.recommended) ? data.recommended : [];
+						if (rec.length > 0) {
+							applyPreset([rec[0] || '', rec[1] || '', '', '']);
+							list.forEach(function(item) {
+								if (!item || !item.ok) return;
+								for (let idx = 0; idx < 2; idx++) {
+									if (ipInputs[idx].value.trim() === item.ip) {
+										latBadges[idx].textContent = item.ms + ' ms';
+										latBadges[idx].className = item.ms <= 25 ? 'ex-pill online' : 'ex-pill standby';
+									}
+								}
+							});
+						}
+						const summary = list.map(function(item) {
+							return item.name + ' (' + item.ip + '): ' + (item.ok ? (item.ms + ' ms') : 'Falha');
+						}).join('  •  ');
+						benchmarkResultsBox.textContent = rec.length
+							? ('🏆 Top 2 aplicados (' + rec.join(' + ') + ') — ' + summary)
+							: ('Nenhum servidor respondeu ao teste DNS. ' + summary);
+					}).catch(function(e) {
+						benchmarkResultsBox.textContent = 'Erro no benchmark DNS: ' + e.message;
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '🚀 Auto-Escolher Melhor DNS';
+					});
+				}
+			}, ['🚀 Auto-Escolher Melhor DNS']);
 
 			const testBtn = E('button', {
 				class: 'ex-mini-button ex-dns-test-btn',
@@ -461,10 +508,11 @@ const doctorPerfMethods = {
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
 						E('strong', {}, ['Servidores DNS Ativos (2 a 4)']),
-						testBtn
+						E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [ benchmarkBtn, testBtn ])
 					]),
+					benchmarkResultsBox,
 					formGrid,
-					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 8px;' }, ['Você pode preencher de 1 a 4 servidores. Campos vazios serão desconsiderados.'])
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 8px;' }, ['Recomendado: 2 provedores distintos (evita rajadas duplicadas no All-Servers). Campos vazios serão desconsiderados.'])
 				]),
 				E('div', { class: 'right' }, [
 					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
@@ -786,14 +834,16 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Limpando memória…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-memory-purge']).then(function(r) {
-					ui.addNotification(null, E('p', {}, ['Memória RAM reciclada e buffers temporários limpos com sucesso!']));
-				}).catch(function(e) {
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				}).finally(function() {
-					btn.disabled = false;
-					btn.textContent = '🧹 Liberar Memória RAM Agora';
-				});
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-memory-purge'])
+					.then(checkControlResult)
+					.then(function(r) {
+						ui.addNotification(null, E('p', {}, ['Memória RAM reciclada e buffers temporários limpos com sucesso!']));
+					}).catch(function(e) {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '🧹 Liberar Memória RAM Agora';
+					});
 			}
 		}, ['🧹 Liberar Memória RAM Agora']);
 
@@ -806,17 +856,19 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Otimizando…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge']).then(function(r) {
-					let info = {};
-					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
-					const freeMb = info.overlay_free_kb ? (info.overlay_free_kb / 1024).toFixed(1) : null;
-					ui.addNotification(null, E('p', {}, ['Armazenamento interno otimizado com sucesso!' + (freeMb ? ' (' + freeMb + ' MB livres na Flash)' : '')]));
-				}).catch(function(e) {
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				}).finally(function() {
-					btn.disabled = false;
-					btn.textContent = '💾 Otimizar Espaço Flash';
-				});
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge'])
+					.then(checkControlResult)
+					.then(function(r) {
+						let info = {};
+						try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
+						const freeMb = info.overlay_free_kb ? (info.overlay_free_kb / 1024).toFixed(1) : null;
+						ui.addNotification(null, E('p', {}, ['Armazenamento interno otimizado com sucesso!' + (freeMb ? ' (' + freeMb + ' MB livres na Flash)' : '')]));
+					}).catch(function(e) {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '💾 Otimizar Espaço Flash';
+					});
 			}
 		}, ['💾 Otimizar Espaço Flash']);
 
@@ -829,7 +881,9 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Calibrando…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune']).then(function(r) {
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune'])
+					.then(checkControlResult)
+					.then(function(r) {
 					let info = {};
 					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
 					let svcsText = '';

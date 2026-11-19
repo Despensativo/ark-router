@@ -282,11 +282,20 @@ handle_network() {
 		mwan_status_fast
 		;;
 	wan-save)
-		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6='' delegate=''
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6='' delegate='' vlan=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
+				vlan)
+					case "$value" in
+						''|0) vlan='' ;;
+						[1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-4])
+							vlan="$value"
+							;;
+						*) echo 'VLAN ID invalido (deve ser entre 1 e 4094)' >&2; exit 2 ;;
+					esac
+					;;
 				delegate) case "$value" in 1|true|yes) delegate=1 ;; 0|false|no) delegate=0 ;; *) echo 'Delegate IPv6 invalido' >&2; exit 2 ;; esac ;;
 				ipv6) case "$value" in 1|true|yes) ipv6=1 ;; 0|false|no) ipv6=0 ;; *) echo 'IPv6 WAN invalido' >&2; exit 2 ;; esac ;;
 				metric)
@@ -435,6 +444,30 @@ handle_network() {
 				if [ -e "/sys/class/net/eth1" ]; then
 					effective_dev="eth1"
 				fi
+			fi
+			if [ -n "$vlan" ] && [ "$vlan" -ge 1 ] && [ "$vlan" -le 4094 ] 2>/dev/null; then
+				base_phys="$device"
+				case "$base_phys" in
+					*.*) base_phys="${base_phys%%.*}" ;;
+				esac
+				effective_dev="${base_phys}.${vlan}"
+				existing_vlan_sec=""
+				for ds in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+					if [ "$(uci -q get "network.$ds.name")" = "$effective_dev" ]; then
+						existing_vlan_sec="$ds"
+						break
+					fi
+				done
+				if [ -z "$existing_vlan_sec" ]; then
+					new_dev_sec="$(uci -q add network device)"
+					uci -q set "network.$new_dev_sec.type=8021q"
+					uci -q set "network.$new_dev_sec.ifname=$base_phys"
+					uci -q set "network.$new_dev_sec.vid=$vlan"
+					uci -q set "network.$new_dev_sec.name=$effective_dev"
+				fi
+				uci -q set "network.$iface.ark_vlan=$vlan"
+			else
+				uci -q delete "network.$iface.ark_vlan" 2>/dev/null || true
 			fi
 		fi
 
@@ -1325,6 +1358,19 @@ handle_network() {
 		shift
 		system_network_mode_set "$@"
 		;;
+	wan-probe-mtu)
+		shift
+		iface='wan'
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			[ "$key" = iface ] && iface="$value"
+		done
+		printf '%s' "$iface" | grep -Eq '^wan([0-9]+)?$' || { echo 'Interface WAN invalida' >&2; exit 2; }
+		[ "$(uci -q get "network.$iface")" = interface ] || { echo 'Interface WAN nao encontrada' >&2; exit 3; }
+		detected_mtu="$(ark_probe_path_mtu "$iface")"
+		case "$detected_mtu" in ''|*[!0-9]*) detected_mtu=1492 ;; esac
+		printf '{"status":"ok","iface":"%s","mtu":%s}\n' "$(json_escape "$iface")" "$detected_mtu"
+		;;
 	wan-optimize-status)
 		shift
 		iface='wan'
@@ -1423,12 +1469,16 @@ handle_network() {
 		igmp_snooping=0
 		[ "$(uci -q get network.lan.igmp_snooping)" = "1" ] && igmp_snooping=1
 		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = "1" ] && igmp_snooping=1
-		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"l3_mtu":%s,"probed_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"sqm_download":%s,"sqm_upload":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"irqbalance_native":%s,"mwan_active_wans":%s,"igmp_snooping":%s}\n' \
-			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$l3_mtu" "$probed_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$sqm_download" "$sqm_upload" "$irq_installed" "$irq_active" "$irq_native" "$mwan_active_wans" "$igmp_snooping"
+		saved_mtu_mode="$(uci -q get "equipe_dashboard.wan_profiles.${iface}_mtu_mode" || echo 'auto')"
+		[ "$saved_mtu_mode" = "manual" ] || saved_mtu_mode='auto'
+		saved_manual_mtu="$(uci -q get "equipe_dashboard.wan_profiles.${iface}_manual_mtu" 2>/dev/null || uci -q get "network.$iface.mtu" 2>/dev/null || echo 0)"
+		printf '%s' "$saved_manual_mtu" | grep -Eq '^[0-9]+$' || saved_manual_mtu=0
+		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"mtu_mode":"%s","manual_mtu":%s,"current_mtu":%s,"l3_mtu":%s,"probed_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"sqm_download":%s,"sqm_upload":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"irqbalance_native":%s,"mwan_active_wans":%s,"igmp_snooping":%s}\n' \
+			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$(json_escape "$saved_mtu_mode")" "$saved_manual_mtu" "$cur_mtu" "$l3_mtu" "$probed_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$sqm_download" "$sqm_upload" "$irq_installed" "$irq_active" "$irq_native" "$mwan_active_wans" "$igmp_snooping"
 		;;
 	wan-optimize-set)
 		shift
-		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance='' sqm_upload='' sqm_download='' igmp_snooping=''
+		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance='' sqm_upload='' sqm_download='' igmp_snooping='' mtu_mode='' manual_mtu=''
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -1438,6 +1488,8 @@ handle_network() {
 				flow_offload) flow_offload="$value" ;;
 				linklayer_profile) linklayer_profile="$value" ;;
 				baby_jumbo) baby_jumbo="$value" ;;
+				mtu_mode) mtu_mode="$value" ;;
+				manual_mtu) manual_mtu="$value" ;;
 				enable_sqm) enable_sqm="$value" ;;
 				irqbalance) irqbalance="$value" ;;
 				sqm_upload) sqm_upload="$value" ;;
@@ -1682,12 +1734,81 @@ EOF
 			command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 		fi
 		wan_dev="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
-		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
+		wan_l3_dev="$(sqm_device_for_network "$iface")"
+		[ -n "$wan_dev" ] || wan_dev="$wan_l3_dev"
+		[ -n "$wan_l3_dev" ] || wan_l3_dev="$wan_dev"
 		valid_net_device "$wan_dev" || { echo "Dispositivo fisico invalido para $iface" >&2; exit 2; }
 		local cur_wan_proto="$(uci -q get "network.$iface.proto")"
 		local prev_dev_mtu="$(uci -q get "network.$iface.device_mtu")"
 		local prev_wan_mtu="$(uci -q get "network.$iface.mtu")"
-		if [ "$baby_jumbo" = 1 ]; then
+		if [ "$mtu_mode" = "manual" ]; then
+			case "$manual_mtu" in
+				''|*[!0-9]*) echo 'MTU Manual invalido (informe entre 1280 e 2000)' >&2; exit 2 ;;
+			esac
+			if [ "$manual_mtu" -lt 1280 ] || [ "$manual_mtu" -gt 2000 ]; then
+				echo 'MTU Manual fora do intervalo permitido (1280 a 2000)' >&2
+				exit 2
+			fi
+			uci -q set "equipe_dashboard.wan_profiles.${iface}_mtu_mode=manual"
+			uci -q set "equipe_dashboard.wan_profiles.${iface}_manual_mtu=$manual_mtu"
+			uci -q set "network.$iface.mtu=$manual_mtu"
+			if [ "$manual_mtu" -gt 1500 ]; then
+				if ark_ensure_phys_device_mtu "$wan_dev" "$manual_mtu"; then
+					uci -q set "network.$iface.device_mtu=$manual_mtu"
+				else
+					echo "Driver ou hardware nao suporta MTU $manual_mtu na porta $wan_dev" >&2
+					exit 2
+				fi
+			elif [ "$cur_wan_proto" = pppoe ] && [ "$manual_mtu" -eq 1500 ]; then
+				if ark_ensure_phys_device_mtu "$wan_dev" 1508; then
+					uci -q set "network.$iface.device_mtu=1508"
+				else
+					echo "Driver ou hardware nao suporta Baby Jumbo 1508B na porta $wan_dev" >&2
+					exit 2
+				fi
+			else
+				uci -q delete "network.$iface.device_mtu"
+				ark_ensure_phys_device_mtu "$wan_dev" 1500
+			fi
+			printf '%s\n' "$manual_mtu" > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+			[ -n "${ARK_ROOT}" ] && printf '%s\n' "$manual_mtu" > "${ARK_ROOT}/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+			if [ -n "$wan_l3_dev" ]; then
+				if [ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/net/$wan_l3_dev" ]; then
+					printf '%s\n' "$manual_mtu" > "${ARK_ROOT}/sys/class/net/$wan_l3_dev/mtu" 2>/dev/null || true
+				elif [ -z "${ARK_ROOT}" ] && [ -d "/sys/class/net/$wan_l3_dev" ]; then
+					ip link set "$wan_l3_dev" mtu "$manual_mtu" 2>/dev/null || true
+				fi
+			fi
+			uci commit network
+		elif [ "$mtu_mode" = "auto" ]; then
+			uci -q set "equipe_dashboard.wan_profiles.${iface}_mtu_mode=auto"
+			uci -q delete "equipe_dashboard.wan_profiles.${iface}_manual_mtu"
+			local detected_mtu=""
+			detected_mtu="$(ark_probe_path_mtu "$iface")"
+			case "$detected_mtu" in ''|*[!0-9]*) detected_mtu=1492 ;; esac
+			if [ "$detected_mtu" -eq 1500 ] && [ "$cur_wan_proto" = pppoe ]; then
+				if ark_ensure_phys_device_mtu "$wan_dev" 1508; then
+					uci -q set "network.$iface.mtu=1500"
+					uci -q set "network.$iface.device_mtu=1508"
+				else
+					detected_mtu=1492
+					uci -q set "network.$iface.mtu=1492"
+					uci -q delete "network.$iface.device_mtu"
+					ark_ensure_phys_device_mtu "$wan_dev" 1500
+				fi
+			elif [ "$detected_mtu" -lt 1500 ]; then
+				uci -q set "network.$iface.mtu=$detected_mtu"
+				uci -q delete "network.$iface.device_mtu"
+				ark_ensure_phys_device_mtu "$wan_dev" 1500
+			else
+				uci -q delete "network.$iface.device_mtu"
+				ark_ensure_phys_device_mtu "$wan_dev" 1500
+				[ "$cur_wan_proto" != pppoe ] && uci -q delete "network.$iface.mtu"
+			fi
+			printf '%s\n' "$detected_mtu" > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+			[ -n "${ARK_ROOT}" ] && printf '%s\n' "$detected_mtu" > "${ARK_ROOT}/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+			uci commit network
+		elif [ "$baby_jumbo" = 1 ]; then
 			if [ "$cur_wan_proto" = pppoe ]; then
 				if ark_ensure_phys_device_mtu "$wan_dev" 1508; then
 					uci -q set "network.$iface.mtu=1500"

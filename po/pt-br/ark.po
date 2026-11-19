@@ -15064,3 +15064,336 @@ msgstr "🩺 Verificar / Reparar (FSCK)"
 
 msgid "🪟 Windows (Explorador de Arquivos):"
 msgstr "🪟 Windows (Explorador de Arquivos):"
+
+msgid "Oculta"
+msgstr "Oculta"
+
+msgid "Ocultar nome da rede"
+msgstr "Ocultar nome da rede"
+
+msgid "Ocultar nome da rede (SSID Oculto)"
+msgstr "Ocultar nome da rede (SSID Oculto)"
+
+msgid "Ocultar nome da rede Wi‑Fi (SSID Oculto)"
+msgstr "Ocultar nome da rede Wi‑Fi (SSID Oculto)"
+
+msgid "Visível"
+msgstr "Visível"
+msgid "A alteração foi enviada, mas o estado de"
+msgstr "A alteração foi enviada, mas o estado de"
+
+msgid "A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório."
+msgstr "A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório."
+
+msgid "Agregação multi-banda simultânea (5 GHz + 6 GHz) para throughput de pico e comutação instantânea anti-lag."
+msgstr "Agregação multi-banda simultânea (5 GHz + 6 GHz) para throughput de pico e comutação instantânea anti-lag."
+
+msgid "Ativar Multi-Link Operation (MLO)"
+msgstr "Ativar Multi-Link Operation (MLO)"
+
+msgid "Ativo em Hardware (fw4 / nftables)"
+msgstr "Ativo em Hardware (fw4 / nftables)"
+
+msgid "Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)"
+msgstr "Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)"
+
+msgid "CAKE Best Effort • HFSC Classe 1:20 (Geral)"
+msgstr "CAKE Best Effort • HFSC Classe 1:20 (Geral)"
+
+msgid "CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)"
+msgstr "CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)"
+
+msgid "CAKE Video Tin • HFSC Classe 1:20 (Turbo)"
+msgstr "CAKE Video Tin • HFSC Classe 1:20 (Turbo)"
+
+msgid "CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)"
+msgstr "CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)"
+
+msgid "CS0 (Padrão)"
+msgstr "CS0 (Padrão)"
+
+msgid "Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares."
+msgstr "Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares."
+
+msgid "Canal 101 (6455 MHz — PSC / UNII-6)"
+msgstr "Canal 101 (6455 MHz — PSC / UNII-6)"
+
+msgid "Canal 117 (6535 MHz — PSC / UNII-7)"
+msgstr "Canal 117 (6535 MHz — PSC / UNII-7)"
+
+msgid "Canal 133 (6615 MHz — PSC / UNII-7)"
+msgstr "Canal 133 (6615 MHz — PSC / UNII-7)"
+
+msgid "Canal 149 (6695 MHz — PSC / UNII-7)"
+msgstr "Canal 149 (6695 MHz — PSC / UNII-7)"
+
+msgid "Canal 165 (6775 MHz — PSC / UNII-7)"
+msgstr "Canal 165 (6775 MHz — PSC / UNII-7)"
+
+msgid "Canal 181 (6855 MHz — PSC / UNII-7)"
+msgstr "Canal 181 (6855 MHz — PSC / UNII-7)"
+
+msgid "Canal 197 (6935 MHz — PSC / UNII-8)"
+msgstr "Canal 197 (6935 MHz — PSC / UNII-8)"
+
+msgid "Canal 21 (6055 MHz — PSC / UNII-5)"
+msgstr "Canal 21 (6055 MHz — PSC / UNII-5)"
+
+msgid "Canal 213 (7015 MHz — PSC / UNII-8)"
+msgstr "Canal 213 (7015 MHz — PSC / UNII-8)"
+
+msgid "Canal 229 (7095 MHz — PSC / UNII-8)"
+msgstr "Canal 229 (7095 MHz — PSC / UNII-8)"
+
+msgid "Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)"
+msgstr "Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)"
+
+msgid "Canal 5 (5975 MHz — PSC / UNII-5)"
+msgstr "Canal 5 (5975 MHz — PSC / UNII-5)"
+
+msgid "Canal 53 (6215 MHz — PSC / UNII-5)"
+msgstr "Canal 53 (6215 MHz — PSC / UNII-5)"
+
+msgid "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)"
+msgstr "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)"
+
+msgid "Canal 69 (6295 MHz — PSC / UNII-5)"
+msgstr "Canal 69 (6295 MHz — PSC / UNII-5)"
+
+msgid "Canal 85 (6375 MHz — PSC / UNII-5)"
+msgstr "Canal 85 (6375 MHz — PSC / UNII-5)"
+
+msgid "Destino:"
+msgstr "Destino:"
+
+msgid "Fila 1: Latência Zero / Voice (< 1 ms)"
+msgstr "Fila 1: Latência Zero / Voice (< 1 ms)"
+
+msgid "Fila 2: Interativo / Videoconferência"
+msgstr "Fila 2: Interativo / Videoconferência"
+
+msgid "Fila 3: Navegação Geral & Streaming"
+msgstr "Fila 3: Navegação Geral & Streaming"
+
+msgid "Fila 4: Fila de Fundo (Bulk / Scavenger)"
+msgstr "Fila 4: Fila de Fundo (Bulk / Scavenger)"
+
+msgid "Frequência / Canal"
+msgstr "Frequência / Canal"
+
+msgid "Jogos (< 1 ms), chamadas e velocidade pura"
+msgstr "Jogos (< 1 ms), chamadas e velocidade pura"
+
+msgid "Matriz de Classificação por Aplicação (L7 / DSCP)"
+msgstr "Matriz de Classificação por Aplicação (L7 / DSCP)"
+
+msgid "Modulação"
+msgstr "Modulação"
+
+msgid "Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente"
+msgstr "Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente"
+
+msgid "Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação."
+msgstr "Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação."
+
+msgid "O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação."
+msgstr "O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação."
+
+msgid "Operação Multi-Link"
+msgstr "Operação Multi-Link"
+
+msgid "Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps."
+msgstr "Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps."
+
+msgid "Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514)."
+msgstr "Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514)."
+
+msgid "Sincronizando o painel com o roteador…"
+msgstr "Sincronizando o painel com o roteador…"
+
+msgid "Velocidade PHY"
+msgstr "Velocidade PHY"
+
+msgid "casas com muitos usuários"
+msgstr "casas com muitos usuários"
+
+msgid "⚡ MLO Ativo"
+msgstr "⚡ MLO Ativo"
+
+msgid "🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch)."
+msgstr "🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch)."
+
+msgid "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC."
+msgstr "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC."
+
+msgid "👨‍👩‍👧‍👦 Ideal Residências"
+msgstr "👨‍👩‍👧‍👦 Ideal Residências"
+
+msgid "📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego."
+msgstr "📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego."
+
+msgid "🛡️ AmneziaWG Ativo"
+msgstr "🛡️ AmneziaWG Ativo"
+
+msgid "🛡️ OFUSCAÇÃO ANTI-DPI (AMNEZIAWG) DETECTADA"
+msgstr "🛡️ OFUSCAÇÃO ANTI-DPI (AMNEZIAWG) DETECTADA"
+
+msgid "🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA"
+msgstr "🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA"
+
+
+msgid "1. IP deste Aparelho (Secundário / HUB):"
+msgstr "1. IP deste Aparelho (Secundário / HUB):"
+
+msgid "Arquitetura Ativa:"
+msgstr "Arquitetura Ativa:"
+
+msgid "Ativar rádios Wi-Fi agora (HUB Gigabit + Ponto Wi-Fi Independente)"
+msgstr "Ativar rádios Wi-Fi agora (HUB Gigabit + Ponto Wi-Fi Independente)"
+
+msgid "Desativa a transmissão sem fio para zero consumo de RF e menor aquecimento. Se precisar de Wi-Fi no futuro, basta ligar o interruptor na aba Wi-Fi."
+msgstr "Desativa a transmissão sem fio para zero consumo de RF e menor aquecimento. Se precisar de Wi-Fi no futuro, basta ligar o interruptor na aba Wi-Fi."
+
+msgid "Desativado (Comutação Direta L2)"
+msgstr "Desativado (Comutação Direta L2)"
+
+msgid "Desligar rádios Wi-Fi agora (Modo Switch Cabeado Puro / Frio)"
+msgstr "Desligar rádios Wi-Fi agora (Modo Switch Cabeado Puro / Frio)"
+
+msgid "Este aparelho opera como HUB / Switch Gigabit L2 puro otimizado, com todas as portas unidas em ponte e Wi-Fi opcional sob seu controle."
+msgstr "Este aparelho opera como HUB / Switch Gigabit L2 puro otimizado, com todas as portas unidas em ponte e Wi-Fi opcional sob seu controle."
+
+msgid "Garante que os rádios Wi-Fi estejam ligados em ponte transparente com todas as portas Ethernet."
+msgstr "Garante que os rádios Wi-Fi estejam ligados em ponte transparente com todas as portas Ethernet."
+
+msgid "Manter Wi-Fi como está (Controle livre nas Configurações de Wi-Fi)"
+msgstr "Manter Wi-Fi como está (Controle livre nas Configurações de Wi-Fi)"
+
+msgid "Modo HUB (Switch Gigabit L2 & Wi-Fi Livre)"
+msgstr "Modo HUB (Switch Gigabit L2 & Wi-Fi Livre)"
+
+msgid "O servidor DHCP local e serviços L3 (Multi-WAN, SQM, UPnP) serão DESATIVADOS para liberar 100% de CPU e RAM."
+msgstr "O servidor DHCP local e serviços L3 (Multi-WAN, SQM, UPnP) serão DESATIVADOS para liberar 100% de CPU e RAM."
+
+msgid "OTIMIZAÇÃO DE SWITCH L2 PURO: Todas as portas Ethernet (inclusive a WAN física) serão unidas com IGMP Snooping ativo, STP Zero-Delay e sem filtragem L3/NAT."
+msgstr "OTIMIZAÇÃO DE SWITCH L2 PURO: Todas as portas Ethernet (inclusive a WAN física) serão unidas com IGMP Snooping ativo, STP Zero-Delay e sem filtragem L3/NAT."
+
+msgid "Preserva o estado atual das suas redes Wi-Fi. Você pode ligar, desligar ou trocar senha quando quiser direto na aba Wi-Fi, sem precisar clonar o Mestre."
+msgstr "Preserva o estado atual das suas redes Wi-Fi. Você pode ligar, desligar ou trocar senha quando quiser direto na aba Wi-Fi, sem precisar clonar o Mestre."
+
+msgid "Rádios Wi-Fi:"
+msgstr "Rádios Wi-Fi:"
+
+msgid "WI-FI LIVRE SOB SEU CONTROLE: Você pode manter o Wi-Fi desligado ou ligá-lo/desligá-lo a qualquer momento diretamente nas Configurações de Wi-Fi da tela principal."
+msgstr "WI-FI LIVRE SOB SEU CONTROLE: Você pode manter o Wi-Fi desligado ou ligá-lo/desligá-lo a qualquer momento diretamente nas Configurações de Wi-Fi da tela principal."
+
+msgid "📶 Comportamento do Wi-Fi no Modo HUB"
+msgstr "📶 Comportamento do Wi-Fi no Modo HUB"
+
+msgid "🔀 MODO HUB • SWITCH GIGABIT & PONTE L2"
+msgstr "🔀 MODO HUB • SWITCH GIGABIT & PONTE L2"
+
+msgid "🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Sob Demanda)"
+msgstr "🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Sob Demanda)"
+msgid "Digite o número da VLAN (1 a 4094):"
+msgstr "Digite o número da VLAN (1 a 4094):"
+
+msgid "Filtro de seções do painel"
+msgstr "Filtro de seções do painel"
+
+msgid "Nenhuma (Sem VLAN • Padrão)"
+msgstr "Nenhuma (Sem VLAN • Padrão)"
+
+msgid "VLAN ID inválido. Deve ser um número entre 1 e 4094."
+msgstr "VLAN ID inválido. Deve ser um número entre 1 e 4094."
+
+msgid "IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall"
+msgstr "IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall"
+
+msgid "🟣 IPv6 Puro"
+msgstr "🟣 IPv6 Puro"
+
+msgid "🟣 IPv6 Puro (Sem IPv4)"
+msgstr "🟣 IPv6 Puro (Sem IPv4)"
+
+msgid "IPv6 PURO (SEM IPv4)"
+msgstr "IPv6 PURO (SEM IPv4)"
+
+msgid "Ative o IPv6 global no roteador para usar o modo IPv6 Puro"
+msgstr "Ative o IPv6 global no roteador para usar o modo IPv6 Puro"
+
+msgid "Bloqueia 100% do IPv4 e impede concessão DHCPv4 para este aparelho"
+msgstr "Bloqueia 100% do IPv4 e impede concessão DHCPv4 para este aparelho"
+
+msgid "Este aparelho não recebe endereço IPv4 no DHCP e tem 100% do tráfego IPv4 bloqueado no firewall. Reserva de IPv4, DMZ, DNS IPv4 e rota WAN IPv4 são desativados enquanto estiver em IPv6 Puro (sites exclusivamente IPv4 não abrirão sem NAT64)."
+msgstr "Este aparelho não recebe endereço IPv4 no DHCP e tem 100% do tráfego IPv4 bloqueado no firewall. Reserva de IPv4, DMZ, DNS IPv4 e rota WAN IPv4 são desativados enquanto estiver em IPv6 Puro (sites exclusivamente IPv4 não abrirão sem NAT64)."
+
+msgid "Dispositivo IPv6"
+msgstr "Dispositivo IPv6"
+
+msgid "🚀 Auto-Escolher Melhor DNS"
+msgstr "🚀 Auto-Escolher Melhor DNS"
+
+msgid "Recomendado: 2 provedores distintos (evita rajadas duplicadas no All-Servers). Campos vazios serão desconsiderados."
+msgstr "Recomendado: 2 provedores distintos (evita rajadas duplicadas no All-Servers). Campos vazios serão desconsiderados."
+
+msgid "Escolha um valor predefinido comum ou digite o tamanho de MTU desejado (entre 1280 e 2000 bytes). O valor será gravado no kernel e propagado em cascata para todas as camadas de rede."
+msgstr "Escolha um valor predefinido comum ou digite o tamanho de MTU desejado (entre 1280 e 2000 bytes). O valor será gravado no kernel e propagado em cascata para todas as camadas de rede."
+
+msgid "Estes parâmetros calibram o tamanho exato de pacote da sua conexão para eliminar fragmentação e latência oculta."
+msgstr "Estes parâmetros calibram o tamanho exato de pacote da sua conexão para eliminar fragmentação e latência oculta."
+
+msgid "⚙️ Calibração de MTU e Overhead de Pacotes (Avançado)"
+msgstr "⚙️ Calibração de MTU e Overhead de Pacotes (Avançado)"
+
+msgid "⚠️ Falha na sondagem:"
+msgstr "⚠️ Falha na sondagem:"
+
+msgid "✅ Sondagem Concluída: MTU"
+msgstr "✅ Sondagem Concluída: MTU"
+
+msgid "✍️ Modo Manual / Personalizado"
+msgstr "✍️ Modo Manual / Personalizado"
+
+msgid "✨ Automático Inteligente (Fast PMTUD)"
+msgstr "✨ Automático Inteligente (Fast PMTUD)"
+
+msgid "🌐 Controle de MTU da Conexão"
+msgstr "🌐 Controle de MTU da Conexão"
+
+msgid "🛡️ Sincronização em Cascata Ativa (Zero Fragmentação):"
+msgstr "🛡️ Sincronização em Cascata Ativa (Zero Fragmentação):"
+
+msgid "🛡️ Sondagem Concluída: Concentrador upstream limitou a rota em MTU"
+msgstr "🛡️ Sondagem Concluída: Concentrador upstream limitou a rota em MTU"
+
+msgid "🛡️ Status Atual: Sessão operando em MTU"
+msgstr "🛡️ Status Atual: Sessão operando em MTU"
+
+msgid "Fallback NAT64 (Jool):"
+msgstr "Fallback NAT64 (Jool):"
+
+msgid "Pronto em Standby (0% CPU)"
+msgstr "Pronto em Standby (0% CPU)"
+
+msgid "Sob Demanda"
+msgstr "Sob Demanda"
+
+msgid "Modo 5: IPv6-Only + NAT64/DNS64 (Jool)"
+msgstr "Modo 5: IPv6-Only + NAT64/DNS64 (Jool)"
+
+msgid "Single-Stack + Fallback"
+msgstr "Single-Stack + Fallback"
+
+msgid "LAN operando 100% em IPv6 como primário (sem DHCP IPv4), com DNS64 + NAT64 em kernel (Jool 64:ff9b::/96) e PREF64 apenas como fallback automático para sites/apps IPv4-only."
+msgstr "LAN operando 100% em IPv6 como primário (sem DHCP IPv4), com DNS64 + NAT64 em kernel (Jool 64:ff9b::/96) e PREF64 apenas como fallback automático para sites/apps IPv4-only."
+
+msgid "Sites com IPv6 saem 100% nativos direto (com aceleração PPE em hardware); destinos exclusivamente IPv4 são traduzidos transparentemente pelo Jool NAT64."
+msgstr "Sites com IPv6 saem 100% nativos direto (com aceleração PPE em hardware); destinos exclusivamente IPv4 são traduzidos transparentemente pelo Jool NAT64."
+
+msgid "Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 11 via PREF64 e ipv4only.arpa."
+msgstr "Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 11 via PREF64 e ipv4only.arpa."
+
+msgid "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
+msgstr "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
+

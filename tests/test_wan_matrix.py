@@ -1386,6 +1386,370 @@ exit 0
         self.assertEqual(self.sb.uci_get("network.wan6.norelease"), "1")
         self.assertEqual(self.sb.uci_get("network.wan6.reqprefix"), "auto")
 
+    def test_38_universal_auto_and_manual_mtu(self):
+        """Valida Auto-MTU Inteligente, Modo Manual (1280 a 2000B), cascading em TCP MSS/odhcpd RA e wan-probe-mtu"""
+        # 1. Testa wan-probe-mtu na wan2
+        res_probe = self.sb.run_control("wan-probe-mtu", "iface=wan2")
+        self.assertEqual(res_probe.returncode, 0, f"Falha no wan-probe-mtu: {res_probe.stderr}")
+        data_probe = json.loads(res_probe.stdout)
+        self.assertEqual(data_probe.get("status"), "ok")
+        self.assertEqual(data_probe.get("iface"), "wan2")
+        self.assertIn(data_probe.get("mtu"), [1492, 1500])
+
+        # 2. Configura Modo Manual em 1492 (Fibra PPPoE)
+        res_man1492 = self.sb.run_control("wan-optimize-set", "iface=wan2", "mtu_mode=manual", "manual_mtu=1492")
+        self.assertEqual(res_man1492.returncode, 0, f"Falha ao configurar MTU 1492: {res_man1492.stderr}")
+        self.assertEqual(self.sb.uci_get("network.wan2.mtu"), "1492")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.wan_profiles.wan2_mtu_mode"), "manual")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.wan_profiles.wan2_manual_mtu"), "1492")
+        # Cascata no IPv6 RA do odhcpd
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1492")
+
+        # Verifica status da WAN
+        res_stat = self.sb.run_control("wan-optimize-status", "iface=wan2")
+        self.assertEqual(res_stat.returncode, 0)
+        data_stat = json.loads(res_stat.stdout)
+        self.assertEqual(data_stat.get("mtu_mode"), "manual")
+        self.assertEqual(data_stat.get("manual_mtu"), 1492)
+
+        # 3. Configura Modo Manual em 2000 (Mini Jumbo)
+        res_man2000 = self.sb.run_control("wan-optimize-set", "iface=wan2", "mtu_mode=manual", "manual_mtu=2000")
+        self.assertEqual(res_man2000.returncode, 0, f"Falha ao configurar MTU 2000: {res_man2000.stderr}")
+        self.assertEqual(self.sb.uci_get("network.wan2.mtu"), "2000")
+        self.assertEqual(self.sb.uci_get("network.wan2.device_mtu"), "2000")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.wan_profiles.wan2_manual_mtu"), "2000")
+        # ra_mtu clampa em 1500 para seguranca de clientes LAN
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1500")
+
+        # 4. Rejeicao de MTU fora do intervalo (ex: 1200 ou 2100)
+        res_inv1 = self.sb.run_control("wan-optimize-set", "iface=wan2", "mtu_mode=manual", "manual_mtu=1200")
+        self.assertNotEqual(res_inv1.returncode, 0)
+        res_inv2 = self.sb.run_control("wan-optimize-set", "iface=wan2", "mtu_mode=manual", "manual_mtu=2050")
+        self.assertNotEqual(res_inv2.returncode, 0)
+
+        # 5. Retorno ao Modo Auto
+        res_auto = self.sb.run_control("wan-optimize-set", "iface=wan2", "mtu_mode=auto")
+        self.assertEqual(res_auto.returncode, 0)
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.wan_profiles.wan2_mtu_mode"), "auto")
+        self.assertIn(self.sb.uci_get("equipe_dashboard.wan_profiles.wan2_manual_mtu"), [None, ""])
+
+    def test_37_device_ipv6_only_fw4_dhcp_and_state_preservation(self):
+        """Valida modo IPv6 Puro (Sem IPv4) por aparelho: DHCP ignore, snapshot/restore, nftables fw4, coexistencia e guarda global ipv4_only."""
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+
+        # 1. Cria reserva IPv4 inicial para AA:BB:CC:DD:EE:60
+        res_init = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:60", "Notebook-IPv6", "reserved", "192.168.73.60",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "dual_stack", "", "0"
+        )
+        self.assertEqual(res_init.returncode, 0, f"Falha ao criar reserva inicial: {res_init.stderr}")
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee60.ip"), "192.168.73.60")
+
+        # 2. Alterna aparelho para IPv6 Puro (ipv6_only)
+        res_v6o = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:60", "Notebook-IPv6", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(res_v6o.returncode, 0, f"Falha ao aplicar ipv6_only: {res_v6o.stderr}")
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.ip_protocol"), "ipv6_only")
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.ipv6_allowed"), "1")
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.saved_v4_ip"), "192.168.73.60")
+        self.assertEqual(self.sb.uci_get("dhcp.ark_v6only.dhcp_option"), "108,1800")
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee60.tag"), "ark_v6only")
+        self.assertIn(self.sb.uci_get("dhcp.ark_aabbccddee60.ip"), [None, ""])
+        self.assertEqual(self.sb.uci_get("firewall.ark_ipv6_selective.path"), "/etc/ark/ark_ipv6_selective.sh")
+
+        # 3. Valida device-status (nao deve expor 'ignore' como IP reservado)
+        res_st = self.sb.run_control("device-status", "AA:BB:CC:DD:EE:60")
+        self.assertEqual(res_st.returncode, 0, f"Falha em device-status: {res_st.stderr}")
+        st = json.loads(res_st.stdout)
+        self.assertFalse(st["reserved"])
+        self.assertEqual(st["ip"], "192.168.73.60")
+        self.assertEqual(st["ip_protocol"], "ipv6_only")
+        self.assertTrue(st["ipv6_allowed"])
+        self.assertEqual(st["global_ipv6_mode"], "dual_stack")
+
+        # 4. Valida regras nftables fw4 geradas (UDP 67 liberado para Option 108; forward IPv4 + DNS IPv4 bloqueados)
+        nft_file = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_ipv6_selective.nft")
+        self.assertTrue(os.path.isfile(nft_file), "ark_ipv6_selective.nft nao foi gerado!")
+        with open(nft_file, "r", encoding="utf-8") as f:
+            nft_txt = f.read()
+        self.assertIn("set ipv6_only_macs", nft_txt)
+        self.assertIn("aa:bb:cc:dd:ee:60", nft_txt)
+        self.assertIn('meta nfproto ipv4 iifname "br-lan" ether saddr @ipv6_only_macs reject with icmp type admin-prohibited', nft_txt)
+        self.assertNotIn("udp dport 67 drop", nft_txt)
+        self.assertIn('meta nfproto ipv4 iifname "br-lan" ether saddr @ipv6_only_macs udp dport 53 reject with icmp type admin-prohibited', nft_txt)
+        self.assertIn('meta nfproto ipv4 iifname "br-lan" ether saddr @ipv6_only_macs tcp dport 53 reject with icmp type admin-prohibited', nft_txt)
+
+        # 5. Idempotencia: segunda aplicacao preserva saved_v4_ip e tag ark_v6only
+        res_v6o2 = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:60", "Notebook-IPv6", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(res_v6o2.returncode, 0)
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.saved_v4_ip"), "192.168.73.60")
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee60.tag"), "ark_v6only")
+
+        # 6. Coexistencia: segundo aparelho em ipv4_only junto com primeiro em ipv6_only
+        res_v4o = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:61", "TVBox-IPv4", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv4_only", "", "0"
+        )
+        self.assertEqual(res_v4o.returncode, 0)
+        with open(nft_file, "r", encoding="utf-8") as f:
+            nft_coex = f.read()
+        self.assertIn("set blocked_macs", nft_coex)
+        self.assertIn("aa:bb:cc:dd:ee:61", nft_coex)
+        self.assertIn("set ipv6_only_macs", nft_coex)
+        self.assertIn("aa:bb:cc:dd:ee:60", nft_coex)
+
+        # 7. Reversao de EE:60 para dual_stack restaurando reserva 192.168.73.60
+        res_rev = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:60", "Notebook-IPv6", "reserved", "192.168.73.60",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "dual_stack", "", "0"
+        )
+        self.assertEqual(res_rev.returncode, 0)
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee60.ip"), "192.168.73.60")
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.ip_protocol"), "dual_stack")
+        self.assertIn(self.sb.uci_get("equipe_devices.device_AABBCCDDEE60.saved_v4_ip"), [None, ""])
+        with open(nft_file, "r", encoding="utf-8") as f:
+            nft_rev = f.read()
+        self.assertNotIn("set ipv6_only_macs", nft_rev)
+        self.assertIn("aa:bb:cc:dd:ee:61", nft_rev)
+
+        # 8. Anti-lockout ao mudar roteador inteiro para ipv4_only + bloqueio de novo ipv6_only
+        self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:62", "Celular-V6", "reserved", "192.168.73.62",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "dual_stack", "", "0"
+        )
+        self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:62", "Celular-V6", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee62.tag"), "ark_v6only")
+
+        res_g4 = self.sb.run_control("ipv6-mode-set", "ipv4_only")
+        self.assertEqual(res_g4.returncode, 0, f"Falha em ipv6-mode-set ipv4_only: {res_g4.stderr}")
+        # Deve liberar DHCP do aparelho restaurando o IPv4 salvo
+        self.assertEqual(self.sb.uci_get("dhcp.ark_aabbccddee62.ip"), "192.168.73.62")
+        self.assertIn(self.sb.uci_get("dhcp.ark_aabbccddee62.tag"), [None, ""])
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCCDDEE62.ip_protocol"), "ipv4_only")
+
+        # Tentar ativar ipv6_only em aparelho quando roteador esta em ipv4_only deve ser bloqueado
+        res_deny = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:62", "Celular-V6", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertNotEqual(res_deny.returncode, 0)
+        self.assertIn("Ative o IPv6", res_deny.stderr)
+
+    def test_38_device_ipv6_only_fw3_legacy_rules(self):
+        """Valida retrocompatibilidade fw3 (iptables/ip6tables) para modo IPv6 Puro por aparelho."""
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+
+        # Remove mocks de fw4/nft para simular OpenWrt legado (fw3 puro)
+        for modern_tool in ("fw4", "nft"):
+            p_mod = os.path.join(self.sb.bin_dir, modern_tool)
+            if os.path.exists(p_mod):
+                os.remove(p_mod)
+        for tool in ("fw3", "iptables", "ip6tables"):
+            p = os.path.join(self.sb.bin_dir, tool)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\nexit 0\n")
+            os.chmod(p, 0o755)
+
+        res = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:63", "Legacy-V6", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(res.returncode, 0, f"Falha em fw3 ipv6_only: {res.stderr}")
+        apply_sh = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_ipv6_selective.sh")
+        self.assertTrue(os.path.isfile(apply_sh), "ark_ipv6_selective.sh (fw3) nao foi gerado!")
+        with open(apply_sh, "r", encoding="utf-8") as f:
+            sh_txt = f.read()
+        self.assertIn("ARK_IPV4_BLK", sh_txt)
+        self.assertIn("iptables -A ARK_IPV4_BLK -m mac --mac-source aa:bb:cc:dd:ee:63 -j REJECT --reject-with icmp-admin-prohibited", sh_txt)
+        self.assertNotIn("--dport 67 -j DROP", sh_txt)
+        self.assertIn("iptables -A ARK_IPV4_BLK_IN -m mac --mac-source aa:bb:cc:dd:ee:63 -p udp --dport 53 -j REJECT --reject-with icmp-admin-prohibited", sh_txt)
+
+    def test_39_lan_ipv6_dns_cloudflare_plus_isp_fallback(self):
+        """Valida que desligar/ligar DNS allservers e ativar IPv6 relay sempre configuram Cloudflare IPv6 + fallback da operadora/ULA sem repassar fe80::1."""
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("network.globals=globals")
+        self.sb.uci_set("network.globals.ula_prefix=fd73:0192:0168::/48")
+
+        # 1. Cenario operadora com DNS IPv6 global + fe80::1 (deve filtrar fe80::1 e manter o global)
+        resolv_dir = os.path.join(self.sb.temp_dir, "tmp", "resolv.conf.d")
+        os.makedirs(resolv_dir, exist_ok=True)
+        resolv_auto = os.path.join(resolv_dir, "resolv.conf.auto")
+        with open(resolv_auto, "w", encoding="utf-8") as f:
+            f.write("nameserver fe80::1\nnameserver 2804:14d:1::1\nnameserver 1.1.1.1\n")
+
+        res_off = self.sb.run_control("dns-turbo-save", "0", "1.1.1.1", "8.8.8.8", "", "", "0", "10000")
+        self.assertEqual(res_off.returncode, 0, f"Falha em dns-turbo-save off: {res_off.stderr}")
+        dns_list = self.sb.uci_get("dhcp.lan.dns") or ""
+        self.assertIn("2606:4700:4700::1111", dns_list)
+        self.assertIn("2804:14d:1::1", dns_list)
+        self.assertIn("2606:4700:4700::1001", dns_list)
+        self.assertNotIn("fe80::1", dns_list)
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dhcpv6"), "server")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dns_service"), "1")
+
+        # 2. Cenario ONT so anunciando fe80::1 (sem DNSv6 global) + modo relay ativo
+        with open(resolv_auto, "w", encoding="utf-8") as f:
+            f.write("nameserver fe80::1\nnameserver 1.1.1.1\n")
+
+        res_rel = self.sb.run_control("ipv6-relay-toggle", "1")
+        self.assertEqual(res_rel.returncode, 0, f"Falha em ipv6-relay-toggle 1: {res_rel.stderr}")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra"), "relay")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ndp"), "relay")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dhcpv6"), "server")
+        self.assertIn(self.sb.uci_get("dhcp.wan.dhcpv6"), [None, ""])
+        dns_rel = self.sb.uci_get("dhcp.lan.dns") or ""
+        self.assertIn("2606:4700:4700::1111", dns_rel)
+        self.assertIn("fd73:0192:0168::1", dns_rel)
+        self.assertIn("2606:4700:4700::1001", dns_rel)
+        self.assertNotIn("fe80::1", dns_rel)
+
+        # 3. Garante que o ARK Doctor aceita ra=relay + dhcpv6=server sem falso positivo de blackhole IPv6
+        self.sb.uci_set("network.wan6=interface")
+        self.sb.uci_set("network.wan6.proto=dhcpv6")
+        res_doc = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res_doc.returncode, 0, f"Falha em ark-doctor: {res_doc.stderr}")
+        doc_json = json.loads(res_doc.stdout)
+        v6_checks = [c for c in doc_json.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertTrue(v6_checks, "Check 'Coerência IPv6' ausente no ark-doctor")
+        self.assertEqual(v6_checks[0].get("status"), "OK", f"Falso positivo do ARK Doctor: {v6_checks[0]}")
+
+    def test_40_nat64_jool_lifecycle_and_dns64_modes(self):
+        """Valida NAT64 (Jool) + DNS64 automatico nos 2 cenarios: por aparelho ipv6_only (DNAT cirurgico) e modo global ipv6_only (DNS64 + PREF64), desligando quando inativo."""
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("network.globals=globals")
+        self.sb.uci_set("network.globals.ula_prefix=fd73:0192:0168::/48")
+
+        # Cenario 1: Rede em dual_stack + 1 aparelho em ipv6_only
+        res1 = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:70", "iPad-NAT64", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(res1.returncode, 0, f"Falha device-save ipv6_only: {res1.stderr}")
+        nat64_sh = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_nat64.sh")
+        nft_file = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_ipv6_selective.nft")
+        self.assertTrue(os.path.isfile(nat64_sh), "ark_nat64.sh nao foi criado para aparelho ipv6_only!")
+        self.assertEqual(self.sb.uci_get("firewall.ark_nat64.path"), "/etc/ark/ark_nat64.sh")
+        with open(nft_file, "r", encoding="utf-8") as f:
+            nft_txt = f.read()
+        self.assertIn("chain prerouting_dns64", nft_txt)
+        self.assertIn("dnat ip6 to 2606:4700:4700::64", nft_txt)
+        # LAN global continua em DNS normal (nao afeta aparelhos Pilha Dupla!)
+        lan_dns = self.sb.uci_get("dhcp.lan.dns") or ""
+        self.assertIn("2606:4700:4700::1111", lan_dns)
+        self.assertNotIn("2606:4700:4700::64 ", lan_dns)
+        self.assertIn(self.sb.uci_get("dhcp.lan.ra_pref64"), [None, ""])
+
+        # Reverter aparelho para dual_stack deve desligar Jool NAT64 automaticamente
+        res_off = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:70", "iPad-NAT64", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "dual_stack", "", "0"
+        )
+        self.assertEqual(res_off.returncode, 0)
+        self.assertFalse(os.path.exists(nat64_sh), "ark_nat64.sh deveria ter sido removido ao desativar ultimo aparelho ipv6_only!")
+        self.assertIn(self.sb.uci_get("firewall.ark_nat64"), [None, ""])
+
+        # Cenario 2: Modo global ipv6_only liga Jool + DNS64 + PREF64 para toda a LAN
+        res_g6 = self.sb.run_control("ipv6-mode-set", "ipv6_only")
+        self.assertEqual(res_g6.returncode, 0, f"Falha em ipv6-mode-set ipv6_only: {res_g6.stderr}")
+        self.assertTrue(os.path.isfile(nat64_sh), "ark_nat64.sh nao foi criado no modo global ipv6_only!")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_pref64"), "64:ff9b::/96")
+        lan_dns_g6 = self.sb.uci_get("dhcp.lan.dns") or ""
+        self.assertIn("2606:4700:4700::64", lan_dns_g6)
+        self.assertIn("2606:4700:4700::6400", lan_dns_g6)
+
+        # Voltar para dual_stack global desliga Jool, remove PREF64 e restaura DNS normal
+        res_back = self.sb.run_control("ipv6-mode-set", "dual_stack")
+        self.assertEqual(res_back.returncode, 0)
+        self.assertFalse(os.path.exists(nat64_sh))
+        self.assertIn(self.sb.uci_get("dhcp.lan.ra_pref64"), [None, ""])
+        self.assertIn("2606:4700:4700::1111", self.sb.uci_get("dhcp.lan.dns") or "")
+
+    def test_41_doctor_ipv6_nat64_zero_false_positives_and_self_heal(self):
+        """Valida que ARK Doctor audita NAT64/DNS64 e IPv6-Only global sem falsos positivos e realiza auto-reparo."""
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("network.wan6=interface")
+        self.sb.uci_set("network.wan6.proto=dhcpv6")
+        self.sb.uci_set("network.wan6.device=@wan")
+        self.sb.uci_set("network.globals=globals")
+        self.sb.uci_set("network.globals.ula_prefix=fd73:0192:0168::/48")
+        self.sb.uci_set("dhcp.lan.ra=server")
+        self.sb.uci_set("dhcp.lan.dhcpv6=server")
+
+        def get_check(report, prefix):
+            matches = [c for c in report.get("checks", []) if prefix in c.get("name", "")]
+            self.assertTrue(matches, f"Check '{prefix}' nao encontrado no ark-doctor!")
+            return matches[0]
+
+        # 1. Standby limpo (dual_stack sem aparelhos ipv6_only) -> OK sem falso positivo
+        doc1 = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc1, "NAT64 / DNS64").get("status"), "OK")
+
+        # 2. Aparelho individual ipv6_only ativo -> OK, e se ark_nat64.sh sumir, detecta FAIL e --fix restaura
+        res_dev = self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:71", "iPad-Doctor", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "ipv6_only", "", "0"
+        )
+        self.assertEqual(res_dev.returncode, 0, f"Falha device-save ipv6_only: {res_dev.stderr}")
+        doc2 = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc2, "NAT64 / DNS64").get("status"), "OK")
+        self.assertEqual(get_check(doc2, "Coerência IPv6").get("status"), "OK")
+
+        nat64_sh = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_nat64.sh")
+        os.remove(nat64_sh)
+        doc2_broken = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc2_broken, "NAT64 / DNS64").get("status"), "FAIL")
+
+        doc2_fix = json.loads(self.sb.run_control("ark-doctor", "--fix", "--json").stdout)
+        self.assertEqual(get_check(doc2_fix, "NAT64 / DNS64").get("status"), "FIXED")
+        self.assertTrue(os.path.isfile(nat64_sh), "ark-doctor --fix deveria ter recriado ark_nat64.sh")
+
+        doc2_recheck = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc2_recheck, "NAT64 / DNS64").get("status"), "OK")
+
+        # 3. Modo global ipv6_only -> Tabela de Clientes OK (sem falso positivo por dhcp.lan.ignore=1) + Coerência IPv6 OK + NAT64 OK
+        res_g6 = self.sb.run_control("ipv6-mode-set", "ipv6_only")
+        self.assertEqual(res_g6.returncode, 0)
+        doc3 = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc3, "Tabela de Clientes").get("status"), "OK")
+        self.assertEqual(get_check(doc3, "Coerência IPv6").get("status"), "OK")
+        self.assertEqual(get_check(doc3, "NAT64 / DNS64").get("status"), "OK")
+
+        # Remover PREF64 manualmente -> Doctor detecta e --fix restaura
+        self.sb.run_sh("uci -q delete dhcp.lan.ra_pref64 && uci commit dhcp")
+        doc3_broken = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc3_broken, "Coerência IPv6").get("status"), "WARN")
+        self.assertEqual(get_check(doc3_broken, "NAT64 / DNS64").get("status"), "FAIL")
+        doc3_fix = json.loads(self.sb.run_control("ark-doctor", "--fix", "--json").stdout)
+        self.assertEqual(get_check(doc3_fix, "Coerência IPv6").get("status"), "FIXED")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_pref64"), "64:ff9b::/96")
+
+        # 4. Volta para dual_stack (e reverte aparelho) mas deixa script residual -> Doctor detecta WARN e --fix limpa
+        self.sb.run_control(
+            "device-save", "AA:BB:CC:DD:EE:71", "iPad-Doctor", "automatic", "",
+            "0", "AF41", "default", "0", "0", "0", "default", "0", "0", "", "1", "dual_stack", "", "0"
+        )
+        self.sb.run_control("ipv6-mode-set", "dual_stack")
+        with open(nat64_sh, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n")
+        doc4_stale = json.loads(self.sb.run_control("ark-doctor", "--json").stdout)
+        self.assertEqual(get_check(doc4_stale, "NAT64 / DNS64").get("status"), "WARN")
+        doc4_fix = json.loads(self.sb.run_control("ark-doctor", "--fix", "--json").stdout)
+        self.assertEqual(get_check(doc4_fix, "NAT64 / DNS64").get("status"), "FIXED")
+        self.assertFalse(os.path.exists(nat64_sh))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

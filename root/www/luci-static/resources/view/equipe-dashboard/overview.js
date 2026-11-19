@@ -27,7 +27,7 @@ if (typeof dom !== 'undefined' && dom) {
 	}
 }
 
-const ARK_BUILD_VERSION = '2.2.7';
+const ARK_BUILD_VERSION = '2.2.14';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -123,7 +123,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.2.7'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.2.14'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -786,6 +786,29 @@ function redirectToRouter(ip, message, delay) {
 	window.setTimeout(function() { window.location.href = window.location.protocol + '//' + ip + path; }, delay || 1000);
 }
 
+function checkControlResult(res, fallbackErrorMsg) {
+	if (!res) {
+		throw new Error(fallbackErrorMsg || 'Falha na comunicação com o roteador.');
+	}
+	if (typeof res.code === 'number' && res.code !== 0) {
+		const detail = (res.stderr && res.stderr.trim()) || (res.stdout && res.stdout.trim()) || ('Código de saída ' + res.code);
+		throw new Error((fallbackErrorMsg ? fallbackErrorMsg + ': ' : '') + detail);
+	}
+	if (typeof res.stdout === 'string' && res.stdout.trim().charAt(0) === '{') {
+		try {
+			const j = JSON.parse(res.stdout.trim());
+			if (j && (j.ok === false || j.status === 'error' || j.error)) {
+				throw new Error(j.error || j.message || fallbackErrorMsg || 'Erro retornado pelo roteador.');
+			}
+		} catch(e) {
+			if (e.message && (e.message.indexOf('Erro retornado') !== -1 || (fallbackErrorMsg && e.message.indexOf(fallbackErrorMsg) !== -1))) {
+				throw e;
+			}
+		}
+	}
+	return res;
+}
+
 installArkTransactionCoordinator();
 
 if (typeof window !== 'undefined') {
@@ -796,6 +819,7 @@ if (typeof window !== 'undefined') {
 	window.isPollingSuppressed = isPollingSuppressed;
 	window.forceReleaseMutationLock = forceReleaseMutationLock;
 	window.installArkTransactionCoordinator = installArkTransactionCoordinator;
+	window.checkControlResult = checkControlResult;
 }
 
 function iface(dump, name) {
@@ -1237,7 +1261,7 @@ function deviceLimitsMap(config) {
 	});
 	return out;
 }
-function deviceIpv6Map(config, globalIpv6Mode) {
+function deviceIpProtocolMap(config, globalIpv6Mode) {
 	const out = {};
 	const v = values(config);
 	const isSelective = (globalIpv6Mode === 'selective');
@@ -1245,12 +1269,22 @@ function deviceIpv6Map(config, globalIpv6Mode) {
 		const x = v[k];
 		if (x && x.mac) {
 			const mac = String(x.mac).toUpperCase();
-			if (isSelective) {
-				out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true);
+			if (x.ip_protocol === 'ipv6_only' || x.ip_protocol === 'ipv4_only' || x.ip_protocol === 'dual_stack') {
+				out[mac] = x.ip_protocol;
+			} else if (isSelective) {
+				out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true) ? 'dual_stack' : 'ipv4_only';
 			} else {
-				out[mac] = (String(x.ipv6_allowed) !== '0' && x.ipv6_allowed !== false);
+				out[mac] = (String(x.ipv6_allowed) === '0' || x.ipv6_allowed === false) ? 'ipv4_only' : 'dual_stack';
 			}
 		}
+	});
+	return out;
+}
+function deviceIpv6Map(config, globalIpv6Mode) {
+	const protoMap = deviceIpProtocolMap(config, globalIpv6Mode);
+	const out = {};
+	Object.keys(protoMap).forEach(function(mac) {
+		out[mac] = (protoMap[mac] === 'dual_stack' || protoMap[mac] === 'ipv6_only');
 	});
 	return out;
 }
@@ -1519,10 +1553,10 @@ function getWifiRuntimeState(cfg, wirelessConfig, wirelessStatus) {
 	}
 
 	return {
-		state: 'down',
-		label: 'DESLIGADA',
+		state: 'starting',
+		label: 'INICIANDO (DFS / RADAR)',
 		pillClass: 'standby',
-		checked: false
+		checked: true
 	};
 }
 function wifiBand(radioName, radio) {
@@ -3002,7 +3036,7 @@ const devicesMethods = {
 				const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
 				macs.forEach(function(m) {
 					const u = String(m).toUpperCase();
-					if (h.ip) reservedMap[u] = h.ip;
+					if (h.ip && h.ip !== 'ignore') reservedMap[u] = h.ip;
 					if (h.name) reservedNameMap[u] = h.name;
 				});
 			}
@@ -3022,13 +3056,26 @@ const devicesMethods = {
 		});
 
 		const limitsMap = deviceLimitsMap(data.names);
-		const ipv6Map = deviceIpv6Map(data.names, (values(data.equipeDashboardConfig).ipv6||{}).mode || 'dual_stack');
+		const globalIpv6Mode = (values(data.equipeDashboardConfig).ipv6||{}).mode || 'dual_stack';
+		const ipProtoMap = deviceIpProtocolMap(data.names, globalIpv6Mode);
+		const ipv6Map = deviceIpv6Map(data.names, globalIpv6Mode);
 		const parentalMap = deviceParentalMap(data.names);
 		const dhcp6Leases = (data.leases && data.leases.dhcp6_leases) || [];
 		const dhcp6ActiveMap = {};
+		const dhcp6IpMap = {};
 		dhcp6Leases.forEach(function(l) {
-			if (l.macaddr) dhcp6ActiveMap[String(l.macaddr).toUpperCase()] = true;
-			if (l.mac) dhcp6ActiveMap[String(l.mac).toUpperCase()] = true;
+			const m = String(l.macaddr || l.mac || '').toUpperCase();
+			if (!m) return;
+			dhcp6ActiveMap[m] = true;
+			const addr = (Array.isArray(l.ip6addrs) && l.ip6addrs[0]) || l.ip6addr || '';
+			if (addr && !dhcp6IpMap[m]) dhcp6IpMap[m] = String(addr).split('/')[0];
+		});
+		Object.keys(hostHints).forEach(function(k) {
+			const m = String(k || '').toUpperCase();
+			const h = hostHints[k];
+			if (!m || !h || dhcp6IpMap[m]) return;
+			const a6 = Array.isArray(h.ip6addrs) ? h.ip6addrs.find(function(x){ return x && String(x).indexOf('fe80:') !== 0; }) : '';
+			if (a6) dhcp6IpMap[m] = String(a6).split('/')[0];
 		});
 
 		const secRegex = /(ARK[-_]Secund[aá]rio|ARK[-_]Ponto|Ponto[-_]Adicional|Roteador[-_]Secund[aá]rio|secund[aá]rio)/i;
@@ -3475,8 +3522,9 @@ const devicesMethods = {
 			seen[mac]=1;
 			const w = deviceWifiInfo(mac, '');
 			const hName = (hostHints[mac] || {}).name || '';
-			let fallbackIp = (arpMap[mac] && arpMap[mac].ip) || '—';
-			if (fallbackIp && fallbackIp.indexOf('169.254.') === 0) fallbackIp = '—';
+			let fallbackIp = (arpMap[mac] && arpMap[mac].ip) || dhcp6IpMap[mac] || '—';
+			if (fallbackIp && fallbackIp.indexOf('169.254.') === 0) fallbackIp = dhcp6IpMap[mac] || '—';
+			if (ipProtoMap[mac] === 'ipv6_only') fallbackIp = dhcp6IpMap[mac] || 'IPv6 Puro';
 			devices.push({
 				mac: mac,
 				ip: fallbackIp,
@@ -3571,7 +3619,7 @@ const devicesMethods = {
 		// Include static DHCP hosts only if they are genuinely online right now
 		Object.keys(dhcpValues).forEach(function(k) {
 			const h = dhcpValues[k];
-			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip) return;
+			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip || h.ip === 'ignore') return;
 			const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
 			macs.forEach(function(m) {
 				const mac = String(m || '').toUpperCase();
@@ -3611,6 +3659,37 @@ const devicesMethods = {
 						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 					});
 				}
+			});
+		});
+		// Include active IPv6-only devices (wired or DHCPv6) even when no IPv4 lease exists
+		Object.keys(ipProtoMap).forEach(function(mac) {
+			if (ipProtoMap[mac] !== 'ipv6_only' || seen[mac]) return;
+			const hasV6Presence = !!(dhcp6ActiveMap[mac] || dhcp6IpMap[mac] || (rates[mac] && ((rates[mac].rx || 0) > 0 || (rates[mac].tx || 0) > 0)));
+			if (!hasV6Presence) return;
+			seen[mac] = 1;
+			const hint = hostHints[mac] || {};
+			const devName = names[mac] || hint.name || reservedNameMap[mac] || 'Dispositivo IPv6';
+			const w = deviceWifiInfo(mac, '');
+			devices.push({
+				mac: mac,
+				ip: dhcp6IpMap[mac] || 'IPv6 Puro',
+				name: devName,
+				hostname: hint.name || '',
+				network: w.network,
+				ssid: w.ssid,
+				band: w.band,
+				bandLabel: w.bandLabel,
+				isWifi: w.isWifi,
+				guest: w.isGuest,
+				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
+				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
 		const fingerprints = data.deviceFingerprints || {};
@@ -3693,7 +3772,9 @@ const devicesMethods = {
 						const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 					}
-					if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+					if (ipProtoMap[d.mac] === 'ipv6_only') {
+						badges.push(E('span', { class: 'ex-device-badge badge-ipv6-only', style: 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall' }, [ '🟣 IPv6 Puro' ]));
+					} else if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
 						badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 					}
 					if (this.dmzActive && ((this.dmzDestIp && this.dmzDestIp === d.ip) || (this.dmzMac && this.dmzMac === d.mac))) {
@@ -3763,7 +3844,9 @@ const devicesMethods = {
 				const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 			}
-			if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+			if (ipProtoMap[d.mac] === 'ipv6_only') {
+				badges.push(E('span', { class: 'ex-device-badge badge-ipv6-only', style: 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall' }, [ '🟣 IPv6 Puro' ]));
+			} else if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
 				badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 			}
 			if (par && par.mode === 'bypass') {
@@ -3889,16 +3972,18 @@ const devicesMethods = {
 	quickReserveSecondary: function(d) {
 		const targetIp = (d.ip && d.ip !== '—') ? d.ip : '192.168.1.2';
 		const targetName = d.name || 'ARK-Secundario';
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['device-reserve-secondary', d.mac, targetIp, targetName]).then(L.bind(function(r) {
-			ui.addNotification(null, E('p', {}, [
-				'🔒 MAC ', E('strong', {}, [d.mac]), ' amarrado com sucesso ao IP ', E('strong', {}, [targetIp]), '! Nenhum outro aparelho receberá este IP.'
-			]), 'info');
-			window.setTimeout(function() {
-				window.location.reload();
-			}, 1500);
-		}, this)).catch(function(e) {
-			ui.addNotification(null, E('p', {}, ['Erro ao amarrar MAC: ' + (e.message || e)]), 'danger');
-		});
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['device-reserve-secondary', d.mac, targetIp, targetName])
+			.then(checkControlResult)
+			.then(L.bind(function(r) {
+				ui.addNotification(null, E('p', {}, [
+					'🔒 MAC ', E('strong', {}, [d.mac]), ' amarrado com sucesso ao IP ', E('strong', {}, [targetIp]), '! Nenhum outro aparelho receberá este IP.'
+				]), 'info');
+				window.setTimeout(function() {
+					window.location.reload();
+				}, 1500);
+			}, this)).catch(function(e) {
+				ui.addNotification(null, E('p', {}, ['Erro ao amarrar MAC: ' + (e.message || e)]), 'danger');
+			});
 	},
 	quickReserveIot: function(d) {
 		const targetIp = (d.ip && d.ip !== '—') ? d.ip : '';
@@ -4004,7 +4089,9 @@ const devicesMethods = {
 			btn.disabled = true;
 			btn.textContent = translateText('Limpando…');
 		}
-		fs.exec('/usr/sbin/equipe-dashboard-control', ['flush-stale-leases']).then(L.bind(function(res) {
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['flush-stale-leases'])
+			.then(checkControlResult)
+			.then(L.bind(function(res) {
 			let count = 0;
 			try {
 				const json = JSON.parse(res.stdout || '{}');
@@ -4525,54 +4612,84 @@ const devicesMethods = {
 			]));
 
 			// --- Seção: Protocolo de Internet / IPv6 Individual ---
-			let ipv6Allowed = (state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1);
+			const globalIpv6Mode = state.global_ipv6_mode || ((values((this.currentData || {}).equipeDashboardConfig).ipv6 || {}).mode) || 'dual_stack';
+			const globalIpv6Disabled = (globalIpv6Mode === 'ipv4_only');
+			let selectedIpProtocol = state.ip_protocol || ((state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1) ? 'dual_stack' : 'ipv4_only');
+			if (selectedIpProtocol !== 'dual_stack' && selectedIpProtocol !== 'ipv6_only' && selectedIpProtocol !== 'ipv4_only') {
+				selectedIpProtocol = 'dual_stack';
+			}
+
 			const ipv6BtnDual = E('button', {
 				type: 'button',
-				class: 'ex-priority-option-btn' + (ipv6Allowed ? ' active' : ''),
-				style: 'flex: 1; min-height: 40px; font-weight: 700;',
-				click: function() { setIpv6Mode(true); }
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'dual_stack' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;',
+				click: function() { setIpProtocol('dual_stack', true); }
 			}, [ '⚡ Pilha Dupla (IPv4 + IPv6)' ]);
+
+			const ipv6BtnOnly = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'ipv6_only' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;' + (globalIpv6Disabled ? ' opacity: 0.5; cursor: not-allowed;' : ''),
+				disabled: globalIpv6Disabled ? '' : null,
+				title: globalIpv6Disabled ? 'Ative o IPv6 global no roteador para usar o modo IPv6 Puro' : 'Bloqueia 100% do IPv4 e impede concessão DHCPv4 para este aparelho',
+				click: function() { if (!globalIpv6Disabled) setIpProtocol('ipv6_only', true); }
+			}, [ '🟣 IPv6 Puro (Sem IPv4)' ]);
 
 			const ipv6BtnBlocked = E('button', {
 				type: 'button',
-				class: 'ex-priority-option-btn' + (!ipv6Allowed ? ' active' : ''),
-				style: 'flex: 1; min-height: 40px; font-weight: 700;',
-				click: function() { setIpv6Mode(false); }
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'ipv4_only' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;',
+				click: function() { setIpProtocol('ipv4_only', true); }
 			}, [ '🚫 IPv4 Puro (Bloquear IPv6)' ]);
 
 			const ipv6StatusPill = E('span', {
-				class: 'ex-pill ' + (ipv6Allowed ? 'online' : 'warning'),
-				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
+				class: 'ex-pill online',
+				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0;'
 			});
 
 			const ipv6DescText = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 6px; line-height: 1.4;' });
 
-			const setIpv6Mode = function(allowed) {
-				ipv6Allowed = !!allowed;
-				ipv6BtnDual.classList.toggle('active', ipv6Allowed);
-				ipv6BtnBlocked.classList.toggle('active', !ipv6Allowed);
-				if (ipv6Allowed) {
+			const setIpProtocol = function(proto, fromClick) {
+				selectedIpProtocol = proto;
+				ipv6BtnDual.classList.toggle('active', proto === 'dual_stack');
+				ipv6BtnOnly.classList.toggle('active', proto === 'ipv6_only');
+				ipv6BtnBlocked.classList.toggle('active', proto === 'ipv4_only');
+				ipv6StatusPill.style.background = '';
+				ipv6StatusPill.style.color = '';
+				ipv6StatusPill.style.borderColor = '';
+				if (proto === 'dual_stack') {
 					ipv6StatusPill.className = 'ex-pill online';
 					ipv6StatusPill.textContent = '⚡ PILHA DUPLA (LIBERADO)';
 					ipv6DescText.textContent = 'Este aparelho navega livremente com IPv4 e IPv6 em simultâneo. Recomendado para PCs Gamers, consoles e celulares.';
+				} else if (proto === 'ipv6_only') {
+					ipv6StatusPill.className = 'ex-pill';
+					ipv6StatusPill.style.background = 'rgba(168, 85, 247, 0.2)';
+					ipv6StatusPill.style.color = '#d8b4fe';
+					ipv6StatusPill.style.borderColor = 'rgba(168, 85, 247, 0.45)';
+					ipv6StatusPill.textContent = 'IPv6 PURO (SEM IPv4)';
+					ipv6DescText.textContent = 'Este aparelho não recebe endereço IPv4 no DHCP e tem 100% do tráfego IPv4 bloqueado no firewall. Reserva de IPv4, DMZ, DNS IPv4 e rota WAN IPv4 são desativados enquanto estiver em IPv6 Puro (sites exclusivamente IPv4 não abrirão sem NAT64).';
+					if (fromClick && isReserved) {
+						updateReserveMode(false);
+					}
 				} else {
 					ipv6StatusPill.className = 'ex-pill warning';
 					ipv6StatusPill.textContent = '🚫 BLOQUEIO ATIVO (IPv4 PURO)';
 					ipv6DescText.textContent = 'O firewall do roteador bloqueia 100% do tráfego IPv6 para este aparelho. Ele operará exclusivamente em IPv4 puro (ideal para TV Box, UniTV, IPTV e saídas dedicadas por WAN2).';
 				}
 			};
-			setIpv6Mode(ipv6Allowed);
+			setIpProtocol(selectedIpProtocol, false);
 
 			const ipv6ButtonGroup = E('div', {
 				class: 'ex-priority-button-grid',
 				style: 'margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'
 			}, [
 				ipv6BtnDual,
+				ipv6BtnOnly,
 				ipv6BtnBlocked
 			]);
 
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
-				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;' }, [
 					E('strong', {}, ['🌐 Protocolo de Internet Deste Aparelho (IPv4 / IPv6)']),
 					ipv6StatusPill
 				]),
@@ -4845,10 +4962,15 @@ const devicesMethods = {
 							click: function(ev) {
 								const b = ev.currentTarget;
 								b.disabled = true;
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['wol-target-save', device.mac, name.value.trim() || device.name || 'PC LAN', ipInput.value.trim() || device.ip || '', 'br-lan']).then(function() {
-									b.textContent = '⭐ Favoritado no WoL!';
-									selfDev.refreshWolCardSummary();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wol-target-save', device.mac, name.value.trim() || device.name || 'PC LAN', ipInput.value.trim() || device.ip || '', 'br-lan'])
+									.then(checkControlResult)
+									.then(function() {
+										b.textContent = '⭐ Favoritado no WoL!';
+										selfDev.refreshWolCardSummary();
+									}).catch(function(err) {
+										b.disabled = false;
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+									});
 							}
 						}, ['⭐ Fixar no WoL'])
 					])
@@ -4877,7 +4999,9 @@ const devicesMethods = {
 				btn.textContent = 'Salvando…';
 				const prioEnabled = (selectedPriority !== 'none') ? '1' : '0';
 				const dscpVal = (selectedPriority === 'video') ? 'AF31' : 'AF41';
-				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
+				const isV6Only = (selectedIpProtocol === 'ipv6_only');
+				const finalMode = isV6Only ? 'automatic' : (isReserved ? 'reserved' : 'automatic');
+				const finalIp = isV6Only ? '' : (isReserved ? ipInput.value.trim() : (device.ip || state.ip || ''));
 				const limEnabled = limitToggle.checked ? '1' : '0';
 				const limDown = limitToggle.checked ? (Math.round(Number(downInput.value)) || 0) : 0;
 				const limUp = limitToggle.checked ? (Math.round(Number(upInput.value)) || 0) : 0;
@@ -4885,10 +5009,11 @@ const devicesMethods = {
 				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
 				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
 				const limLanBypass = lanBypassToggle.checked ? '1' : '0';
-				const ipv6AllowedVal = ipv6Allowed ? '1' : '0';
-				const customDnsVal = customDnsInput.value.trim();
-				const dmzVal = dmzToggle.checked ? '1' : '0';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipv6AllowedVal,customDnsVal,dmzVal];
+				const ipProtocolVal = selectedIpProtocol;
+				const customDnsVal = isV6Only ? '' : customDnsInput.value.trim();
+				const dmzVal = isV6Only ? '0' : (dmzToggle.checked ? '1' : '0');
+				const finalWanRoute = isV6Only ? 'default' : selectedWanRoute;
+				const args=['device-save',device.mac,name.value.trim(),finalMode,finalIp,prioEnabled,dscpVal,finalWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipProtocolVal,customDnsVal,dmzVal];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();
@@ -5075,15 +5200,21 @@ const networkMethods = {
 		} else if (activeWans.length < 2) {
 			text('ex-mwan-mode', 'Link Único (Single-WAN)');
 			const toggle = document.getElementById('ex-mwan-toggle');
+			const mwanFeature = (this.capabilities.features && this.capabilities.features.mwan3) || {};
+			const mwanEnabled = !!(mwanFeature.active || (data.mwan && data.mwan.interfaces && Object.keys(data.mwan.interfaces).length > 0));
 			if (toggle) {
-				toggle.checked = false;
+				toggle.checked = mwanEnabled;
 				toggle.disabled = true;
-				toggle.title = 'Requer pelo menos 2 conexões WAN ativas para ativar o Multi-WAN.';
+				toggle.title = mwanEnabled ? 'Multi-WAN em espera: ativará balanceamento/failover automaticamente ao plugar um 2º cabo.' : 'Requer pelo menos 2 conexões WAN ativas para ativar o Multi-WAN.';
 			}
-			text('ex-mwan-toggle-state', 'INDISPONÍVEL (1 WAN)');
-			setPill('ex-mwan-status', 'standby', 'DESATIVADO');
+			text('ex-mwan-toggle-state', mwanEnabled ? 'STANDBY (1 LINK)' : 'DESATIVADO');
+			setPill('ex-mwan-status', 'standby', mwanEnabled ? 'STANDBY (1 LINK)' : 'DESATIVADO');
 			const subEl = document.getElementById('ex-mwan-toggle-desc');
-			if (subEl) subEl.textContent = 'O balanceamento e failover requerem pelo menos 2 conexões WAN ativas para operar. Com apenas 1 link, todo o tráfego flui normalmente por ele.';
+			if (subEl) {
+				subEl.textContent = mwanEnabled
+					? ('Multi-WAN configurado e ativo. Operando em espera com 1 link conectado (' + (activeWans[0] ? activeWans[0].label : 'WAN') + '). O balanceamento/failover engatará automaticamente quando o 2º cabo for conectado.')
+					: 'O balanceamento e failover requerem pelo menos 2 conexões WAN ativas para operar. Com apenas 1 link, todo o tráfego flui normalmente por ele.';
+			}
 		} else {
 			text('ex-mwan-mode', modeLabel);
 			const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
@@ -6555,7 +6686,56 @@ const networkMethods = {
 				savePromptBox
 			]);
 
+			let currentVlan = (cfg && (cfg.ark_vlan || (cfg.device && cfg.device.indexOf('.') !== -1 && cfg.device.split('.')[1]))) || '';
+			const vlanPreset = E('select', {
+				class: 'cbi-input-select',
+				'aria-label': 'Tag de VLAN da Operadora / Fibra',
+				change: function() {
+					if (vlanPreset.value === 'custom') {
+						vlanCustomWrap.style.display = 'block';
+						vlanCustomInput.focus();
+					} else {
+						vlanCustomWrap.style.display = 'none';
+						vlanCustomInput.value = vlanPreset.value;
+					}
+				}
+			}, [
+				E('option', { value: '' }, ['Nenhuma (Sem VLAN • Padrão)']),
+				E('option', { value: '10' }, ['Vivo Fibra (VLAN 10)']),
+				E('option', { value: '35' }, ['Claro / NET Fibra (VLAN 35)']),
+				E('option', { value: '85' }, ['Oi Fibra (VLAN 85)']),
+				E('option', { value: '40' }, ['TIM Live Fibra (VLAN 40)']),
+				E('option', { value: 'custom' }, ['Outra VLAN personalizada (1-4094)…'])
+			]);
+
+			const vlanCustomInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: '1',
+				max: '4094',
+				placeholder: 'Ex: 10, 35, 100',
+				value: currentVlan,
+				style: 'margin-top: 6px; width: 100%;'
+			});
+
+			const vlanCustomWrap = E('div', {
+				style: 'display: none; margin-top: 6px;'
+			}, [
+				E('label', { style: 'font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;' }, ['Digite o número da VLAN (1 a 4094):']),
+				vlanCustomInput
+			]);
+
+			if (currentVlan) {
+				if (['10', '35', '85', '40'].indexOf(String(currentVlan)) !== -1) {
+					vlanPreset.value = String(currentVlan);
+				} else {
+					vlanPreset.value = 'custom';
+					vlanCustomWrap.style.display = 'block';
+				}
+			}
+
 			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,(hint instanceof Node)?hint:(hint?E('small',{class:'ex-muted'},[hint]):'')]);};
+			const vlanField = field('VLAN de Internet (Operadora)', E('div', {}, [vlanPreset, vlanCustomWrap]), 'Necessário em conexões de fibra com modem em Bridge (ex: Vivo VLAN 10, Claro VLAN 35).');
 			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[
 				pppoeProfileBar,
 				field('Usuário PPPoE',username),
@@ -6598,6 +6778,7 @@ const networkMethods = {
 				field('Função',role),
 				field('Porta física',device,'Porta vinculada ao card selecionado'),
 				field('Tipo de conexão',proto),
+				vlanField,
 				field('Prioridade / Métrica (Peso)',metricInput,'Menor número = maior prioridade (ex: WAN1=10, WAN2=20). Não pode haver WANs com o mesmo peso.'),
 				field('Conectividade IPv6',ipv6Switch,'Habilita requisição de endereço e rota IPv6 nesta conexão WAN.'),
 				field(_t('Distribuir IPv6 na LAN'),delegateSwitch,delegateHint),
@@ -6655,13 +6836,23 @@ const networkMethods = {
 						}
 						const chosenIpv6 = ipv6Input.checked ? '1' : '0';
 						const chosenDelegate = (ipv6Input.checked && delegateInput.checked) ? '1' : '0';
+						const chosenVlan = (vlanPreset.value === 'custom' ? vlanCustomInput.value.trim() : vlanPreset.value.trim());
+						if (chosenVlan) {
+							const vNum = parseInt(chosenVlan, 10);
+							if (!vNum || vNum < 1 || vNum > 4094) {
+								if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
+								ui.addNotification(null, E('p', {}, ['VLAN ID inválido. Deve ser um número entre 1 e 4094.']), 'warning');
+								return;
+							}
+						}
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
-						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
-							ui.hideModal();
-							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
-						}).catch(function(e) {
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim(), 'vlan=' + (chosenVlan || '')];
+						return fs.exec('/usr/sbin/equipe-dashboard-control', args)
+							.then(checkControlResult)
+							.then(function(r) {
+								ui.hideModal();
+								reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
+							}).catch(function(e) {
 							if (btn) {
 								btn.removeAttribute('disabled');
 								btn.disabled = false;
@@ -7289,6 +7480,166 @@ const networkModalsMethods = {
 			const presetBtns = [];
 			const chipBtns = [];
 
+			let mtuMode = opt.mtu_mode || (opt.baby_jumbo ? 'auto' : (Number(opt.manual_mtu) > 0 ? 'manual' : 'auto'));
+			let manualMtu = Number(opt.manual_mtu || opt.l3_mtu || (opt.proto === 'pppoe' ? 1492 : 1500));
+			if (manualMtu < 1280 || manualMtu > 2000) manualMtu = (opt.proto === 'pppoe' ? 1492 : 1500);
+
+			const mtuChips = [
+				{ val: 1492, label: '⚡ 1492 (Fibra PPPoE)' },
+				{ val: 1500, label: '🌐 1500 (Ethernet Padrão)' },
+				{ val: 1460, label: '🔌 1460 (Túneis / 6in4)' },
+				{ val: 1420, label: '📡 1420 (VPN / 4G / 5G)' },
+				{ val: 1380, label: '🛰️ 1380 (Starlink)' },
+				{ val: 2000, label: '🚀 2000 (Mini Jumbo)' }
+			];
+			const mtuChipBtns = [];
+
+			const mtuModeAutoBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button',
+				style: 'font-weight:700;font-size:12px;padding:6px 14px;border-radius:8px;',
+				click: function() { mtuMode = 'auto'; babyJumbo = true; updateUI(); }
+			}, ['✨ Automático Inteligente (Fast PMTUD)']);
+
+			const mtuModeManualBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button',
+				style: 'font-weight:700;font-size:12px;padding:6px 14px;border-radius:8px;',
+				click: function() { mtuMode = 'manual'; updateUI(); }
+			}, ['✍️ Modo Manual / Personalizado']);
+
+			const mtuAutoContainer = E('div', { style: 'margin-top:10px;' });
+			const mtuManualContainer = E('div', { style: 'margin-top:10px;' });
+			const mtuCascadeHint = E('div', { class: 'ex-opt-requirement ready', style: 'margin-top:10px;font-size:11.5px;line-height:1.4;' });
+
+			const mtuManualInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 1280,
+				max: 2000,
+				value: manualMtu,
+				style: 'width:110px;font-weight:700;font-size:14px;text-align:center;display:inline-block;margin-right:8px;'
+			});
+
+			const updateMtuCascadeHint = function() {
+				const m = Number(mtuManualInput.value) || manualMtu;
+				const mss4 = Math.max(m - 40, 536);
+				const mss6 = Math.max(m - 60, 1220);
+				const ra = Math.min(m, 1500);
+				const wg = Math.min(Math.max(m - 80, 1280), 1420);
+				while (mtuCascadeHint.firstChild) mtuCascadeHint.removeChild(mtuCascadeHint.firstChild);
+				mtuCascadeHint.appendChild(E('div', {}, [
+					E('strong', { style: 'display:block;margin-bottom:3px;font-size:12px;' }, ['🛡️ Sincronização em Cascata Ativa (Zero Fragmentação):']),
+					'• TCP MSS Clamping: ', E('b', {}, ['IPv4: ' + mss4 + 'B']), ' / ', E('b', {}, ['IPv6: ' + mss6 + 'B']), ' (evita travamento de sites e downloads)', E('br'),
+					'• Anúncio de Rota IPv6 (odhcpd ra_mtu): ', E('b', {}, [ra + 'B']), ' (calibra dispositivos LAN sem alterar rede local)', E('br'),
+					'• Túneis WireGuard (wg0/wgclient): ', E('b', {}, [wg + 'B']), ' (margem segura contra overhead)'
+				]));
+			};
+
+			mtuManualInput.addEventListener('input', function() {
+				let val = parseInt(mtuManualInput.value, 10);
+				if (!isNaN(val)) {
+					if (val >= 1280 && val <= 2000) {
+						manualMtu = val;
+						mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+					}
+					updateMtuCascadeHint();
+				}
+			});
+
+			const mtuChipGrid = E('div', { class: 'ex-opt-chip-grid', style: 'margin-bottom:10px;' });
+			mtuChips.forEach(function(c) {
+				const b = E('button', {
+					type: 'button',
+					class: 'ex-opt-chip',
+					click: function() {
+						manualMtu = c.val;
+						mtuManualInput.value = c.val;
+						mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+						updateMtuCascadeHint();
+					}
+				}, [c.label]);
+				mtuChipBtns.push({ val: c.val, btn: b });
+				mtuChipGrid.appendChild(b);
+			});
+
+			const probeBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button cbi-button-action',
+				style: 'font-size:12px;margin-top:8px;font-weight:600;'
+			}, ['🔍 Testar MTU da Rota Agora (PMTUD)']);
+			const probeStatus = E('div', { style: 'margin-top:6px;' });
+
+			probeBtn.addEventListener('click', function() {
+				probeBtn.disabled = true;
+				probeBtn.textContent = '⏳ Sondando MTU na rota…';
+				while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+				probeStatus.appendChild(E('small', { class: 'ex-muted' }, ['Enviando pacotes de teste com bit DF (Don\'t Fragment) via IPv4 e IPv6…']));
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['wan-probe-mtu', 'iface=' + opt.iface]).then(function(res) {
+					probeBtn.disabled = false;
+					probeBtn.textContent = '🔍 Testar MTU da Rota Novamente';
+					let data = {};
+					try { data = JSON.parse(res.stdout || '{}'); } catch(e) {}
+					const detectedMtu = Number(data.mtu) || 1492;
+					while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+					if (detectedMtu >= 1500) {
+						probeStatus.appendChild(E('small', { class: 'ex-opt-requirement ready', style: 'display:block;font-weight:600;' }, [
+							'✅ Sondagem Concluída: MTU ' + detectedMtu + 'B validado sem fragmentação! Conexão suporta quadro completo (Baby Jumbo).'
+						]));
+					} else {
+						probeStatus.appendChild(E('small', { class: 'ex-opt-requirement ready', style: 'display:block;font-weight:600;' }, [
+							'🛡️ Sondagem Concluída: Concentrador upstream limitou a rota em MTU ' + detectedMtu + ' bytes. O Auto-MTU calibrará TCP MSS e IPv6 para ' + detectedMtu + 'B (zero perda / sem travar sites).'
+						]));
+					}
+				}).catch(function(err) {
+					probeBtn.disabled = false;
+					probeBtn.textContent = '🔍 Testar MTU da Rota Agora (PMTUD)';
+					while (probeStatus.firstChild) probeStatus.removeChild(probeStatus.firstChild);
+					probeStatus.appendChild(E('small', { class: 'ex-opt-requirement warning', style: 'display:block;' }, [
+						'⚠️ Falha na sondagem: ' + (err.message || 'Sem resposta do alvo')
+					]));
+				});
+			});
+
+			(function() {
+				const physMtu = Number(opt.current_mtu || 1500);
+				const l3Mtu = Number(opt.l3_mtu || 0);
+				const probedMtu = Number(opt.probed_mtu || 0);
+				const effMtu = probedMtu || l3Mtu || (opt.proto === 'pppoe' ? 1492 : 1500);
+
+				mtuAutoContainer.appendChild(E('div', { class: 'ex-opt-module-info' }, [
+					E('p', { class: 'ex-muted', style: 'font-size:11.5px;margin-bottom:6px;' }, [
+						'O sistema executa sondagem ativa ultrarrápida (PMTUD com flag DF) para descobrir o maior MTU real da sua conexão sem fragmentação. Se a operadora suportar RFC 4638, eleva a porta para 1508B para entregar MTU 1500 real; se limitar a sessão (ex: 1492B), alinha TCP MSS e IPv6 instantaneamente.'
+					]),
+					(function() {
+						if (effMtu >= 1500) {
+							return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:4px;font-weight:600;' }, [
+								'✅ Status Atual: MTU ' + effMtu + 'B real sem fragmentação na porta ' + (opt.wan_dev || 'WAN') + '.'
+							]);
+						}
+						return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:4px;font-weight:600;' }, [
+							'🛡️ Status Atual: Sessão operando em MTU ' + effMtu + ' bytes (sincronizado com o concentrador da operadora, zero perdas).'
+						]);
+					})(),
+					probeBtn,
+					probeStatus
+				]));
+
+				mtuManualContainer.appendChild(E('div', {}, [
+					E('p', { class: 'ex-muted', style: 'font-size:11.5px;margin-bottom:8px;' }, [
+						'Escolha um valor predefinido comum ou digite o tamanho de MTU desejado (entre 1280 e 2000 bytes). O valor será gravado no kernel e propagado em cascata para todas as camadas de rede.'
+					]),
+					mtuChipGrid,
+					E('div', { style: 'display:flex;align-items:center;margin-top:8px;gap:8px;' }, [
+						E('span', { style: 'font-weight:600;font-size:12.5px;' }, ['MTU Personalizado:']),
+						mtuManualInput,
+						E('span', { class: 'ex-muted', style: 'font-size:12px;' }, ['bytes (intervalo 1280 a 2000)'])
+					]),
+					mtuCascadeHint
+				]));
+			})();
+
 			const tcpInput = E('input', { type: 'checkbox' });
 			const flowInput = E('input', { type: 'checkbox' });
 			const jumboInput = E('input', { type: 'checkbox' });
@@ -7296,7 +7647,7 @@ const networkModalsMethods = {
 			const igmpInput = E('input', { type: 'checkbox', change: function() { igmpSnooping = igmpInput.checked; updateUI(); } });
 			const igmpNotice = E('small', { class: 'ex-opt-requirement', style: 'display:none;margin-top:6px;' });
 			const enableSqmInput = E('input', { type: 'checkbox', checked: '' });
-			enableSqmInput.checked = true;
+			enableSqmInput.checked = (sqmActive || sqmAnyActive) && !flowOffload;
 			const sqmDependency = E('div', { class: 'ex-opt-sqm-dependency' });
 			const selectedSummary = E('div', { class: 'ex-opt-selected-summary' });
 			const globalWarning = E('small', { class: 'ex-muted' });
@@ -7324,7 +7675,7 @@ const networkModalsMethods = {
 					if (saveButton) saveButton.textContent = '💾 Salvar e Aplicar Otimizações';
 					return;
 				}
-				const required = linklayerProfile !== 'none';
+				const required = linklayerProfile !== 'none' && !flowOffload;
 				sqmDependency.style.display = required ? 'flex' : 'none';
 				sqmDependency.className = 'ex-opt-sqm-dependency' + (sqmActive ? ' active' : (!sqmInstalled ? ' missing' : ' warning'));
 				while (sqmDependency.firstChild) sqmDependency.removeChild(sqmDependency.firstChild);
@@ -7356,6 +7707,12 @@ const networkModalsMethods = {
 				tcpInput.checked = tcpTurbo;
 				flowInput.checked = flowOffload;
 				jumboInput.checked = babyJumbo;
+				mtuModeAutoBtn.className = 'btn cbi-button ' + (mtuMode === 'auto' ? 'cbi-button-positive active' : 'cbi-button-neutral');
+				mtuModeManualBtn.className = 'btn cbi-button ' + (mtuMode === 'manual' ? 'cbi-button-positive active' : 'cbi-button-neutral');
+				mtuAutoContainer.style.display = (mtuMode === 'auto') ? 'block' : 'none';
+				mtuManualContainer.style.display = (mtuMode === 'manual') ? 'block' : 'none';
+				mtuChipBtns.forEach(function(item) { item.btn.classList.toggle('active', item.val === manualMtu); });
+				updateMtuCascadeHint();
 				irqInput.checked = !isSingleCore && (irqBalance || isNativeHwIrq);
 				irqInput.disabled = isSingleCore || isNativeHwIrq || !opt.irqbalance_installed;
 				flowInput.disabled = false;
@@ -7399,8 +7756,8 @@ const networkModalsMethods = {
 				}
 
 				const isSatNode = isSatelliteOrAp(self.currentData);
-				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked || linklayerProfile !== 'none');
-				if (flowOffload && isSqmOn) {
+				const isSqmConfigured = !isSatNode && (enableSqmInput.checked || (!flowOffload && (sqmActive || sqmAnyActive)));
+				if (flowOffload && isSatNode) {
 					flowOffload = false;
 					flowInput.checked = false;
 				}
@@ -7408,7 +7765,7 @@ const networkModalsMethods = {
 					flowNotice.style.display = 'block';
 					flowNotice.className = 'ex-opt-requirement ready';
 					flowNotice.textContent = '✓ Pronto e ativo: tráfego acelerado no kernel com menor uso de CPU. SQM/CAKE mantido desligado para evitar conflitos.';
-				} else if (isSqmOn) {
+				} else if (isSqmConfigured) {
 					flowNotice.style.display = 'block';
 					flowNotice.className = 'ex-opt-requirement warning';
 					flowNotice.textContent = '🛡️ Desativado: SQM / CAKE ativo. Fastpath desabilitado para não desviar pacotes da fila anti-bufferbloat.';
@@ -7430,9 +7787,9 @@ const networkModalsMethods = {
 						babyJumbo = !!effective.jumbo;
 					}
 					if (linklayerProfile !== 'none') {
-						flowOffload = false;
-						flowInput.checked = false;
-						enableSqmInput.checked = true;
+						if (!flowOffload && (sqmActive || sqmInstalled)) {
+							enableSqmInput.checked = true;
+						}
 					}
 				}
 				updateUI();
@@ -7482,9 +7839,9 @@ const networkModalsMethods = {
 			flowInput.addEventListener('change', function() {
 				flowOffload = flowInput.checked;
 				if (flowOffload) {
-					linklayerProfile = 'none';
 					enableSqmInput.checked = false;
 				}
+				updateSqmDependency();
 				updateUI();
 			});
 			jumboInput.addEventListener('change', function() { babyJumbo = jumboInput.checked; updateUI(); });
@@ -7528,36 +7885,19 @@ const networkModalsMethods = {
 					]),
 					presetGrid,
 					selectedSummary,
-					E('details', { class: 'ex-opt-advanced', open: babyJumbo ? '' : null, style: 'margin-top:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(127,127,127,0.15);' }, [
-						E('summary', { style: 'cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ex-muted);' }, ['⚙️ Auto-MTU Inteligente PPPoE e Overhead de Pacotes (Avançado)']),
-						E('p', { class: 'ex-muted', style: 'margin-top:8px;margin-bottom:10px;font-size:11.5px;' }, ['Estes parâmetros já foram calibrados pelo perfil escolhido acima. Você pode ativar o Auto-MTU Inteligente abaixo para testar MTU 1500 real na fibra com fallback automático seguro.']),
+					E('details', { class: 'ex-opt-advanced', open: (mtuMode === 'manual' || babyJumbo) ? '' : null, style: 'margin-top:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(127,127,127,0.15);' }, [
+						E('summary', { style: 'cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ex-muted);' }, ['⚙️ Calibração de MTU e Overhead de Pacotes (Avançado)']),
+						E('p', { class: 'ex-muted', style: 'margin-top:8px;margin-bottom:10px;font-size:11.5px;' }, ['Estes parâmetros calibram o tamanho exato de pacote da sua conexão para eliminar fragmentação e latência oculta.']),
 						E('strong', { style: 'display:block;font-size:12px;margin-bottom:6px;' }, ['Perfil de overhead no SQM / CAKE']),
 						chipGrid,
-						E('div', { class: 'ex-opt-module-card', style: 'margin-top:10px;' }, [
-							E('div', { class: 'ex-opt-module-info' }, [
-								E('strong', {}, ['⚡ Auto-MTU Inteligente & Baby Jumbo PPPoE (1500 / 1492 Automático)']),
-								E('p', {}, ['Ativa a sondagem automática de MTU na fibra PPPoE: negocia Baby Jumbo (porta em 1508B / RFC 4638) para entregar MTU 1500 real sem fragmentação; se a operadora limitar a sessão, ajusta sozinho para MTU 1492 (ou o teto exato da fibra) sincronizando TCP MSS e IPv6 sem risco de travar sites. Desligado: fixa em MTU 1492 padrão.']),
-								(function() {
-									const physMtu = Number(opt.current_mtu || 1500);
-									const l3Mtu = Number(opt.l3_mtu || 0);
-									const probedMtu = Number(opt.probed_mtu || 0);
-									const effMtu = probedMtu || l3Mtu || 1492;
-									if (opt.baby_jumbo) {
-										if (effMtu >= 1500) {
-											return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-												'✅ Sondagem Concluída: Sua operadora aceitou Baby Jumbo (RFC 4638)! Porta ' + (opt.wan_dev || 'WAN') + ' em ' + physMtu + 'B e sessão PPPoE operando em MTU 1500 real sem fragmentação.'
-											]);
-										}
-										return E('small', { class: 'ex-opt-requirement ready', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-											'🛡️ Sondagem Concluída: Porta ' + (opt.wan_dev || 'WAN') + ' aberta em ' + physMtu + 'B, mas o concentrador da operadora limitou a sessão PPPoE em ' + effMtu + ' bytes. O Auto-MTU ajustou o túnel PPPoE, o TCP MSS e o IPv6 automaticamente para ' + effMtu + ' bytes (zero fragmentação / sem risco de travar sites).'
-										]);
-									}
-									return E('small', { class: 'ex-muted', style: 'display:block;margin-top:6px;font-weight:600;' }, [
-										'⚪ Modo Fixo Atual: Sessão operando em MTU ' + (l3Mtu || 1492) + ' bytes (porta ' + (opt.wan_dev || 'WAN') + ' em ' + physMtu + 'B, sem sondagem RFC 4638).'
-									]);
-								})()
+						E('div', { class: 'ex-opt-module-card', style: 'margin-top:12px;padding:12px;' }, [
+							E('strong', { style: 'display:block;font-size:13px;margin-bottom:8px;' }, ['🌐 Controle de MTU da Conexão']),
+							E('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;' }, [
+								mtuModeAutoBtn,
+								mtuModeManualBtn
 							]),
-							E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])
+							mtuAutoContainer,
+							mtuManualContainer
 						]),
 						sqmDependency
 					])
@@ -7606,13 +7946,13 @@ const networkModalsMethods = {
 					' ',
 					(saveButton = E('button', { class: 'btn cbi-button cbi-button-positive', click: L.bind(function(ev) {
 						const btn = ev.currentTarget;
-						const requiresSqm = linklayerProfile !== 'none';
+						const isSatNode = isSatelliteOrAp(this.currentData);
+						const requiresSqm = linklayerProfile !== 'none' && !flowOffload;
 						if (requiresSqm && !sqmInstalled) {
 							this.installFeature('sqm');
 							return;
 						}
-						const isSatNode = isSatelliteOrAp(this.currentData);
-						const isSqmOn = !isSatNode && (requiresSqm || (sqmActive && enableSqmInput.checked) || enableSqmInput.checked);
+						const isSqmOn = !isSatNode && !flowOffload && (requiresSqm || (sqmActive && enableSqmInput.checked) || enableSqmInput.checked);
 						const activateSqm = !isSatNode && requiresSqm && !sqmActive && enableSqmInput.checked;
 						const effectiveFlowOffload = (!isSqmOn && flowOffload);
 
@@ -7626,6 +7966,8 @@ const networkModalsMethods = {
 							'flow_offload=' + (effectiveFlowOffload ? '1' : '0'),
 							'linklayer_profile=' + (effectiveFlowOffload ? 'none' : linklayerProfile),
 							'baby_jumbo=' + (babyJumbo ? '1' : '0'),
+							'mtu_mode=' + mtuMode,
+							'manual_mtu=' + manualMtu,
 							'enable_sqm=' + (isSqmOn ? '1' : '0'),
 							'irqbalance=' + (irqBalance ? '1' : '0'),
 							'igmp_snooping=' + (igmpSnooping ? '1' : '0')
@@ -7990,6 +8332,14 @@ const networkModalsMethods = {
 								? clatEngineLabel
 								: ((st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado')
 						])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fallback NAT64 (Jool): ']),
+						E('strong', { style: 'color: ' + (st.nat64_active ? '#a855f7' : '#94a3b8') }, [
+							st.nat64_active
+								? ('Ativo (64:ff9b::/96' + ((st.ipv6_only_macs && st.ipv6_only_macs.length) ? (' • ' + st.ipv6_only_macs.length + ' IPv6 Puro') : '') + ')')
+								: (st.jool_installed ? 'Pronto em Standby (0% CPU)' : 'Sob Demanda')
+						])
 					])
 				])
 			]);
@@ -8108,11 +8458,12 @@ const networkModalsMethods = {
 					],
 					curMode === 'ipv4_only'
 				),
-				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only (Futurista)', 'Single-Stack',
-					'LAN operando puramente em IPv6 sem concessões DHCP IPv4 locais, com síntese DNS64 no dnsmasq.',
+				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only + NAT64/DNS64 (Jool)', 'Single-Stack + Fallback',
+					'LAN operando 100% em IPv6 como primário (sem DHCP IPv4), com DNS64 + NAT64 em kernel (Jool 64:ff9b::/96) e PREF64 apenas como fallback automático para sites/apps IPv4-only.',
 					[
-						'Ideal para laboratórios, testes de novas tecnologias e transição pura para a próxima geração.',
-						'Apenas dispositivos compatíveis com IPv6 navegarão na rede local.'
+						'Sites com IPv6 saem 100% nativos direto (com aceleração PPE em hardware); destinos exclusivamente IPv4 são traduzidos transparentemente pelo Jool NAT64.',
+						'Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 11 via PREF64 e ipv4only.arpa.',
+						'Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS.'
 					],
 					curMode === 'ipv6_only'
 				)
@@ -10810,10 +11161,16 @@ const wifiMethods = {
 					click: L.bind(function(ev) {
 						ev.currentTarget.disabled = true;
 						ev.currentTarget.textContent = 'Desativando Mesh…';
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '0']).then(function() {
-							ui.hideModal();
-							reloadSoon('Enlace Mesh desativado. Reiniciando rádio…', 1500);
-						});
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '0'])
+							.then(checkControlResult)
+							.then(function() {
+								ui.hideModal();
+								reloadSoon('Enlace Mesh desativado. Reiniciando rádio…', 1500);
+							}).catch(function(e) {
+								ev.currentTarget.disabled = false;
+								ev.currentTarget.textContent = 'Desativar Enlace Mesh';
+								ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+							});
 					}, this)
 				}, ['Desativar Enlace Mesh']) : '',
 				' ',
@@ -10835,10 +11192,12 @@ const wifiMethods = {
 							L.bind(function() {
 								btn.disabled = true;
 								btn.textContent = 'Ativando Mesh…';
-								return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '1', id, key]).then(function() {
-									ui.hideModal();
-									reloadSoon('Enlace Mesh ativado com sucesso! Wi-Fi 6, Potência Balanceada e Roaming ativados automaticamente.', 1500);
-								}).catch(function(e) {
+								return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '1', id, key])
+									.then(checkControlResult)
+									.then(function() {
+										ui.hideModal();
+										reloadSoon('Enlace Mesh ativado com sucesso! Wi-Fi 6, Potência Balanceada e Roaming ativados automaticamente.', 1500);
+									}).catch(function(e) {
 									btn.disabled = false;
 									btn.textContent = 'Ativar Enlace Mesh (802.11s)';
 									ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
@@ -20247,7 +20606,7 @@ const doctorPerfMethods = {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); }
+					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); }
 				}, ['⚡ Cloudflare + Google (IPv4)']),
 				E('button', {
 					type: 'button',
@@ -20274,6 +20633,53 @@ const doctorPerfMethods = {
 					click: function(){ applyPreset(['208.67.222.222', '208.67.220.220', '', '']); }
 				}, ['🌐 Cisco OpenDNS'])
 			];
+
+			const benchmarkResultsBox = E('div', {
+				style: 'display: none; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.06); font-size: 0.8rem; line-height: 1.45;'
+			}, []);
+
+			const benchmarkBtn = E('button', {
+				class: 'ex-mini-button ex-dns-benchmark-btn',
+				type: 'button',
+				style: 'padding: 8px 14px; font-weight: 750;',
+				click: function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Testando resolução DNS…';
+					benchmarkResultsBox.style.display = 'block';
+					benchmarkResultsBox.textContent = 'Medindo tempo real de resolução DNS (Cloudflare, Google, Quad9, ControlD, AdGuard e ISP)…';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-benchmark']).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao executar benchmark DNS');
+						let data = {};
+						try { data = JSON.parse(res.stdout || '{}'); } catch(e) { data = {}; }
+						const list = Array.isArray(data.results) ? data.results : [];
+						const rec = Array.isArray(data.recommended) ? data.recommended : [];
+						if (rec.length > 0) {
+							applyPreset([rec[0] || '', rec[1] || '', '', '']);
+							list.forEach(function(item) {
+								if (!item || !item.ok) return;
+								for (let idx = 0; idx < 2; idx++) {
+									if (ipInputs[idx].value.trim() === item.ip) {
+										latBadges[idx].textContent = item.ms + ' ms';
+										latBadges[idx].className = item.ms <= 25 ? 'ex-pill online' : 'ex-pill standby';
+									}
+								}
+							});
+						}
+						const summary = list.map(function(item) {
+							return item.name + ' (' + item.ip + '): ' + (item.ok ? (item.ms + ' ms') : 'Falha');
+						}).join('  •  ');
+						benchmarkResultsBox.textContent = rec.length
+							? ('🏆 Top 2 aplicados (' + rec.join(' + ') + ') — ' + summary)
+							: ('Nenhum servidor respondeu ao teste DNS. ' + summary);
+					}).catch(function(e) {
+						benchmarkResultsBox.textContent = 'Erro no benchmark DNS: ' + e.message;
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '🚀 Auto-Escolher Melhor DNS';
+					});
+				}
+			}, ['🚀 Auto-Escolher Melhor DNS']);
 
 			const testBtn = E('button', {
 				class: 'ex-mini-button ex-dns-test-btn',
@@ -20464,10 +20870,11 @@ const doctorPerfMethods = {
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
 						E('strong', {}, ['Servidores DNS Ativos (2 a 4)']),
-						testBtn
+						E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [ benchmarkBtn, testBtn ])
 					]),
+					benchmarkResultsBox,
 					formGrid,
-					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 8px;' }, ['Você pode preencher de 1 a 4 servidores. Campos vazios serão desconsiderados.'])
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 8px;' }, ['Recomendado: 2 provedores distintos (evita rajadas duplicadas no All-Servers). Campos vazios serão desconsiderados.'])
 				]),
 				E('div', { class: 'right' }, [
 					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
@@ -20789,14 +21196,16 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Limpando memória…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-memory-purge']).then(function(r) {
-					ui.addNotification(null, E('p', {}, ['Memória RAM reciclada e buffers temporários limpos com sucesso!']));
-				}).catch(function(e) {
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				}).finally(function() {
-					btn.disabled = false;
-					btn.textContent = '🧹 Liberar Memória RAM Agora';
-				});
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-memory-purge'])
+					.then(checkControlResult)
+					.then(function(r) {
+						ui.addNotification(null, E('p', {}, ['Memória RAM reciclada e buffers temporários limpos com sucesso!']));
+					}).catch(function(e) {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '🧹 Liberar Memória RAM Agora';
+					});
 			}
 		}, ['🧹 Liberar Memória RAM Agora']);
 
@@ -20809,17 +21218,19 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Otimizando…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge']).then(function(r) {
-					let info = {};
-					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
-					const freeMb = info.overlay_free_kb ? (info.overlay_free_kb / 1024).toFixed(1) : null;
-					ui.addNotification(null, E('p', {}, ['Armazenamento interno otimizado com sucesso!' + (freeMb ? ' (' + freeMb + ' MB livres na Flash)' : '')]));
-				}).catch(function(e) {
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				}).finally(function() {
-					btn.disabled = false;
-					btn.textContent = '💾 Otimizar Espaço Flash';
-				});
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge'])
+					.then(checkControlResult)
+					.then(function(r) {
+						let info = {};
+						try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
+						const freeMb = info.overlay_free_kb ? (info.overlay_free_kb / 1024).toFixed(1) : null;
+						ui.addNotification(null, E('p', {}, ['Armazenamento interno otimizado com sucesso!' + (freeMb ? ' (' + freeMb + ' MB livres na Flash)' : '')]));
+					}).catch(function(e) {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '💾 Otimizar Espaço Flash';
+					});
 			}
 		}, ['💾 Otimizar Espaço Flash']);
 
@@ -20832,7 +21243,9 @@ const doctorPerfMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Calibrando…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune']).then(function(r) {
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune'])
+					.then(checkControlResult)
+					.then(function(r) {
 					let info = {};
 					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
 					let svcsText = '';
@@ -22006,38 +22419,58 @@ const storageWolMethods = {
 							class: 'ex-mini-button',
 							style: 'background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35); font-weight:700;',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'start']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD iniciado e compartilhamentos sincronizados.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'start'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD iniciado e compartilhamentos sincronizados.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['▶️ Iniciar / Ativar']),
 						E('button', {
 							class: 'ex-mini-button',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'restart']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD reiniciado.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'restart'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD reiniciado.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🔄 Reiniciar']),
 						E('button', {
 							class: 'ex-mini-button',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'pause']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD pausado temporariamente.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'pause'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD pausado temporariamente.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['⏸️ Pausar']),
 						E('button', {
 							class: 'ex-mini-button',
 							style: 'background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'disable']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Servidor KSMBD parado e desativado no boot.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-control', 'disable'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Servidor KSMBD parado e desativado no boot.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🛑 Desativar'])
 					])
@@ -22219,20 +22652,30 @@ const storageWolMethods = {
 						if (z.key === 'wan' && desired) {
 							input.checked = false;
 							self.openKsmbdWanWarningModal(function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', 'wan', '1']).then(function() {
-									ui.addNotification(null, E('p', {}, ['Porta 445 liberada na WAN.']), 'warning');
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', 'wan', '1'])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Porta 445 liberada na WAN.']), 'warning');
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}, function() {
 								self.openKsmbdModal();
 							});
 							return;
 						}
 						input.disabled = true;
-						fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', z.key, desired ? '1' : '0']).then(function() {
-							ui.addNotification(null, E('p', {}, ['Acesso KSMBD na rede ' + z.title + (desired ? ' ativado.' : ' bloqueado.')]));
-							self.openKsmbdModal();
-						});
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-interface-access', z.key, desired ? '1' : '0'])
+							.then(checkControlResult)
+							.then(function() {
+								ui.addNotification(null, E('p', {}, ['Acesso KSMBD na rede ' + z.title + (desired ? ' ativado.' : ' bloqueado.')]));
+								self.openKsmbdModal();
+							}).catch(function(err) {
+								ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+								self.openKsmbdModal();
+							});
 					}
 				});
 				zChk.checked = isAllowed;
@@ -22289,20 +22732,30 @@ const storageWolMethods = {
 							style: 'margin-right:6px;',
 							click: function() {
 								const nextPerm = isRo ? 'rw' : 'ro';
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'permission', u.username, nextPerm]).then(function() {
-									ui.addNotification(null, E('p', {}, ['Permissão de ' + u.username + ' alterada para ' + nextPerm.toUpperCase() + '.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'permission', u.username, nextPerm])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Permissão de ' + u.username + ' alterada para ' + nextPerm.toUpperCase() + '.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, [isRo ? 'Mudar p/ Leitura+Gravação' : 'Mudar p/ Só Leitura']),
 						E('button', {
 							class: 'ex-mini-button',
 							style: 'background:rgba(239,68,68,0.15); color:#f87171;',
 							click: function() {
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'delete', u.username]).then(function() {
-									ui.addNotification(null, E('p', {}, ['Conta SMB ' + u.username + ' removida.']));
-									self.openKsmbdModal();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-user-action', 'delete', u.username])
+									.then(checkControlResult)
+									.then(function() {
+										ui.addNotification(null, E('p', {}, ['Conta SMB ' + u.username + ' removida.']));
+										self.openKsmbdModal();
+									}).catch(function(err) {
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+										self.openKsmbdModal();
+									});
 							}
 						}, ['🗑️ Remover'])
 					])
@@ -25259,6 +25712,43 @@ const renderMethods = {
 		]);
 		return card;
 	},
+	renderV2CategoryTabs: function() {
+		const self = this;
+		const tabs = [
+			{ id: 'all', icon: '🌟', label: 'Todos' },
+			{ id: 'wan', icon: '🌐', label: 'Internet & WAN' },
+			{ id: 'wifi', icon: '📶', label: 'Wi-Fi & Redes' },
+			{ id: 'devices', icon: '📱', label: 'Dispositivos' },
+			{ id: 'sqm_perf', icon: '⚡', label: 'SQM & Desempenho' },
+			{ id: 'security_usb', icon: '🛡️', label: 'Segurança & USB' }
+		];
+		let currentActive = 'cockpit';
+		try {
+			currentActive = sessionStorage.getItem('ark_v2_active_panel') || 'cockpit';
+		} catch(e) {}
+
+		const tabButtons = tabs.map(function(t) {
+			const isAct = (t.id === currentActive) || (t.id === 'all' && currentActive === 'cockpit');
+			return E('button', {
+				type: 'button',
+				class: 'ex-cat-tab' + (isAct ? ' is-active' : ''),
+				'data-cat': t.id,
+				click: function() {
+					self.switchV2Panel(t.id === 'all' ? 'all' : t.id);
+				}
+			}, [
+				E('span', { class: 'ex-cat-tab-icon' }, [t.icon]),
+				E('span', { class: 'ex-cat-tab-label' }, [translateText(t.label)])
+			]);
+		});
+
+		return E('nav', {
+			id: 'ex-v2-category-tabs',
+			class: 'ex-category-tabs',
+			'data-ark-panels': 'always',
+			'aria-label': 'Filtro de seções do painel'
+		}, tabButtons);
+	},
 	toggleV2MobileSidebar: function(forceState) {
 		const sb = document.getElementById('ex-v2-sidebar');
 		const bd = document.getElementById('ex-v2-sidebar-backdrop');
@@ -25304,6 +25794,13 @@ const renderMethods = {
 			} else {
 				btn.classList.remove('is-active');
 			}
+		});
+
+		const catTabs = root.querySelectorAll('.ex-cat-tab[data-cat]');
+		Array.prototype.forEach.call(catTabs, function(tab) {
+			const cat = tab.getAttribute('data-cat');
+			const match = (cat === targetPanel) || (cat === 'all' && (targetPanel === 'all' || targetPanel === 'cockpit'));
+			tab.classList.toggle('is-active', match);
 		});
 
 		const singleModulePanels = {
@@ -25544,6 +26041,7 @@ const renderMethods = {
 
 		const mainEl = E('div', { class: 'ex-v2-main' }, [mobileBarEl]);
 		const quickStripEl = this.renderV2QuickStatusStrip(data);
+		const categoryTabsEl = this.renderV2CategoryTabs();
 		const statusOverviewEl = this.renderV2CockpitStatusOverview(data);
 		const switchPortsCardEl = this.renderV2SwitchPortsCard(data);
 
@@ -25551,6 +26049,7 @@ const renderMethods = {
 			mainEl.appendChild(el);
 			if (el.classList && el.classList.contains('ex-health-strip')) {
 				mainEl.appendChild(quickStripEl);
+				mainEl.appendChild(categoryTabsEl);
 				mainEl.appendChild(statusOverviewEl);
 			}
 			if (el.id === 'ex-history-samples') {

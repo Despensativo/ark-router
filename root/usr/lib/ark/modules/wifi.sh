@@ -147,18 +147,21 @@ wifi_cleanup_mesh_interfaces() {
 }
  
 wifi_get_ap_sections() {
-	local net mode
+	local net mode s ifaces
 	local kind="${1:-main}"
 	local sections=""
 	local r6="$(wifi_radio_6g)"
 
+	ifaces="$(uci -q show wireless 2>/dev/null | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1)"
 	if [ "$kind" = "main" ]; then
-		sections="$(uci -q show wireless 2>/dev/null | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+		for s in $ifaces; do
 			case "$s" in *guest*) continue ;; esac
 			net="$(uci -q get "wireless.$s.network")"
 			mode="$(uci -q get "wireless.$s.mode" || echo ap)"
-			[ "$mode" = "ap" ] && { [ "$net" = "lan" ] || [ -z "$net" ]; } && echo "$s"
-		done)"
+			if [ "$mode" = "ap" ] && { [ "$net" = "lan" ] || [ -z "$net" ]; }; then
+				sections="${sections:+$sections }$s"
+			fi
+		done
 		if [ -z "$sections" ]; then
 			if uci -q get wireless.wifi0_ap >/dev/null || uci -q get wireless.wifi0 >/dev/null; then
 				sections="wifi0_ap wifi1_ap"
@@ -169,10 +172,10 @@ wifi_get_ap_sections() {
 			fi
 		fi
 	elif [ "$kind" = "guest" ]; then
-		sections="$(uci -q show wireless 2>/dev/null | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+		for s in $ifaces; do
 			net="$(uci -q get "wireless.$s.network")"
-			[ "$net" = "guest" ] && echo "$s"
-		done)"
+			[ "$net" = "guest" ] && sections="${sections:+$sections }$s"
+		done
 		if [ -z "$sections" ]; then
 			if uci -q get wireless.wifi0_guest >/dev/null || uci -q get wireless.wifi0 >/dev/null; then
 				sections="wifi0_guest wifi1_guest"
@@ -825,6 +828,7 @@ handle_wifi() {
 			fi
 		done
 		uci commit wireless
+		ark_usteer_sync_ssids 0
 		uci commit network 2>/dev/null || true
 		uci commit dhcp 2>/dev/null || true
 		uci commit firewall 2>/dev/null || true
@@ -838,7 +842,7 @@ handle_wifi() {
 		if [ "$wifi_kind" = guest ]; then
 			(sleep 2; /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		else
-			(sleep 1; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
+			(sleep 1; wifi reload >/dev/null 2>&1 || true; [ -x /etc/init.d/usteer ] && pidof usteerd >/dev/null 2>&1 && /etc/init.d/usteer reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		fi
 		echo 'ok'
 		;;
@@ -925,9 +929,10 @@ handle_wifi() {
 			fi
 		fi
 		uci commit wireless
+		ark_usteer_sync_ssids 0
 		uci commit network 2>/dev/null || true
 		uci commit firewall 2>/dev/null || true
-		(sleep 2; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
+		(sleep 2; wifi reload >/dev/null 2>&1 || true; [ -x /etc/init.d/usteer ] && pidof usteerd >/dev/null 2>&1 && /etc/init.d/usteer reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-delete)
@@ -940,7 +945,8 @@ handle_wifi() {
 			esac
 		done
 		uci commit wireless
-		(sleep 2; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
+		ark_usteer_sync_ssids 0
+		(sleep 2; wifi reload >/dev/null 2>&1 || true; [ -x /etc/init.d/usteer ] && pidof usteerd >/dev/null 2>&1 && /etc/init.d/usteer reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	channels)
@@ -1544,6 +1550,9 @@ EOF
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
 				uci -q set "wireless.$iface.max_inactivity=600"
+				[ "$(uci -q get wireless.$iface.encryption 2>/dev/null || echo '')" != "none" ] && \
+					[ "$(uci -q get wireless.$iface.network || echo lan)" = "lan" ] && \
+					uci -q set "wireless.$iface.auth_cache=1"
 
 				if ark_hostapd_has_wnm; then
 					uci -q set "wireless.$iface.ieee80211v=1"
@@ -1647,38 +1656,7 @@ EOF
 
 					uci -q set equipe_dashboard.wifi.usteer_installing=0
 					if [ -x /etc/init.d/usteer ] || [ "$inst_ok" = "1" ]; then
-						touch /etc/config/usteer 2>/dev/null || true
-						[ -n "$(uci -q get usteer.@usteer[0] 2>/dev/null)" ] || uci -q add usteer usteer >/dev/null 2>&1 || true
-						uci -q set usteer.@usteer[0].network='lan'
-						uci -q set usteer.@usteer[0].syslog='1'
-						uci -q set usteer.@usteer[0].local_mode='1'
-						uci -q set usteer.@usteer[0].link_measurement_interval='0'
-						uci -q set usteer.@usteer[0].min_snr='0'
-						uci -q set usteer.@usteer[0].load_balancing_threshold='3'
-						uci -q set usteer.@usteer[0].band_steering_threshold='5'
-						uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-						uci -q set usteer.@usteer[0].load_kick_enabled='0'
-						uci -q set usteer.@usteer[0].roam_kick_delay='60000'
-						uci -q set usteer.@usteer[0].roam_scan_snr='-74'
-						uci -q set usteer.@usteer[0].roam_trigger_snr='-78'
-						uci -q set usteer.@usteer[0].signal_diff_threshold='8'
-						uci -q set usteer.@usteer[0].band_steering_interval='120000'
-						uci -q set usteer.@usteer[0].max_retries='3'
-						uci -q delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-						uci -q delete usteer.@usteer[0].ssid_list 2>/dev/null || true
-						seen_ssids=""
-						for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
-							[ "$(uci -q get wireless.$iface.mode || echo ap)" = "ap" ] || continue
-							[ "$(uci -q get wireless.$iface.network || echo lan)" = "lan" ] || continue
-							[ "$(uci -q get wireless.$iface.disabled || echo 0)" = "1" ] && continue
-							s_name="$(uci -q get wireless.$iface.ssid)"
-							[ -n "$s_name" ] || continue
-							case " $seen_ssids " in *" $s_name "*) ;; *)
-								uci -q add_list "usteer.@usteer[0].ssid_list=$s_name"
-								seen_ssids="$seen_ssids $s_name"
-							;; esac
-						done
-						uci commit usteer 2>/dev/null || true
+						ark_usteer_apply_defaults
 						/etc/init.d/usteer enable >/dev/null 2>&1 || true
 						/etc/init.d/usteer restart >/dev/null 2>&1 || true
 						uci -q set equipe_dashboard.wifi.usteer_enabled=1
@@ -1688,27 +1666,7 @@ EOF
 			else
 				uci -q set equipe_dashboard.wifi.usteer_installing=0
 				uci commit equipe_dashboard 2>/dev/null || true
-				touch /etc/config/usteer 2>/dev/null || true
-				[ -n "$(uci -q get usteer.@usteer[0] 2>/dev/null)" ] || uci -q add usteer usteer >/dev/null 2>&1 || true
-				uci -q set usteer.@usteer[0].network='lan'
-				uci -q set usteer.@usteer[0].syslog='1'
-				uci -q set usteer.@usteer[0].local_mode='1'
-				uci -q set usteer.@usteer[0].link_measurement_interval='0'
-				uci -q set usteer.@usteer[0].min_snr='0'
-				uci -q set usteer.@usteer[0].load_balancing_threshold='3'
-				uci -q set usteer.@usteer[0].band_steering_threshold='5'
-				uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-				uci -q set usteer.@usteer[0].load_kick_enabled='0'
-				uci -q set usteer.@usteer[0].roam_kick_delay='60000'
-				uci -q set usteer.@usteer[0].roam_scan_snr='-74'
-				uci -q set usteer.@usteer[0].roam_trigger_snr='-78'
-				uci -q set usteer.@usteer[0].signal_diff_threshold='8'
-				uci -q set usteer.@usteer[0].band_steering_interval='120000'
-				uci -q set usteer.@usteer[0].max_retries='3'
-				uci -q delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-				uci -q delete usteer.@usteer[0].ssid_list 2>/dev/null || true
-				seen_ssids=""
-				# Garante que 802.11v (bss_transition se suportado), 802.11k e RNR estejam ativos nos APs LAN para o usteer operar, mantendo blindagem de sono em todos os APs
+				# Garante que 802.11v (bss_transition se suportado), 802.11k, RNR e auth_cache estejam ativos nos APs LAN para o usteer operar, mantendo blindagem de sono em todos os APs
 				for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 					[ "$(uci -q get wireless.$iface.mode || echo ap)" = "ap" ] || continue
 					uci -q set "wireless.$iface.disassoc_low_ack=0"
@@ -1721,21 +1679,13 @@ EOF
 						uci -q set "wireless.$iface.rrm_neighbor_report=1"
 						uci -q set "wireless.$iface.rrm_beacon_report=1"
 						uci -q set "wireless.$iface.rnr=1"
+						[ "$(uci -q get wireless.$iface.encryption 2>/dev/null || echo '')" != "none" ] && uci -q set "wireless.$iface.auth_cache=1"
 						if ark_hostapd_has_wnm; then
 							uci -q set "wireless.$iface.ieee80211v=1"
 							uci -q set "wireless.$iface.bss_transition=1"
 						else
 							uci -q delete "wireless.$iface.ieee80211v" 2>/dev/null || true
 							uci -q delete "wireless.$iface.bss_transition" 2>/dev/null || true
-						fi
-						if [ "$(uci -q get wireless.$iface.disabled || echo 0)" != "1" ]; then
-							s_name="$(uci -q get wireless.$iface.ssid)"
-							if [ -n "$s_name" ]; then
-								case " $seen_ssids " in *" $s_name "*) ;; *)
-									uci -q add_list "usteer.@usteer[0].ssid_list=$s_name"
-									seen_ssids="$seen_ssids $s_name"
-								;; esac
-							fi
 						fi
 					else
 						uci -q delete "wireless.$iface.ieee80211k" 2>/dev/null || true
@@ -1745,8 +1695,8 @@ EOF
 						uci -q delete "wireless.$iface.bss_transition" 2>/dev/null || true
 					fi
 				done
-				uci commit usteer 2>/dev/null || true
 				uci commit wireless 2>/dev/null || true
+				ark_usteer_apply_defaults
 				[ -x /etc/init.d/usteer ] && {
 					/etc/init.d/usteer enable >/dev/null 2>&1 || true
 					/etc/init.d/usteer restart >/dev/null 2>&1 || true
@@ -2404,6 +2354,9 @@ EOF
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
 				uci -q set "wireless.$iface.max_inactivity=600"
+				[ "$(uci -q get wireless.$iface.encryption 2>/dev/null || echo '')" != "none" ] && \
+					[ "$(uci -q get wireless.$iface.network || echo lan)" = "lan" ] && \
+					uci -q set "wireless.$iface.auth_cache=1"
 			done
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			uci commit equipe_dashboard 2>/dev/null || true

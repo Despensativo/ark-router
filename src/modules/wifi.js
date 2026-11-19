@@ -2149,10 +2149,16 @@ const wifiMethods = {
 					click: L.bind(function(ev) {
 						ev.currentTarget.disabled = true;
 						ev.currentTarget.textContent = 'Desativando Mesh…';
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '0']).then(function() {
-							ui.hideModal();
-							reloadSoon('Enlace Mesh desativado. Reiniciando rádio…', 1500);
-						});
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '0'])
+							.then(checkControlResult)
+							.then(function() {
+								ui.hideModal();
+								reloadSoon('Enlace Mesh desativado. Reiniciando rádio…', 1500);
+							}).catch(function(e) {
+								ev.currentTarget.disabled = false;
+								ev.currentTarget.textContent = 'Desativar Enlace Mesh';
+								ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+							});
 					}, this)
 				}, ['Desativar Enlace Mesh']) : '',
 				' ',
@@ -2174,10 +2180,12 @@ const wifiMethods = {
 							L.bind(function() {
 								btn.disabled = true;
 								btn.textContent = 'Ativando Mesh…';
-								return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '1', id, key]).then(function() {
-									ui.hideModal();
-									reloadSoon('Enlace Mesh ativado com sucesso! Wi-Fi 6, Potência Balanceada e Roaming ativados automaticamente.', 1500);
-								}).catch(function(e) {
+								return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-set', '1', id, key])
+									.then(checkControlResult)
+									.then(function() {
+										ui.hideModal();
+										reloadSoon('Enlace Mesh ativado com sucesso! Wi-Fi 6, Potência Balanceada e Roaming ativados automaticamente.', 1500);
+									}).catch(function(e) {
 									btn.disabled = false;
 									btn.textContent = 'Ativar Enlace Mesh (802.11s)';
 									ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');

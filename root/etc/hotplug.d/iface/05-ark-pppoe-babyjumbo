@@ -7,10 +7,61 @@
 [ -n "$INTERFACE" ] || exit 0
 [ -n "$DEVICE" ] || exit 0
 
-# Isolamento estrito: atua SOMENTE em interfaces PPPoE (nunca interfere em DHCP, IPoE ou IP Fixo)
+# Atua em interfaces WAN (PPPoE, DHCP, IP Fixo, Starlink, QMI)
+is_wan=0
+case "$INTERFACE" in
+	wan*|wwan*) is_wan=1 ;;
+	*) case "$DEVICE" in pppoe-*) is_wan=1 ;; esac ;;
+esac
+[ "$is_wan" = 1 ] || exit 0
+
+[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+
+command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+
+man_mtu="$(uci -q get "equipe_dashboard.wan_profiles.${INTERFACE}_manual_mtu" 2>/dev/null || uci -q get "network.$INTERFACE.mtu" 2>/dev/null || true)"
+mtu_mode="$(uci -q get "equipe_dashboard.wan_profiles.${INTERFACE}_mtu_mode" 2>/dev/null || true)"
+
+# Se modo manual foi configurado pelo usuario (1280 a 2000 bytes) ou MTU fixo definido na interface
+if [ "$mtu_mode" = "manual" ] && [ -n "$man_mtu" ] && [ "$man_mtu" -ge 1280 ] 2>/dev/null && [ "$man_mtu" -le 2000 ] 2>/dev/null; then
+	cur_dev_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	[ "$cur_dev_mtu" = "$man_mtu" ] || ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
+	printf '%s\n' "$man_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+	command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
+	exit 0
+fi
+
+# Se houver MTU explicito configurado na interface (ex: network.wan.mtu=1492)
+if [ -n "$man_mtu" ] && [ "$man_mtu" -ge 1280 ] 2>/dev/null && [ "$man_mtu" -lt 1500 ] 2>/dev/null; then
+	cur_dev_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	[ "$cur_dev_mtu" = "$man_mtu" ] || ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
+	printf '%s\n' "$man_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+fi
+
+# Se nao for interface PPPoE (ex: eth1 DHCP/Static), e nao ha configuracao especial,
+# dispara sondagem assincrona em background para auto-detectar o MTU da rota se em modo auto
 case "$DEVICE" in
 	pppoe-*) ;;
-	*) exit 0 ;;
+	*)
+		if [ "$mtu_mode" = "auto" ] || [ -z "$mtu_mode" ]; then
+			(
+				sleep 2
+				if command -v ark_probe_path_mtu >/dev/null 2>&1; then
+					probed="$(ark_probe_path_mtu "$INTERFACE")"
+					if [ -n "$probed" ] && [ "$probed" -ge 1280 ] 2>/dev/null; then
+						cur_d_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+						if [ "$cur_d_mtu" != "$probed" ] && [ "$probed" -lt 1500 ]; then
+							ip link set "$DEVICE" mtu "$probed" 2>/dev/null || true
+						fi
+					fi
+				fi
+				command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+				command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene
+			) >/dev/null 2>&1 &
+		fi
+		exit 0
+		;;
 esac
 
 [ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh

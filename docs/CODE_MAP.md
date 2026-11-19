@@ -22,79 +22,80 @@
 
 | Comando RPC (`equipe-dashboard-control`) | Tipo / Lock | Handler Backend (`arquivo:linha`) | Chamadores Frontend (`arquivo:linha [método]`) |
 | :--- | :--- | :--- | :--- |
-| `adblock-blacklist-sync` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1542` (`handle_adblock`) | `src/modules/adblock.js:623` (`openAdblockSetupModal`) |
-| `adblock-sso-login` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1522` (`handle_adblock`) | `src/modules/adblock.js:184` (`openAdguardWithSSO`)<br>`src/modules/adblock.js:217` (`openAdguardSSOModal`) |
-| `adblock-uninstall` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1559` (`handle_adblock`) | `src/modules/adblock.js:289` (`openAdguardUninstallModal`) |
-| `adblock-whitelist-sync` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1545` (`handle_adblock`) | `src/modules/adblock.js:680` (`openAdblockSetupModal`) |
+| `adblock-blacklist-sync` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1562` (`handle_adblock`) | `src/modules/adblock.js:623` (`openAdblockSetupModal`) |
+| `adblock-sso-login` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1542` (`handle_adblock`) | `src/modules/adblock.js:184` (`openAdguardWithSSO`)<br>`src/modules/adblock.js:217` (`openAdguardSSOModal`) |
+| `adblock-uninstall` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1579` (`handle_adblock`) | `src/modules/adblock.js:289` (`openAdguardUninstallModal`) |
+| `adblock-whitelist-sync` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/adblock.sh:1565` (`handle_adblock`) | `src/modules/adblock.js:680` (`openAdblockSetupModal`) |
 | `appearance` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2199` (`handle_ezsetup`) | `src/modules/system.js:72` (`setAppearance`) |
-| `asu-check-toggle` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1532` (`handle_system`) | `src/modules/system.js:652` (`selfUpdatePanel`) |
-| `autowan-can-convert-wan` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1150` (`handle_network`) | `src/modules/render.js:616` (`render`) |
-| `autowan-policy-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1111` (`handle_network`) | `src/modules/network.js:234` (`setMwanMode`)<br>`src/modules/network.js:236` (`setMwanMode`)<br>`src/modules/render.js:768` (`render`) |
-| `autowan-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:997` (`handle_network`) | `src/modules/render.js:682` (`render`)<br>`src/modules/render.js:730` (`render`) |
-| `autowan-wan-to-lan` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1153` (`handle_network`) | `src/modules/render.js:353` (`render`)<br>`src/modules/render.js:599` (`render`)<br>`src/modules/render.js:651` (`render`) |
+| `asu-check-toggle` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1648` (`handle_system`) | `src/modules/system.js:652` (`selfUpdatePanel`) |
+| `autowan-can-convert-wan` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1183` (`handle_network`) | `src/modules/render.js:616` (`render`) |
+| `autowan-policy-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1144` (`handle_network`) | `src/modules/network.js:240` (`setMwanMode`)<br>`src/modules/network.js:242` (`setMwanMode`)<br>`src/modules/render.js:768` (`render`) |
+| `autowan-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1030` (`handle_network`) | `src/modules/render.js:682` (`render`)<br>`src/modules/render.js:730` (`render`) |
+| `autowan-wan-to-lan` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1186` (`handle_network`) | `src/modules/render.js:353` (`render`)<br>`src/modules/render.js:599` (`render`)<br>`src/modules/render.js:651` (`render`) |
 | `cleanup-apply` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2546` (`handle_ezsetup`) | `src/modules/ezsetup.js:845` (`showArkCleanup`) |
 | `cleanup-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2543` (`handle_ezsetup`) | `src/modules/ezsetup.js:822` (`showArkCleanup`) |
 | `country` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1333` (`handle_ezsetup`) | `src/modules/wifi.js:1822` (`changeCountry`) |
 | `device-fingerprints` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1215` (`handle_devices`) | `src/modules/lifecycle.js:243` (`fetchData`) |
-| `device-reserve-quick` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1389` (`handle_devices`) | `src/modules/devices.js:930` (`quickReserveIot`) |
-| `device-reserve-secondary` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1352` (`handle_devices`) | `src/modules/devices.js:907` (`quickReserveSecondary`) |
-| `device-stations` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1712` (`handle_devices`) | `src/modules/lifecycle.js:244` (`fetchData`) |
-| `device-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1421` (`handle_devices`) | `src/modules/devices.js:1050` (`configureDevice`) |
-| `dmz-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1399` (`handle_system`) | `src/modules/system.js:1663` (`dmzCard`)<br>`src/modules/system.js:1787` (`updateDmzStatus`)<br>`src/modules/system.js:2029` (`showDmzModal`)<br>`src/modules/system.js:2059` (`showDmzModal`) |
-| `dmz-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1396` (`handle_system`) | `src/modules/system.js:1732` (`updateDmzStatus`)<br>`src/modules/system.js:1822` (`showDmzModal`) |
-| `dns-turbo-doh` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1460` (`handle_system`) | `src/modules/doctor_perf.js:344` (`openDnsTurboModal`) |
-| `dns-turbo-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1452` (`handle_system`) | `src/modules/doctor_perf.js:93` (`openDnsTurboModal`) |
-| `doctor-fix` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/doctor.sh:2551` (`handle_doctor`) | `src/modules/doctor_perf.js:1648` (`runDoctorFix`) |
-| `doctor-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2543` (`handle_doctor`) | `src/modules/doctor_perf.js:1553` (`showDoctorModal`) |
-| `doctor-run` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2547` (`handle_doctor`) | `src/modules/doctor_perf.js:1621` (`runDoctorAudit`) |
-| `doctor-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2539` (`handle_doctor`) | `src/modules/lifecycle.js:339` (`fetchData`) |
+| `device-reserve-quick` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1389` (`handle_devices`) | `src/modules/devices.js:981` (`quickReserveIot`) |
+| `device-reserve-secondary` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1352` (`handle_devices`) | `src/modules/devices.js:956` (`quickReserveSecondary`) |
+| `device-stations` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1795` (`handle_devices`) | `src/modules/lifecycle.js:244` (`fetchData`) |
+| `device-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1421` (`handle_devices`) | `src/modules/devices.js:1103` (`configureDevice`) |
+| `dmz-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1512` (`handle_system`) | `src/modules/system.js:1663` (`dmzCard`)<br>`src/modules/system.js:1787` (`updateDmzStatus`)<br>`src/modules/system.js:2029` (`showDmzModal`)<br>`src/modules/system.js:2059` (`showDmzModal`) |
+| `dmz-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1509` (`handle_system`) | `src/modules/system.js:1732` (`updateDmzStatus`)<br>`src/modules/system.js:1822` (`showDmzModal`) |
+| `dns-turbo-benchmark` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1578` (`handle_system`) | `src/modules/doctor_perf.js:289` (`openDnsTurboModal`) |
+| `dns-turbo-doh` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1573` (`handle_system`) | `src/modules/doctor_perf.js:391` (`openDnsTurboModal`) |
+| `dns-turbo-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1565` (`handle_system`) | `src/modules/doctor_perf.js:93` (`openDnsTurboModal`) |
+| `doctor-fix` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/doctor.sh:2716` (`handle_doctor`) | `src/modules/doctor_perf.js:1702` (`runDoctorFix`) |
+| `doctor-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2708` (`handle_doctor`) | `src/modules/doctor_perf.js:1607` (`showDoctorModal`) |
+| `doctor-run` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2712` (`handle_doctor`) | `src/modules/doctor_perf.js:1675` (`runDoctorAudit`) |
+| `doctor-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/doctor.sh:2704` (`handle_doctor`) | `src/modules/lifecycle.js:339` (`fetchData`) |
 | `ez-setup-apply` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1411` (`handle_ezsetup`) | `src/modules/ezsetup.js:645` (`showEzSetup`) |
 | `ez-setup-install-modules` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1635` (`handle_ezsetup`) | `src/modules/ezsetup.js:687` (`showEzSetup`) |
 | `ez-setup-reset` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1311` (`handle_ezsetup`) | `src/modules/ezsetup.js:713` (`showEzSetup`) |
 | `ez-setup-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:1308` (`handle_ezsetup`) | `src/modules/ezsetup.js:4` (`loadEzSetup`) |
-| `fast-targets` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1488` (`handle_system`) | `src/modules/speedtest.js:161` (`showEmbedSpeedtest`) |
+| `fast-targets` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1604` (`handle_system`) | `src/modules/speedtest.js:161` (`showEmbedSpeedtest`) |
 | `feature-dev-mode` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2227` (`handle_ezsetup`) | `src/modules/system.js:3217` (`toggleDevMode`) |
-| `feature-install` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2264` (`handle_ezsetup`) | `src/modules/network.js:301` (`toggleMwan3`)<br>`src/modules/system.js:971` (`installFeature`) |
+| `feature-install` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2264` (`handle_ezsetup`) | `src/modules/network.js:307` (`toggleMwan3`)<br>`src/modules/system.js:971` (`installFeature`) |
 | `feature-install-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2436` (`handle_ezsetup`) | `src/modules/system.js:86` (`loadFeatureInstallLog`) |
 | `feature-install-missing` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2440` (`handle_ezsetup`) | `src/modules/system.js:929` (`installMissingFeatures`) |
 | `feature-install-missing-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2537` (`handle_ezsetup`) | `src/modules/system.js:907` (`loadMissingInstallLog`) |
 | `feature-install-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2419` (`handle_ezsetup`) | `src/modules/system.js:741` (`pollFeatureInstall`) |
 | `feature-menu-policy` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2242` (`handle_ezsetup`) | `src/modules/system.js:3253` (`toggleShowUninstalledMenus`) |
 | `features` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:1694` (`handle_ezsetup`) | `src/modules/lifecycle.js:34` (`fetchCapabilities`)<br>`src/modules/lifecycle.js:57` (`fetchCapabilities`) |
-| `flush-stale-leases` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1709` (`handle_devices`) | `src/modules/devices.js:1022` (`flushStaleLeases`) |
-| `https-redirect` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1515` (`handle_system`) | `src/modules/system.js:76` (`changeHttpsRedirect`) |
-| `ipv6-disable-full` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1946` (`handle_network`) | `src/modules/network_modals.js:707` (`disableIpv6Full`) |
-| `ipv6-mode-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1937` (`handle_network`) | `src/modules/network_modals.js:801` (`showIpv6Modal`) |
-| `ipv6-relay-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1940` (`handle_network`) | `src/modules/network_modals.js:925` (`showIpv6Modal`) |
-| `ipv6-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1934` (`handle_network`) | `src/modules/network_modals.js:727` (`showIpv6Modal`) |
-| `irqbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1302` (`handle_sqm`) | `src/modules/doctor_perf.js:964` (`systemPerfCard`)<br>`src/modules/doctor_perf.js:991` (`systemPerfCard`) |
-| `ksmbd-control` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:423` (`handle_storage_wol`) | `src/modules/storage_wol.js:72` (`ksmbdCard`)<br>`src/modules/storage_wol.js:339` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:348` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:357` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:367` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:390` (`openKsmbdModal`) |
-| `ksmbd-disk-action` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:571` (`handle_storage_wol`) | `src/modules/storage_wol.js:204` (`openKsmbdFormatConfirmModal`)<br>`src/modules/storage_wol.js:429` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:444` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:460` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:481` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:514` (`openKsmbdModal`) |
-| `ksmbd-interface-access` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:496` (`handle_storage_wol`) | `src/modules/storage_wol.js:552` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:562` (`openKsmbdModal`) |
+| `flush-stale-leases` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1792` (`handle_devices`) | `src/modules/devices.js:1073` (`flushStaleLeases`) |
+| `https-redirect` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1631` (`handle_system`) | `src/modules/system.js:76` (`changeHttpsRedirect`) |
+| `ipv6-disable-full` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2067` (`handle_network`) | `src/modules/network_modals.js:858` (`disableIpv6Full`) |
+| `ipv6-mode-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2058` (`handle_network`) | `src/modules/network_modals.js:960` (`showIpv6Modal`) |
+| `ipv6-relay-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2061` (`handle_network`) | `src/modules/network_modals.js:1085` (`showIpv6Modal`) |
+| `ipv6-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:2055` (`handle_network`) | `src/modules/network_modals.js:878` (`showIpv6Modal`) |
+| `irqbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1304` (`handle_sqm`) | `src/modules/doctor_perf.js:1018` (`systemPerfCard`)<br>`src/modules/doctor_perf.js:1045` (`systemPerfCard`) |
+| `ksmbd-control` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:423` (`handle_storage_wol`) | `src/modules/storage_wol.js:72` (`ksmbdCard`)<br>`src/modules/storage_wol.js:339` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:353` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:367` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:382` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:410` (`openKsmbdModal`) |
+| `ksmbd-disk-action` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:571` (`handle_storage_wol`) | `src/modules/storage_wol.js:204` (`openKsmbdFormatConfirmModal`)<br>`src/modules/storage_wol.js:449` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:464` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:480` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:501` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:534` (`openKsmbdModal`) |
+| `ksmbd-interface-access` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:496` (`handle_storage_wol`) | `src/modules/storage_wol.js:572` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:587` (`openKsmbdModal`) |
 | `ksmbd-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/storage_wol.sh:420` (`handle_storage_wol`) | `src/modules/storage_wol.js:115` (`refreshKsmbdCardSummary`)<br>`src/modules/storage_wol.js:283` (`openKsmbdModal`) |
-| `ksmbd-user-action` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:522` (`handle_storage_wol`) | `src/modules/storage_wol.js:622` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:632` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:687` (`openKsmbdModal`) |
-| `lan-igmp-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:600` (`handle_network`) | `src/modules/network.js:325` (`toggleIgmp`) |
-| `lan-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:550` (`handle_network`) | `src/modules/lifecycle.js:230` (`fetchData`) |
+| `ksmbd-user-action` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:522` (`handle_storage_wol`) | `src/modules/storage_wol.js:652` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:667` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:727` (`openKsmbdModal`) |
+| `lan-igmp-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:633` (`handle_network`) | `src/modules/network.js:331` (`toggleIgmp`) |
+| `lan-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:583` (`handle_network`) | `src/modules/lifecycle.js:230` (`fetchData`) |
 | `language` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1326` (`handle_ezsetup`) | `src/modules/system.js:13` (`setDashboardLanguage`) |
 | `manual-update-start` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2104` (`handle_ezsetup`) | `src/modules/system.js:614` (`startManualPackageUpload`) |
-| `mwan` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:727` (`handle_network`) | `src/modules/network.js:231` (`setMwanMode`) |
-| `mwan-rule-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:870` (`handle_network`) | `src/modules/network_modals.js:1197` (`deleteMwanRule`) |
-| `mwan-rule-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:883` (`handle_network`) | `src/modules/network_modals.js:1215` (`toggleMwanRule`) |
+| `mwan` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:760` (`handle_network`) | `src/modules/network.js:237` (`setMwanMode`) |
+| `mwan-rule-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:903` (`handle_network`) | `src/modules/network_modals.js:1357` (`deleteMwanRule`) |
+| `mwan-rule-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:916` (`handle_network`) | `src/modules/network_modals.js:1375` (`toggleMwanRule`) |
 | `mwan-status-fast` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:281` (`handle_network`) | `src/modules/lifecycle.js:209` (`fetchData`) |
-| `mwan-torrent-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:896` (`handle_network`) | `src/modules/network_modals.js:1238` (`toggleMwanTorrentPreset`)<br>`src/modules/network_modals.js:1425` (`showMwanTorrentModal`) |
-| `mwan3-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:990` (`handle_network`) | `src/modules/network.js:276` (`toggleMwan3`) |
-| `network-capacity-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1465` (`handle_system`) | `src/modules/doctor_perf.js:515` (`openNetworkCapacityModal`) |
-| `ntp-configure-smart` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1610` (`handle_system`) | `src/modules/system.js:3529` (`showNtpModal`) |
-| `ntp-intercept-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1613` (`handle_system`) | `src/modules/system.js:3456` (`showNtpModal`) |
-| `ntp-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1604` (`handle_system`) | `src/modules/system.js:3405` (`showNtpModal`) |
-| `ntp-sync-browser` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1607` (`handle_system`) | `src/modules/system.js:3510` (`showNtpModal`) |
-| `ping-target-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1897` (`handle_network`) | `src/modules/network.js:2270` (`showLatencyTargetModal`) |
-| `pppoe-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1848` (`handle_network`) | `src/modules/network.js:1863` (`showPppoeLogsModal`) |
-| `pppoe-profile-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1828` (`handle_network`) | `src/modules/network.js:1466` (`editWan`) |
-| `pppoe-profiles-list` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1767` (`handle_network`) | `src/modules/network.js:1329` (`editWan`) |
+| `mwan-torrent-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:929` (`handle_network`) | `src/modules/network_modals.js:1398` (`toggleMwanTorrentPreset`)<br>`src/modules/network_modals.js:1585` (`showMwanTorrentModal`) |
+| `mwan3-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1023` (`handle_network`) | `src/modules/network.js:282` (`toggleMwan3`) |
+| `network-capacity-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1581` (`handle_system`) | `src/modules/doctor_perf.js:563` (`openNetworkCapacityModal`) |
+| `ntp-configure-smart` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1726` (`handle_system`) | `src/modules/system.js:3529` (`showNtpModal`) |
+| `ntp-intercept-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1729` (`handle_system`) | `src/modules/system.js:3456` (`showNtpModal`) |
+| `ntp-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1720` (`handle_system`) | `src/modules/system.js:3405` (`showNtpModal`) |
+| `ntp-sync-browser` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1723` (`handle_system`) | `src/modules/system.js:3510` (`showNtpModal`) |
+| `ping-target-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2018` (`handle_network`) | `src/modules/network.js:2336` (`showLatencyTargetModal`) |
+| `pppoe-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1969` (`handle_network`) | `src/modules/network.js:1929` (`showPppoeLogsModal`) |
+| `pppoe-profile-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1949` (`handle_network`) | `src/modules/network.js:1472` (`editWan`) |
+| `pppoe-profiles-list` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1888` (`handle_network`) | `src/modules/network.js:1335` (`editWan`) |
 | `profile` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:1324` (`handle_ezsetup`) | `src/modules/lifecycle.js:165` (`switchProfile`) |
-| `reboot-confirm` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1696` (`handle_devices`) | `src/modules/system.js:1026` (`showRebootConfirmation`) |
-| `reboot-prepare` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1688` (`handle_devices`) | `src/modules/system.js:1020` (`requestReboot`) |
+| `reboot-confirm` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1779` (`handle_devices`) | `src/modules/system.js:1026` (`showRebootConfirmation`) |
+| `reboot-prepare` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1771` (`handle_devices`) | `src/modules/system.js:1020` (`requestReboot`) |
 | `self-update-check` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:1981` (`handle_ezsetup`) | `src/modules/system.js:487` (`checkBackgroundUpdate`) |
 | `self-update-log` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2009` (`handle_ezsetup`) | `src/modules/system.js:224` (`pollSelfUpdate`) |
 | `self-update-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/ezsetup.sh:2006` (`handle_ezsetup`) | `src/modules/system.js:182` (`pollSelfUpdate`) |
@@ -115,10 +116,10 @@
 | `speedtest-result` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1317` (`handle_devices`) | `src/modules/speedtest.js:406` (`loadSpeedtestResult`) |
 | `speedtest-start` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1225` (`handle_devices`) | `src/modules/speedtest.js:363` (`runSpeedtest`) |
 | `speedtest-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1313` (`handle_devices`) | `src/modules/speedtest.js:397` (`pollSpeedtest`) |
-| `sqm-engine-select` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1297` (`handle_sqm`) | `src/modules/network.js:500` (`selectSqmEngine`) |
-| `sqm-gaming-ports` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1389` (`handle_sqm`) | `src/modules/network.js:601` (`toggleGamingPorts`) |
-| `sqm-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1272` (`handle_sqm`) | `src/modules/lifecycle.js:169` (`switchProfile`)<br>`src/modules/network.js:467` (`toggleSqm`) |
-| `sqm-waveform-aplus` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1316` (`handle_sqm`) | `src/modules/network.js:565` (`toggleWaveformAplus`) |
+| `sqm-engine-select` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1299` (`handle_sqm`) | `src/modules/network.js:506` (`selectSqmEngine`) |
+| `sqm-gaming-ports` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1391` (`handle_sqm`) | `src/modules/network.js:607` (`toggleGamingPorts`) |
+| `sqm-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1274` (`handle_sqm`) | `src/modules/lifecycle.js:169` (`switchProfile`)<br>`src/modules/network.js:473` (`toggleSqm`) |
+| `sqm-waveform-aplus` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1318` (`handle_sqm`) | `src/modules/network.js:571` (`toggleWaveformAplus`) |
 | `starlink-active-wan-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:203` (`handle_starlink`) | `src/modules/starlink.js:61` (`starlinkCard`) |
 | `starlink-always-show-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:241` (`handle_starlink`) | `src/modules/starlink.js:137` (`toggleStarlinkAlwaysShow`) |
 | `starlink-public-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:206` (`handle_starlink`) | `src/modules/starlink.js:124` (`toggleStarlinkPublic`) |
@@ -127,42 +128,43 @@
 | `starlink-telemetry-send-test` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:328` (`handle_starlink`) | `src/modules/starlink.js:213` (`triggerStarlinkTestEmail`) |
 | `starlink-telemetry-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/starlink.sh:213` (`handle_starlink`) | `src/modules/starlink.js:274` (`updateStarlinkTelemetryStatusBadge`) |
 | `starlink-telemetry-test-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/starlink.sh:356` (`handle_starlink`) | `src/modules/starlink.js:244` (`pollStarlinkTestEmail`) |
-| `system-hardware-auto-tune` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1573` (`handle_system`) | `src/modules/doctor_perf.js:832` (`systemPerfCard`)<br>`src/modules/system.js:2717` (`showHardwareModal`) |
-| `system-hardware-info` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1570` (`handle_system`) | `src/modules/lifecycle.js:241` (`fetchData`) |
-| `system-hardware-sqm-audit` | 🟢 Read-Only | `root/usr/lib/ark/modules/sqm.sh:1731` (`handle_sqm`) | `src/modules/network.js:647` (`editSqmLimits`) |
-| `system-memory-purge` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1475` (`handle_system`) | `src/modules/doctor_perf.js:789` (`systemPerfCard`) |
-| `system-network-mode-get` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1321` (`handle_network`) | `src/modules/system.js:2135` (`showNetworkModeModal`) |
-| `system-perf-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1380` (`handle_system`) | `src/modules/lifecycle.js:232` (`fetchData`) |
-| `system-processes-telemetry` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1472` (`handle_system`) | `src/modules/system.js:2751` (`showHardwareModal`) |
-| `system-storage-purge` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1479` (`handle_system`) | `src/modules/doctor_perf.js:809` (`systemPerfCard`)<br>`src/modules/system.js:353` (`showUpdateConfirmModal`) |
+| `system-hardware-auto-tune` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1689` (`handle_system`) | `src/modules/doctor_perf.js:884` (`systemPerfCard`)<br>`src/modules/system.js:2717` (`showHardwareModal`) |
+| `system-hardware-info` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1686` (`handle_system`) | `src/modules/lifecycle.js:241` (`fetchData`) |
+| `system-hardware-sqm-audit` | 🟢 Read-Only | `root/usr/lib/ark/modules/sqm.sh:1733` (`handle_sqm`) | `src/modules/network.js:653` (`editSqmLimits`) |
+| `system-memory-purge` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1591` (`handle_system`) | `src/modules/doctor_perf.js:837` (`systemPerfCard`) |
+| `system-network-mode-get` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1354` (`handle_network`) | `src/modules/system.js:2135` (`showNetworkModeModal`) |
+| `system-perf-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1493` (`handle_system`) | `src/modules/lifecycle.js:232` (`fetchData`) |
+| `system-processes-telemetry` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1588` (`handle_system`) | `src/modules/system.js:2751` (`showHardwareModal`) |
+| `system-storage-purge` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1595` (`handle_system`) | `src/modules/doctor_perf.js:859` (`systemPerfCard`)<br>`src/modules/system.js:353` (`showUpdateConfirmModal`) |
 | `theme` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2550` (`handle_ezsetup`) | `src/modules/system.js:1005` (`useTheme`) |
 | `title` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/ezsetup.sh:2164` (`handle_ezsetup`) | `src/modules/system.js:69` (`setDashboardTitle`) |
-| `upnp-clear-leases` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1438` (`handle_system`) | `src/modules/system.js:1610` (`clearUpnpLeases`) |
-| `upnp-delete-lease` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1434` (`handle_system`) | `src/modules/system.js:1598` (`deleteUpnpLease`) |
-| `upnp-restart` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1441` (`handle_system`) | `src/modules/system.js:1627` (`restartUpnpDaemon`) |
-| `upnp-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1403` (`handle_system`) | `src/modules/system.js:1380` (`updateUpnpStatus`) |
-| `upnp-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1406` (`handle_system`) | `src/modules/doctor_perf.js:1179` (`systemPerfCard`) |
-| `wan-optimize-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1328` (`handle_network`) | `src/modules/network_modals.js:5` (`showWanOptimizationsModal`) |
-| `wifi` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:534` (`handle_wifi`) | `src/modules/wifi.js:164` (`changeWifiPassword`) |
-| `wifi-add` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:845` (`handle_wifi`) | `src/modules/wifi.js:275` (`showAddWifiModal`) |
-| `wifi-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:933` (`handle_wifi`) | `src/modules/wifi.js:948` (`editWifiNetwork`) |
-| `wifi-dfs-optimize` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1363` (`handle_wifi`) | `src/modules/render.js:1626` (`render`)<br>`src/modules/wifi.js:1387` (`optimizeDfs`) |
-| `wifi-enhancer-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/wifi.sh:2463` (`handle_wifi`) | `src/modules/wifi.js:2200` (`updateWifiEnhancerUI`)<br>`src/modules/wifi.js:2251` (`showWifiEnhancerModal`)<br>`src/modules/wifi.js:2349` (`showWifiEnhancerModal`) |
-| `wifi-enhancer-upgrade` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2466` (`handle_wifi`) | `src/modules/wifi.js:2347` (`showWifiEnhancerModal`) |
-| `wifi-iot-optimize` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1299` (`handle_wifi`) | `src/modules/render.js:1576` (`render`)<br>`src/modules/wifi.js:1357` (`optimizeIot`) |
-| `wifi-mesh-satellite-discover` | 🟢 Read-Only | `root/usr/lib/ark/modules/wifi.sh:1855` (`handle_wifi`) | `src/modules/wifi.js:2422` (`showSatelliteWizardModal`) |
-| `wifi-mesh-satellite-pull-master` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1942` (`handle_wifi`) | `src/modules/wifi.js:2575` (`showSatelliteWizardModal`) |
-| `wifi-mesh-satellite-revert` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2197` (`handle_wifi`) | `src/modules/wifi.js:3169` (`showSatelliteWizardModal`) |
-| `wifi-mesh-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1828` (`handle_wifi`) | `src/modules/wifi.js:2152` (`showMeshModal`)<br>`src/modules/wifi.js:2177` (`showMeshModal`) |
-| `wifi-mlo-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2473` (`handle_wifi`) | `src/modules/wifi.js:1988` (`toggleWifiMlo`) |
-| `wifi-roaming-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1524` (`handle_wifi`) | `src/modules/wifi.js:1897` (`toggleRoaming`) |
-| `wifi-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:550` (`handle_wifi`) | `src/modules/wifi.js:334` (`_executeWifiToggle`) |
-| `wifi-txbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1768` (`handle_wifi`) | `src/modules/wifi.js:2090` (`_applyTxBalance`) |
-| `wifi-usteer-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1610` (`handle_wifi`) | `src/modules/wifi.js:1922` (`toggleUsteer`) |
-| `wifi-wed-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1401` (`handle_wifi`) | `src/modules/render.js:1481` (`render`) |
-| `wifi-wifi6-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2346` (`handle_wifi`) | `src/modules/wifi.js:1964` (`toggleWifi6Accel`) |
-| `wifi-wps-pbc` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1480` (`handle_wifi`) | `src/modules/wifi.js:1865` (`triggerWpsPbc`) |
-| `wifi-wps-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1448` (`handle_wifi`) | `src/modules/wifi.js:1841` (`toggleWps`) |
+| `upnp-clear-leases` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1551` (`handle_system`) | `src/modules/system.js:1610` (`clearUpnpLeases`) |
+| `upnp-delete-lease` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1547` (`handle_system`) | `src/modules/system.js:1598` (`deleteUpnpLease`) |
+| `upnp-restart` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1554` (`handle_system`) | `src/modules/system.js:1627` (`restartUpnpDaemon`) |
+| `upnp-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1516` (`handle_system`) | `src/modules/system.js:1380` (`updateUpnpStatus`) |
+| `upnp-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1519` (`handle_system`) | `src/modules/doctor_perf.js:1233` (`systemPerfCard`) |
+| `wan-optimize-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1374` (`handle_network`) | `src/modules/network_modals.js:5` (`showWanOptimizationsModal`) |
+| `wan-probe-mtu` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:1361` (`handle_network`) | `src/modules/network_modals.js:180` (`showWanOptimizationsModal`) |
+| `wifi` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:537` (`handle_wifi`) | `src/modules/wifi.js:164` (`changeWifiPassword`) |
+| `wifi-add` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:849` (`handle_wifi`) | `src/modules/wifi.js:275` (`showAddWifiModal`) |
+| `wifi-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:938` (`handle_wifi`) | `src/modules/wifi.js:948` (`editWifiNetwork`) |
+| `wifi-dfs-optimize` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1369` (`handle_wifi`) | `src/modules/render.js:1626` (`render`)<br>`src/modules/wifi.js:1387` (`optimizeDfs`) |
+| `wifi-enhancer-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/wifi.sh:2416` (`handle_wifi`) | `src/modules/wifi.js:2208` (`updateWifiEnhancerUI`)<br>`src/modules/wifi.js:2259` (`showWifiEnhancerModal`)<br>`src/modules/wifi.js:2357` (`showWifiEnhancerModal`) |
+| `wifi-enhancer-upgrade` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2419` (`handle_wifi`) | `src/modules/wifi.js:2355` (`showWifiEnhancerModal`) |
+| `wifi-iot-optimize` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1305` (`handle_wifi`) | `src/modules/render.js:1576` (`render`)<br>`src/modules/wifi.js:1357` (`optimizeIot`) |
+| `wifi-mesh-satellite-discover` | 🟢 Read-Only | `root/usr/lib/ark/modules/wifi.sh:1805` (`handle_wifi`) | `src/modules/wifi.js:2430` (`showSatelliteWizardModal`) |
+| `wifi-mesh-satellite-pull-master` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1892` (`handle_wifi`) | `src/modules/wifi.js:2583` (`showSatelliteWizardModal`) |
+| `wifi-mesh-satellite-revert` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2147` (`handle_wifi`) | `src/modules/wifi.js:3177` (`showSatelliteWizardModal`) |
+| `wifi-mesh-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1778` (`handle_wifi`) | `src/modules/wifi.js:2152` (`showMeshModal`)<br>`src/modules/wifi.js:2183` (`showMeshModal`) |
+| `wifi-mlo-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2426` (`handle_wifi`) | `src/modules/wifi.js:1988` (`toggleWifiMlo`) |
+| `wifi-roaming-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1530` (`handle_wifi`) | `src/modules/wifi.js:1897` (`toggleRoaming`) |
+| `wifi-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:553` (`handle_wifi`) | `src/modules/wifi.js:334` (`_executeWifiToggle`) |
+| `wifi-txbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1718` (`handle_wifi`) | `src/modules/wifi.js:2090` (`_applyTxBalance`) |
+| `wifi-usteer-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1619` (`handle_wifi`) | `src/modules/wifi.js:1922` (`toggleUsteer`) |
+| `wifi-wed-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1407` (`handle_wifi`) | `src/modules/render.js:1481` (`render`) |
+| `wifi-wifi6-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:2296` (`handle_wifi`) | `src/modules/wifi.js:1964` (`toggleWifi6Accel`) |
+| `wifi-wps-pbc` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1486` (`handle_wifi`) | `src/modules/wifi.js:1865` (`triggerWpsPbc`) |
+| `wifi-wps-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/wifi.sh:1454` (`handle_wifi`) | `src/modules/wifi.js:1841` (`toggleWps`) |
 | `wireguard-autostart-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1314` (`handle_vpn`) | `src/modules/vpn.js:963` (`wireguardCard`) |
 | `wireguard-client-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1335` (`handle_vpn`) | `src/modules/vpn.js:619` (`showWireGuardClientModal`) |
 | `wireguard-client-import` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1326` (`handle_vpn`) | `src/modules/vpn.js:815` (`showWireGuardClientModal`) |
@@ -174,21 +176,21 @@
 | `wireguard-peer-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1320` (`handle_vpn`) | `src/modules/vpn.js:401` (`showWireGuardModal`) |
 | `wireguard-peer-qr` | 🟢 Read-Only | `root/usr/lib/ark/modules/vpn.sh:1323` (`handle_vpn`) | `src/modules/vpn.js:381` (`showWireGuardModal`) |
 | `wireguard-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/vpn.sh:1302` (`handle_vpn`) | `src/modules/vpn.js:253` (`showWireGuardModal`) |
-| `wol-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/storage_wol.sh:696` (`handle_storage_wol`) | `src/modules/storage_wol.js:861` (`refreshWolCardSummary`)<br>`src/modules/storage_wol.js:947` (`openWolModal`) |
-| `wol-target-save` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:728` (`handle_storage_wol`) | `src/modules/devices.js:1863` (`configureDevice`)<br>`src/modules/storage_wol.js:1029` (`openWolModal`) |
-| `wol-wake` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:699` (`handle_storage_wol`) | `src/modules/storage_wol.js:924` (`triggerWolWake`) |
+| `wol-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/storage_wol.sh:696` (`handle_storage_wol`) | `src/modules/storage_wol.js:901` (`refreshWolCardSummary`)<br>`src/modules/storage_wol.js:987` (`openWolModal`) |
+| `wol-target-save` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:728` (`handle_storage_wol`) | `src/modules/devices.js:1946` (`configureDevice`)<br>`src/modules/storage_wol.js:1069` (`openWolModal`) |
+| `wol-wake` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:699` (`handle_storage_wol`) | `src/modules/storage_wol.js:964` (`triggerWolWake`) |
 | `zerotier-autostart-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1299` (`handle_vpn`) | `src/modules/vpn.js:113` (`zerotierCard`) |
 | `zerotier-disable` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1282` (`handle_vpn`) | `src/modules/vpn.js:24` (`disableZerotier`) |
 | `zerotier-enable` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1279` (`handle_vpn`) | `src/modules/vpn.js:6` (`enableZerotier`) |
 | `zerotier-join` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1293` (`handle_vpn`) | `src/modules/vpn.js:48` (`joinZerotier`) |
 | `zerotier-leave` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/vpn.sh:1296` (`handle_vpn`) | `src/modules/vpn.js:64` (`leaveZerotier`) |
-| `zram-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1448` (`handle_system`) | `src/modules/doctor_perf.js:22` (`showHighRamZramConfirmModal`)<br>`src/modules/doctor_perf.js:60` (`showLowEndMipsZramConfirmModal`)<br>`src/modules/doctor_perf.js:1116` (`systemPerfCard`) |
+| `zram-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1561` (`handle_system`) | `src/modules/doctor_perf.js:22` (`showHighRamZramConfirmModal`)<br>`src/modules/doctor_perf.js:60` (`showLowEndMipsZramConfirmModal`)<br>`src/modules/doctor_perf.js:1170` (`systemPerfCard`) |
 
 ---
 
 ## 3. Índice Cirúrgico de Funções Backend (`root/usr/lib/ark/**/*.sh`)
 
-### `root/usr/lib/ark/common.sh` (2849 linhas, 105 funções)
+### `root/usr/lib/ark/common.sh` (3095 linhas, 111 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -250,53 +252,59 @@
 | `_ark_set_single_device_mtu()` | `1663–1741` | 79L |
 | `ark_ensure_phys_device_mtu()` | `1743–1776` | 34L |
 | `ark_ensure_wan_mtu_fix()` | `1779–1798` | 20L |
-| `ark_get_min_wan_mtu()` | `1801–1858` | 58L |
-| `ark_optimal_wg_mtu()` | `1864–1888` | 25L |
-| `ark_sync_lan_ipv6_ra_mtu()` | `1892–1925` | 34L |
-| `ark_ensure_phys_device_mac()` | `1930–2018` | 89L |
-| `ez_get()` | `2026–2026` | 1L |
-| `ez_set()` | `2028–2028` | 1L |
-| `cleanup_backup()` | `2030–2043` | 14L |
-| `ark_kill_package_fetchers()` | `2045–2050` | 6L |
-| `ark_run_limited()` | `2052–2071` | 20L |
-| `guest_l3_device()` | `2073–2078` | 6L |
-| `active_wan_networks()` | `2080–2086` | 7L |
-| `sqm_device_for_network()` | `2088–2102` | 15L |
-| `find_dhcp_host()` | `2104–2113` | 10L |
-| `sanitize_dhcp_hostnames()` | `2115–2128` | 14L |
-| `apply_lan_dhcp_dns()` | `2130–2142` | 13L |
-| `same_managed_subnet()` | `2144–2172` | 29L |
-| `sync_adguard_ipv6()` | `2174–2206` | 33L |
-| `firewall_wan_zone_section()` | `2208–2212` | 5L |
-| `firewall_zone_has_network()` | `2214–2217` | 4L |
-| `lan_bridge_section()` | `2219–2221` | 3L |
-| `lan_bridge_port_count()` | `2223–2227` | 5L |
-| `find_switch_vlan()` | `2229–2241` | 13L |
-| `swconfig_remove_port_from_vlan()` | `2243–2256` | 14L |
-| `swconfig_add_port_to_vlan()` | `2258–2279` | 22L |
-| `ark_board_switch_role_ports()` | `2282–2298` | 17L |
-| `ark_board_switch_wan_port()` | `2300–2317` | 18L |
-| `ark_board_switch_cpu_tag()` | `2319–2327` | 9L |
-| `ark_board_uses_legacy_ifname()` | `2329–2339` | 11L |
-| `swconfig_port_num()` | `2341–2356` | 16L |
-| `bridge_has_port()` | `2358–2361` | 4L |
-| `add_lan_port()` | `2363–2375` | 13L |
-| `remove_lan_port()` | `2377–2387` | 11L |
-| `configure_uhttpd_listeners()` | `2389–2398` | 10L |
-| `zerotier_ram_compress()` | `2400–2430` | 31L |
-| `get_primary_wan_dev()` | `2432–2458` | 27L |
-| `get_active_online_wan_dev()` | `2460–2497` | 38L |
-| `get_internet_led_sysfs()` | `2499–2530` | 32L |
-| `get_internet_alert_led_sysfs()` | `2532–2544` | 13L |
-| `ark_has_qsdk_ecm()` | `2549–2557` | 9L |
-| `ark_has_doh_proxy()` | `2560–2567` | 8L |
-| `ark_sync_doh_proxy()` | `2573–2724` | 152L |
-| `ark_is_readonly_action()` | `2730–2763` | 34L |
-| `ark_try_lock_dir()` | `2766–2789` | 24L |
-| `ark_acquire_mutation_lock()` | `2791–2812` | 22L |
-| `ark_release_mutation_lock()` | `2814–2826` | 13L |
-| `ark_invalidate_caches()` | `2828–2838` | 11L |
-| `ark_restore_mutation_trap()` | `2840–2847` | 8L |
+| `ark_probe_path_mtu()` | `1802–1894` | 93L |
+| `ark_get_min_wan_mtu()` | `1897–1966` | 70L |
+| `ark_optimal_wg_mtu()` | `1972–1996` | 25L |
+| `ark_sync_lan_ipv6_ra_mtu()` | `2000–2037` | 38L |
+| `ark_ensure_phys_device_mac()` | `2042–2130` | 89L |
+| `ez_get()` | `2138–2138` | 1L |
+| `ez_set()` | `2140–2140` | 1L |
+| `cleanup_backup()` | `2142–2155` | 14L |
+| `ark_kill_package_fetchers()` | `2157–2162` | 6L |
+| `ark_run_limited()` | `2164–2183` | 20L |
+| `guest_l3_device()` | `2185–2190` | 6L |
+| `active_wan_networks()` | `2192–2198` | 7L |
+| `sqm_device_for_network()` | `2200–2214` | 15L |
+| `find_dhcp_host()` | `2216–2225` | 10L |
+| `sanitize_dhcp_hostnames()` | `2227–2240` | 14L |
+| `apply_lan_dhcp_dns()` | `2242–2254` | 13L |
+| `same_managed_subnet()` | `2256–2284` | 29L |
+| `sync_adguard_ipv6()` | `2286–2318` | 33L |
+| `firewall_wan_zone_section()` | `2320–2324` | 5L |
+| `firewall_zone_has_network()` | `2326–2329` | 4L |
+| `lan_bridge_section()` | `2331–2333` | 3L |
+| `lan_bridge_port_count()` | `2335–2339` | 5L |
+| `find_switch_vlan()` | `2341–2353` | 13L |
+| `swconfig_remove_port_from_vlan()` | `2355–2368` | 14L |
+| `swconfig_add_port_to_vlan()` | `2370–2391` | 22L |
+| `ark_board_switch_role_ports()` | `2394–2410` | 17L |
+| `ark_board_switch_wan_port()` | `2412–2429` | 18L |
+| `ark_board_switch_cpu_tag()` | `2431–2439` | 9L |
+| `ark_board_uses_legacy_ifname()` | `2441–2451` | 11L |
+| `swconfig_port_num()` | `2453–2468` | 16L |
+| `bridge_has_port()` | `2470–2473` | 4L |
+| `add_lan_port()` | `2475–2487` | 13L |
+| `remove_lan_port()` | `2489–2499` | 11L |
+| `configure_uhttpd_listeners()` | `2501–2510` | 10L |
+| `zerotier_ram_compress()` | `2512–2542` | 31L |
+| `get_primary_wan_dev()` | `2544–2570` | 27L |
+| `get_active_online_wan_dev()` | `2572–2609` | 38L |
+| `get_internet_led_sysfs()` | `2611–2642` | 32L |
+| `get_internet_alert_led_sysfs()` | `2644–2656` | 13L |
+| `ark_has_qsdk_ecm()` | `2661–2669` | 9L |
+| `ark_has_doh_proxy()` | `2672–2679` | 8L |
+| `ark_sync_doh_proxy()` | `2685–2836` | 152L |
+| `ark_is_readonly_action()` | `2842–2875` | 34L |
+| `ark_try_lock_dir()` | `2878–2901` | 24L |
+| `ark_acquire_mutation_lock()` | `2903–2924` | 22L |
+| `ark_release_mutation_lock()` | `2926–2938` | 13L |
+| `ark_invalidate_caches()` | `2940–2950` | 11L |
+| `ark_restore_mutation_trap()` | `2952–2959` | 8L |
+| `ark_usteer_expected_ssids()` | `2964–2993` | 30L |
+| `ark_usteer_configured_ssids()` | `2996–3031` | 36L |
+| `ark_usteer_ssids_dirty()` | `3034–3040` | 7L |
+| `ark_usteer_sync_ssids()` | `3043–3064` | 22L |
+| `ark_usteer_apply_defaults()` | `3067–3093` | 27L |
 
 ### `root/usr/lib/ark/dhcp_fingerprint.sh` (48 linhas, 0 funções)
 
@@ -329,7 +337,7 @@
 | `ark_err()` | `28–33` | 6L |
 | `ark_audit()` | `35–41` | 7L |
 
-### `root/usr/lib/ark/modules/adblock.sh` (1575 linhas, 15 funções)
+### `root/usr/lib/ark/modules/adblock.sh` (1595 linhas, 15 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -341,15 +349,15 @@
 | `sync_dns_intercept()` | `743–789` | 47L |
 | `adblock_configure()` | `791–979` | 189L |
 | `adblock_mark_enabled()` | `981–987` | 7L |
-| `adblock_enable()` | `989–1216` | 228L |
-| `adblock_restore_dns()` | `1218–1309` | 92L |
-| `adblock_disable()` | `1311–1376` | 66L |
-| `adblock_uninstall()` | `1378–1432` | 55L |
-| `adblock_toggle()` | `1434–1445` | 12L |
-| `adblock_sso_login()` | `1447–1516` | 70L |
-| `handle_adblock()` | `1518–1571` | 54L |
+| `adblock_enable()` | `989–1228` | 240L |
+| `adblock_restore_dns()` | `1230–1329` | 100L |
+| `adblock_disable()` | `1331–1396` | 66L |
+| `adblock_uninstall()` | `1398–1452` | 55L |
+| `adblock_toggle()` | `1454–1465` | 12L |
+| `adblock_sso_login()` | `1467–1536` | 70L |
+| `handle_adblock()` | `1538–1591` | 54L |
 
-### `root/usr/lib/ark/modules/devices.sh` (1716 linhas, 20 funções)
+### `root/usr/lib/ark/modules/devices.sh` (1799 linhas, 20 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -372,17 +380,18 @@
 | `get_device_fingerprints_raw()` | `1127–1168` | 42L |
 | `get_device_fingerprints()` | `1170–1193` | 24L |
 | `setup_dhcp_fingerprint_hook()` | `1195–1211` | 17L |
-| `handle_devices()` | `1213–1716` | 504L |
+| `handle_devices()` | `1213–1799` | 587L |
 
-### `root/usr/lib/ark/modules/doctor.sh` (2634 linhas, 5 funções)
+### `root/usr/lib/ark/modules/doctor.sh` (2799 linhas, 6 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
-| `ark_doctor_audit()` | `23–2502` | 2480L |
-| `doctor_get_status()` | `2504–2513` | 10L |
-| `doctor_get_log()` | `2515–2524` | 10L |
-| `doctor_release_lock()` | `2526–2531` | 6L |
-| `handle_doctor()` | `2533–2629` | 97L |
+| `_ark_dns_probe_local_port()` | `23–36` | 14L |
+| `ark_doctor_audit()` | `38–2667` | 2630L |
+| `doctor_get_status()` | `2669–2678` | 10L |
+| `doctor_get_log()` | `2680–2689` | 10L |
+| `doctor_release_lock()` | `2691–2696` | 6L |
+| `handle_doctor()` | `2698–2794` | 97L |
 
 ### `root/usr/lib/ark/modules/ezsetup.sh` (2678 linhas, 43 funções)
 
@@ -432,7 +441,7 @@
 | `feature_json()` | `1056–1304` | 249L |
 | `handle_ezsetup()` | `1306–2678` | 1373L |
 
-### `root/usr/lib/ark/modules/network.sh` (1952 linhas, 6 funções)
+### `root/usr/lib/ark/modules/network.sh` (2073 linhas, 6 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -441,9 +450,9 @@
 | `bind_uhttpd_to_lan_ip()` | `152–155` | 4L |
 | `mwan3_toggle()` | `157–202` | 46L |
 | `mwan_status_fast()` | `204–276` | 73L |
-| `handle_network()` | `278–1952` | 1675L |
+| `handle_network()` | `278–2073` | 1796L |
 
-### `root/usr/lib/ark/modules/network_ipv6_mwan.sh` (1922 linhas, 26 funções)
+### `root/usr/lib/ark/modules/network_ipv6_mwan.sh` (2266 linhas, 31 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -454,25 +463,30 @@
 | `system_network_mode_set()` | `202–447` | 246L |
 | `restore_ipv6_firewall_rules()` | `449–497` | 49L |
 | `ark_ensure_ipv6_dhcpv6_client()` | `499–520` | 22L |
-| `enable_ipv6_dual_stack()` | `522–616` | 95L |
-| `clean_ipv6_selective_firewall()` | `618–645` | 28L |
-| `sync_ipv6_selective_firewall()` | `647–714` | 68L |
-| `ark_has_multi_wan()` | `819–833` | 15L |
-| `sync_nptv6_firewall()` | `835–845` | 11L |
-| `clean_nptv6_firewall()` | `847–853` | 7L |
-| `save_pre_clat_state()` | `855–875` | 21L |
-| `ark_register_cloudflare_warp_v6()` | `877–926` | 50L |
-| `sync_ipv6_clat_tunnel()` | `928–1056` | 129L |
-| `clean_ipv6_clat_tunnel()` | `1058–1134` | 77L |
-| `set_ipv6_mode()` | `1136–1244` | 109L |
-| `set_ipv6_relay()` | `1246–1286` | 41L |
-| `toggle_ipv6_device()` | `1288–1304` | 17L |
-| `get_ipv6_status()` | `1306–1365` | 60L |
-| `disable_ipv6_full()` | `1369–1431` | 63L |
-| `mwan3_reorder_rules()` | `1433–1479` | 47L |
-| `get_configured_ping_track_ips()` | `1481–1519` | 39L |
-| `ensure_mwan3_ark_config()` | `1521–1889` | 369L |
-| `mwan3_sync_lifecycle()` | `1891–1921` | 31L |
+| `enable_ipv6_dual_stack()` | `522–617` | 96L |
+| `ark_has_per_device_ipv6_only()` | `619–630` | 12L |
+| `ark_sync_ipv6_doh_fastfail()` | `632–654` | 23L |
+| `ark_sync_nat64_jool()` | `656–707` | 52L |
+| `ark_sync_lan_ipv6_dns()` | `709–818` | 110L |
+| `ark_release_per_device_ipv6_only_dhcp()` | `820–853` | 34L |
+| `clean_ipv6_selective_firewall()` | `855–891` | 37L |
+| `sync_ipv6_selective_firewall()` | `893–1127` | 235L |
+| `ark_has_multi_wan()` | `1129–1143` | 15L |
+| `sync_nptv6_firewall()` | `1145–1155` | 11L |
+| `clean_nptv6_firewall()` | `1157–1163` | 7L |
+| `save_pre_clat_state()` | `1165–1185` | 21L |
+| `ark_register_cloudflare_warp_v6()` | `1187–1236` | 50L |
+| `sync_ipv6_clat_tunnel()` | `1238–1366` | 129L |
+| `clean_ipv6_clat_tunnel()` | `1368–1444` | 77L |
+| `set_ipv6_mode()` | `1446–1564` | 119L |
+| `set_ipv6_relay()` | `1566–1607` | 42L |
+| `toggle_ipv6_device()` | `1609–1630` | 22L |
+| `get_ipv6_status()` | `1632–1709` | 78L |
+| `disable_ipv6_full()` | `1713–1775` | 63L |
+| `mwan3_reorder_rules()` | `1777–1823` | 47L |
+| `get_configured_ping_track_ips()` | `1825–1863` | 39L |
+| `ensure_mwan3_ark_config()` | `1865–2233` | 369L |
+| `mwan3_sync_lifecycle()` | `2235–2265` | 31L |
 
 ### `root/usr/lib/ark/modules/speedify.sh` (1111 linhas, 54 funções)
 
@@ -533,7 +547,7 @@
 | `speedify_uninstall()` | `945–1001` | 57L |
 | `handle_speedify()` | `1005–1107` | 103L |
 
-### `root/usr/lib/ark/modules/sqm.sh` (1753 linhas, 33 funções)
+### `root/usr/lib/ark/modules/sqm.sh` (1755 linhas, 33 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -546,30 +560,30 @@
 | `ark_promote_cake_mq()` | `112–212` | 101L |
 | `ark_is_gaming_ports_enabled()` | `214–226` | 13L |
 | `ark_sync_gaming_ports_and_bql()` | `228–337` | 110L |
-| `ark_get_sqm_engine()` | `374–386` | 13L |
-| `ark_apply_sqm_engine_to_section()` | `388–401` | 14L |
-| `get_system_hardware_sqm_audit()` | `403–476` | 74L |
-| `sqm_apply_upload_only()` | `478–509` | 32L |
-| `ensure_qos_equipe()` | `511–521` | 11L |
-| `ark_sqm_ack_filter_opt()` | `523–533` | 11L |
-| `ark_sqm_ingress_rtt_opt()` | `535–554` | 20L |
-| `ark_sqm_ingress_mode_opt()` | `556–575` | 20L |
-| `ensure_sqm_section()` | `577–752` | 176L |
-| `sqm_section_for_network()` | `754–756` | 3L |
-| `apply_guest_tc_limit()` | `758–784` | 27L |
-| `ark_sqm_save_offload_state()` | `786–824` | 39L |
-| `sync_sqm_flow_offload()` | `826–896` | 71L |
-| `ark_sync_lan_selective_offload()` | `898–914` | 17L |
-| `ark_sqm_autorate_toggle()` | `916–934` | 19L |
-| `ark_sqm_autorate_step()` | `936–1102` | 167L |
-| `ark_sqm_autorate_status()` | `1104–1119` | 16L |
-| `ark_sqm_verify_device()` | `1121–1144` | 24L |
-| `ark_sqm_verify_queues()` | `1146–1170` | 25L |
-| `ark_sqm_sync_memory_limits()` | `1172–1196` | 25L |
-| `get_sqm_resource_plan()` | `1198–1210` | 13L |
-| `ark_sqm_restart_checked()` | `1212–1217` | 6L |
-| `ark_sqm_select_engine()` | `1219–1266` | 48L |
-| `handle_sqm()` | `1268–1753` | 486L |
+| `ark_get_sqm_engine()` | `376–388` | 13L |
+| `ark_apply_sqm_engine_to_section()` | `390–403` | 14L |
+| `get_system_hardware_sqm_audit()` | `405–478` | 74L |
+| `sqm_apply_upload_only()` | `480–511` | 32L |
+| `ensure_qos_equipe()` | `513–523` | 11L |
+| `ark_sqm_ack_filter_opt()` | `525–535` | 11L |
+| `ark_sqm_ingress_rtt_opt()` | `537–556` | 20L |
+| `ark_sqm_ingress_mode_opt()` | `558–577` | 20L |
+| `ensure_sqm_section()` | `579–754` | 176L |
+| `sqm_section_for_network()` | `756–758` | 3L |
+| `apply_guest_tc_limit()` | `760–786` | 27L |
+| `ark_sqm_save_offload_state()` | `788–826` | 39L |
+| `sync_sqm_flow_offload()` | `828–898` | 71L |
+| `ark_sync_lan_selective_offload()` | `900–916` | 17L |
+| `ark_sqm_autorate_toggle()` | `918–936` | 19L |
+| `ark_sqm_autorate_step()` | `938–1104` | 167L |
+| `ark_sqm_autorate_status()` | `1106–1121` | 16L |
+| `ark_sqm_verify_device()` | `1123–1146` | 24L |
+| `ark_sqm_verify_queues()` | `1148–1172` | 25L |
+| `ark_sqm_sync_memory_limits()` | `1174–1198` | 25L |
+| `get_sqm_resource_plan()` | `1200–1212` | 13L |
+| `ark_sqm_restart_checked()` | `1214–1219` | 6L |
+| `ark_sqm_select_engine()` | `1221–1268` | 48L |
+| `handle_sqm()` | `1270–1755` | 486L |
 
 ### `root/usr/lib/ark/modules/starlink.sh` (372 linhas, 8 funções)
 
@@ -598,7 +612,7 @@
 | `wol_status_json()` | `305–403` | 99L |
 | `handle_storage_wol()` | `408–775` | 368L |
 
-### `root/usr/lib/ark/modules/system.sh` (1629 linhas, 25 funções)
+### `root/usr/lib/ark/modules/system.sh` (1745 linhas, 27 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -611,24 +625,26 @@
 | `upnp_delete_lease()` | `478–497` | 20L |
 | `upnp_clear_leases()` | `499–517` | 19L |
 | `dns_turbo_status_json()` | `519–587` | 69L |
-| `dns_turbo_save()` | `589–709` | 121L |
-| `dns_turbo_doh_toggle()` | `711–756` | 46L |
-| `network_capacity_status_json()` | `758–775` | 18L |
-| `network_capacity_save()` | `777–830` | 54L |
-| `system_perf_save()` | `832–1008` | 177L |
-| `system_processes_telemetry()` | `1012–1076` | 65L |
-| `system_memory_purge()` | `1078–1085` | 8L |
-| `system_storage_purge()` | `1087–1102` | 16L |
-| `zram_status_json()` | `1105–1152` | 48L |
-| `zram_toggle()` | `1154–1198` | 45L |
-| `get_ntp_status()` | `1204–1237` | 34L |
-| `ntp_sync_browser()` | `1241–1304` | 64L |
-| `ntp_configure_smart()` | `1306–1343` | 38L |
-| `ntp_intercept_toggle()` | `1345–1360` | 16L |
-| `time_save_clock()` | `1362–1374` | 13L |
-| `handle_system()` | `1376–1625` | 250L |
+| `dns_turbo_save()` | `589–721` | 133L |
+| `dns_turbo_doh_toggle()` | `723–768` | 46L |
+| `_ark_dns_now_ms()` | `770–776` | 7L |
+| `dns_turbo_benchmark_json()` | `778–865` | 88L |
+| `network_capacity_status_json()` | `867–884` | 18L |
+| `network_capacity_save()` | `886–939` | 54L |
+| `system_perf_save()` | `941–1121` | 181L |
+| `system_processes_telemetry()` | `1125–1189` | 65L |
+| `system_memory_purge()` | `1191–1198` | 8L |
+| `system_storage_purge()` | `1200–1215` | 16L |
+| `zram_status_json()` | `1218–1265` | 48L |
+| `zram_toggle()` | `1267–1311` | 45L |
+| `get_ntp_status()` | `1317–1350` | 34L |
+| `ntp_sync_browser()` | `1354–1417` | 64L |
+| `ntp_configure_smart()` | `1419–1456` | 38L |
+| `ntp_intercept_toggle()` | `1458–1473` | 16L |
+| `time_save_clock()` | `1475–1487` | 13L |
+| `handle_system()` | `1489–1741` | 253L |
 
-### `root/usr/lib/ark/modules/system_hardware_leds.sh` (1984 linhas, 12 funções)
+### `root/usr/lib/ark/modules/system_hardware_leds.sh` (1986 linhas, 12 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -641,9 +657,9 @@
 | `set_led_preset()` | `698–949` | 252L |
 | `get_led_status()` | `951–964` | 14L |
 | `detect_hardware_silicon_profile()` | `966–1103` | 138L |
-| `system_hardware_auto_tune()` | `1105–1472` | 368L |
-| `get_system_hardware_info_raw()` | `1474–1945` | 472L |
-| `get_system_hardware_info()` | `1947–1983` | 37L |
+| `system_hardware_auto_tune()` | `1105–1474` | 370L |
+| `get_system_hardware_info_raw()` | `1476–1947` | 472L |
+| `get_system_hardware_info()` | `1949–1985` | 37L |
 
 ### `root/usr/lib/ark/modules/vpn.sh` (1348 linhas, 33 funções)
 
@@ -683,7 +699,7 @@
 | `wireguard_client_delete()` | `1247–1268` | 22L |
 | `handle_vpn()` | `1272–1344` | 73L |
 
-### `root/usr/lib/ark/modules/wifi.sh` (2477 linhas, 16 funções)
+### `root/usr/lib/ark/modules/wifi.sh` (2430 linhas, 16 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -694,15 +710,15 @@
 | `wifi_known_radios()` | `78–90` | 13L |
 | `wifi_auto_enable_mesh_optimizations()` | `92–115` | 24L |
 | `wifi_cleanup_mesh_interfaces()` | `117–147` | 31L |
-| `wifi_get_ap_sections()` | `149–187` | 39L |
-| `wifi_enhancer_status()` | `189–272` | 84L |
-| `wifi_enhancer_update_status()` | `276–288` | 13L |
-| `wifi_qca_apply_roaming_tuning()` | `292–328` | 37L |
-| `wifi_enhancer_cleanup_lock()` | `330–337` | 8L |
-| `wifi_enhancer_run_upgrade()` | `339–466` | 128L |
-| `wifi_mlo_status()` | `468–495` | 28L |
-| `wifi_mlo_toggle()` | `497–530` | 34L |
-| `handle_wifi()` | `532–2477` | 1946L |
+| `wifi_get_ap_sections()` | `149–190` | 42L |
+| `wifi_enhancer_status()` | `192–275` | 84L |
+| `wifi_enhancer_update_status()` | `279–291` | 13L |
+| `wifi_qca_apply_roaming_tuning()` | `295–331` | 37L |
+| `wifi_enhancer_cleanup_lock()` | `333–340` | 8L |
+| `wifi_enhancer_run_upgrade()` | `342–469` | 128L |
+| `wifi_mlo_status()` | `471–498` | 28L |
+| `wifi_mlo_toggle()` | `500–533` | 34L |
+| `handle_wifi()` | `535–2430` | 1896L |
 
 ### `root/usr/lib/ark/qos-ingress.sh` (52 linhas, 1 funções)
 
@@ -766,33 +782,33 @@
 | `this.openAdguardUninstallModal()` | `270–361` | 92L |
 | `this.openAdblockSetupModal()` | `362–848` | 487L |
 
-### `src/modules/devices.js` (1919 linhas, 10 métodos)
+### `src/modules/devices.js` (2010 linhas, 10 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
-| `this.renderDevices()` | `3–855` | 853L |
-| `this.sortDevices()` | `856–871` | 16L |
-| `this.setDeviceSort()` | `872–890` | 19L |
-| `this.toggleDeviceSortDirection()` | `891–903` | 13L |
-| `this.quickReserveSecondary()` | `904–917` | 14L |
-| `this.quickReserveIot()` | `918–953` | 36L |
-| `this.updateSecondaryBanner()` | `954–1015` | 62L |
-| `this.flushStaleLeases()` | `1016–1046` | 31L |
-| `this.togglePassword()` | `1047–1047` | 1L |
-| `this.configureDevice()` | `1048–1919` | 872L |
+| `this.renderDevices()` | `3–904` | 902L |
+| `this.sortDevices()` | `905–920` | 16L |
+| `this.setDeviceSort()` | `921–939` | 19L |
+| `this.toggleDeviceSortDirection()` | `940–952` | 13L |
+| `this.quickReserveSecondary()` | `953–968` | 16L |
+| `this.quickReserveIot()` | `969–1004` | 36L |
+| `this.updateSecondaryBanner()` | `1005–1066` | 62L |
+| `this.flushStaleLeases()` | `1067–1099` | 33L |
+| `this.togglePassword()` | `1100–1100` | 1L |
+| `this.configureDevice()` | `1101–2010` | 910L |
 
-### `src/modules/doctor_perf.js` (1666 linhas, 8 métodos)
+### `src/modules/doctor_perf.js` (1720 linhas, 8 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
 | `this.showHighRamZramConfirmModal()` | `3–54` | 52L |
 | `this.showLowEndMipsZramConfirmModal()` | `55–89` | 35L |
-| `this.openDnsTurboModal()` | `90–510` | 421L |
-| `this.openNetworkCapacityModal()` | `511–721` | 211L |
-| `this.systemPerfCard()` | `722–1448` | 727L |
-| `this.showDoctorModal()` | `1449–1613` | 165L |
-| `this.runDoctorAudit()` | `1614–1638` | 25L |
-| `this.runDoctorFix()` | `1639–1666` | 28L |
+| `this.openDnsTurboModal()` | `90–558` | 469L |
+| `this.openNetworkCapacityModal()` | `559–769` | 211L |
+| `this.systemPerfCard()` | `770–1502` | 733L |
+| `this.showDoctorModal()` | `1503–1667` | 165L |
+| `this.runDoctorAudit()` | `1668–1692` | 25L |
+| `this.runDoctorFix()` | `1693–1720` | 28L |
 
 ### `src/modules/ezsetup.js` (870 linhas, 4 métodos)
 
@@ -829,41 +845,41 @@
 | `this.startClockTicker()` | `925–932` | 8L |
 | `this.updateDoctorStatus()` | `933–1034` | 102L |
 
-### `src/modules/network.js` (2302 linhas, 15 métodos)
+### `src/modules/network.js` (2368 linhas, 15 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
 | `this.updateWan()` | `3–73` | 71L |
 | `this.updateLan()` | `74–81` | 8L |
-| `this.updateMwanMode()` | `82–197` | 116L |
-| `this.updateHistory()` | `198–225` | 28L |
-| `this.setMwanMode()` | `226–248` | 23L |
-| `this.toggleMwan3()` | `249–317` | 69L |
-| `this.toggleIgmp()` | `318–366` | 49L |
-| `this.toggleSqm()` | `367–487` | 121L |
-| `this.selectSqmEngine()` | `488–555` | 68L |
-| `this.toggleWaveformAplus()` | `556–589` | 34L |
-| `this.toggleGamingPorts()` | `590–625` | 36L |
-| `this.editSqmLimits()` | `626–1327` | 702L |
-| `this.editWan()` | `1328–1822` | 495L |
-| `this.showPppoeLogsModal()` | `1823–1986` | 164L |
-| `this.showLatencyTargetModal()` | `1987–2302` | 316L |
+| `this.updateMwanMode()` | `82–203` | 122L |
+| `this.updateHistory()` | `204–231` | 28L |
+| `this.setMwanMode()` | `232–254` | 23L |
+| `this.toggleMwan3()` | `255–323` | 69L |
+| `this.toggleIgmp()` | `324–372` | 49L |
+| `this.toggleSqm()` | `373–493` | 121L |
+| `this.selectSqmEngine()` | `494–561` | 68L |
+| `this.toggleWaveformAplus()` | `562–595` | 34L |
+| `this.toggleGamingPorts()` | `596–631` | 36L |
+| `this.editSqmLimits()` | `632–1333` | 702L |
+| `this.editWan()` | `1334–1888` | 555L |
+| `this.showPppoeLogsModal()` | `1889–2052` | 164L |
+| `this.showLatencyTargetModal()` | `2053–2368` | 316L |
 
-### `src/modules/network_modals.js` (1452 linhas, 9 métodos)
+### `src/modules/network_modals.js` (1612 linhas, 9 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
-| `this.showWanOptimizationsModal()` | `3–443` | 441L |
-| `this.editLan()` | `444–699` | 256L |
-| `this.disableIpv6Full()` | `700–721` | 22L |
-| `this.showIpv6Modal()` | `722–998` | 277L |
-| `this.showAddMwanRuleModal()` | `999–1182` | 184L |
-| `this.deleteMwanRule()` | `1183–1212` | 30L |
-| `this.toggleMwanRule()` | `1213–1231` | 19L |
-| `this.toggleMwanTorrentPreset()` | `1232–1257` | 26L |
-| `this.showMwanTorrentModal()` | `1258–1452` | 195L |
+| `this.showWanOptimizationsModal()` | `3–594` | 592L |
+| `this.editLan()` | `595–850` | 256L |
+| `this.disableIpv6Full()` | `851–872` | 22L |
+| `this.showIpv6Modal()` | `873–1158` | 286L |
+| `this.showAddMwanRuleModal()` | `1159–1342` | 184L |
+| `this.deleteMwanRule()` | `1343–1372` | 30L |
+| `this.toggleMwanRule()` | `1373–1391` | 19L |
+| `this.toggleMwanTorrentPreset()` | `1392–1417` | 26L |
+| `this.showMwanTorrentModal()` | `1418–1612` | 195L |
 
-### `src/modules/render.js` (3493 linhas, 15 métodos)
+### `src/modules/render.js` (3539 linhas, 16 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -872,16 +888,17 @@
 | `this.renderV2DoctorStrip()` | `2353–2383` | 31L |
 | `this.renderV2QuickStatusStrip()` | `2384–2412` | 29L |
 | `this.renderV2SwitchPortsCard()` | `2413–2431` | 19L |
-| `this.toggleV2MobileSidebar()` | `2432–2440` | 9L |
-| `this.switchV2Panel()` | `2441–2517` | 77L |
-| `this.renderV2CockpitStatusOverview()` | `2518–2589` | 72L |
-| `this.setupV2CockpitLayout()` | `2590–2875` | 286L |
-| `this.renderPluginLifecycleBar()` | `2876–2957` | 82L |
-| `this.applyFeatureVisibilityAndLifecycle()` | `2958–3077` | 120L |
-| `this.renderV2LuciDrawer()` | `3078–3195` | 118L |
-| `this.toggleV2LuciDrawer()` | `3196–3212` | 17L |
-| `this.filterV2LuciDrawer()` | `3213–3224` | 12L |
-| `this.updateV2CockpitStatus()` | `3225–3493` | 269L |
+| `this.renderV2CategoryTabs()` | `2432–2468` | 37L |
+| `this.toggleV2MobileSidebar()` | `2469–2477` | 9L |
+| `this.switchV2Panel()` | `2478–2561` | 84L |
+| `this.renderV2CockpitStatusOverview()` | `2562–2633` | 72L |
+| `this.setupV2CockpitLayout()` | `2634–2921` | 288L |
+| `this.renderPluginLifecycleBar()` | `2922–3003` | 82L |
+| `this.applyFeatureVisibilityAndLifecycle()` | `3004–3123` | 120L |
+| `this.renderV2LuciDrawer()` | `3124–3241` | 118L |
+| `this.toggleV2LuciDrawer()` | `3242–3258` | 17L |
+| `this.filterV2LuciDrawer()` | `3259–3270` | 12L |
+| `this.updateV2CockpitStatus()` | `3271–3539` | 269L |
 
 ### `src/modules/speedify.js` (566 linhas, 14 métodos)
 
@@ -937,7 +954,7 @@
 | `this.finishStarlinkAndNext()` | `762–764` | 3L |
 | `this.readStarlinkTelemetry()` | `765–787` | 23L |
 
-### `src/modules/storage_wol.js` (1159 linhas, 9 métodos)
+### `src/modules/storage_wol.js` (1199 linhas, 9 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -945,11 +962,11 @@
 | `this.refreshKsmbdCardSummary()` | `113–175` | 63L |
 | `this.openKsmbdFormatConfirmModal()` | `176–245` | 70L |
 | `this.openKsmbdWanWarningModal()` | `246–276` | 31L |
-| `this.openKsmbdModal()` | `277–772` | 496L |
-| `this.wolCard()` | `773–858` | 86L |
-| `this.refreshWolCardSummary()` | `859–917` | 59L |
-| `this.triggerWolWake()` | `918–940` | 23L |
-| `this.openWolModal()` | `941–1159` | 219L |
+| `this.openKsmbdModal()` | `277–812` | 536L |
+| `this.wolCard()` | `813–898` | 86L |
+| `this.refreshWolCardSummary()` | `899–957` | 59L |
+| `this.triggerWolWake()` | `958–980` | 23L |
+| `this.openWolModal()` | `981–1199` | 219L |
 
 ### `src/modules/system.js` (3558 linhas, 52 métodos)
 
@@ -1024,7 +1041,7 @@
 | `this.showWireGuardClientModal()` | `449–870` | 422L |
 | `this.wireguardCard()` | `871–1023` | 153L |
 
-### `src/modules/wifi.js` (3263 linhas, 29 métodos)
+### `src/modules/wifi.js` (3271 linhas, 29 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -1053,10 +1070,10 @@
 | `this.confirmMultiRouterAction()` | `2006–2057` | 52L |
 | `this.toggleTxBalance()` | `2058–2085` | 28L |
 | `this._applyTxBalance()` | `2086–2106` | 21L |
-| `this.showMeshModal()` | `2107–2193` | 87L |
-| `this.updateWifiEnhancerUI()` | `2194–2234` | 41L |
-| `this.showWifiEnhancerModal()` | `2235–2414` | 180L |
-| `this.showSatelliteWizardModal()` | `2415–3263` | 849L |
+| `this.showMeshModal()` | `2107–2201` | 95L |
+| `this.updateWifiEnhancerUI()` | `2202–2242` | 41L |
+| `this.showWifiEnhancerModal()` | `2243–2422` | 180L |
+| `this.showSatelliteWizardModal()` | `2423–3271` | 849L |
 
 ---
 

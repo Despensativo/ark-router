@@ -1422,14 +1422,27 @@ handle_devices() {
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		suffix="$(device_suffix "$mac")"; host="$(find_dhcp_host "$mac")"; reserved=false; ip=''
-		if [ -n "$host" ]; then reserved=true; ip="$(uci -q get "dhcp.$host.ip")"; fi
+		if [ -n "$host" ]; then
+			ip="$(uci -q get "dhcp.$host.ip" || true)"
+			if [ -n "$ip" ] && [ "$ip" != "ignore" ]; then
+				reserved=true
+			else
+				ip=''
+			fi
+		fi
 		priority=false
 		dscp="$(uci -q get "firewall.ark_priority_$suffix.set_dscp")"
 		[ -n "$dscp" ] || dscp="AF41"
 		[ "$(uci -q get "firewall.ark_priority_$suffix.enabled")" = 1 ] && priority=true
-		wan_route="default"; limit_enabled=false; limit_down=0; limit_up=0
-		parental_mode="default"; parental_block=false; safesearch=false; blocked_services=""
-		if [ -f /etc/config/equipe_devices ]; then
+		wan_route="default"; limit_enabled=false; limit_down=0; limit_up=0; limit_lan_bypass=true
+		parental_mode="default"; parental_block=false; safesearch=false; blocked_services=""; saved_custom_dns=""
+		cur_ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+		if [ "$cur_ipv6_mode" = "selective" ]; then
+			ipv6_allowed=false; ip_protocol="ipv4_only"
+		else
+			ipv6_allowed=true; ip_protocol="dual_stack"
+		fi
+		if [ -f "${ARK_ROOT:-}/etc/config/equipe_devices" ] || [ -f /etc/config/equipe_devices ]; then
 			name_section="device_$(printf '%s' "$mac" | tr -d ':')"
 			saved_wan="$(uci -q get "equipe_devices.$name_section.wan_route" || true)"
 			[ -n "$saved_wan" ] && wan_route="$saved_wan"
@@ -1445,14 +1458,24 @@ handle_devices() {
 			[ "$(uci -q get "equipe_devices.$name_section.parental_block" || printf 0)" = 1 ] && parental_block=true
 			[ "$(uci -q get "equipe_devices.$name_section.safesearch" || printf 0)" = 1 ] && safesearch=true
 			blocked_services="$(uci -q get "equipe_devices.$name_section.blocked_services" || true)"
-			cur_ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+			saved_ip_proto="$(uci -q get "equipe_devices.$name_section.ip_protocol" || true)"
 			saved_ipv6_allowed="$(uci -q get "equipe_devices.$name_section.ipv6_allowed" || true)"
-			if [ "$cur_ipv6_mode" = "selective" ]; then
-				ipv6_allowed=false
-				[ "$saved_ipv6_allowed" = "1" ] && ipv6_allowed=true
+			if [ "$saved_ip_proto" = "ipv6_only" ]; then
+				ip_protocol="ipv6_only"; ipv6_allowed=true
+			elif [ "$saved_ip_proto" = "ipv4_only" ]; then
+				ip_protocol="ipv4_only"; ipv6_allowed=false
+			elif [ "$saved_ip_proto" = "dual_stack" ]; then
+				ip_protocol="dual_stack"; ipv6_allowed=true
+			elif [ "$cur_ipv6_mode" = "selective" ]; then
+				ipv6_allowed=false; ip_protocol="ipv4_only"
+				[ "$saved_ipv6_allowed" = "1" ] && { ipv6_allowed=true; ip_protocol="dual_stack"; }
 			else
-				ipv6_allowed=true
-				[ "$saved_ipv6_allowed" = "0" ] && ipv6_allowed=false
+				ipv6_allowed=true; ip_protocol="dual_stack"
+				[ "$saved_ipv6_allowed" = "0" ] && { ipv6_allowed=false; ip_protocol="ipv4_only"; }
+			fi
+			if [ -z "$ip" ]; then
+				saved_v4_ip="$(uci -q get "equipe_devices.$name_section.saved_v4_ip" || true)"
+				[ -n "$saved_v4_ip" ] && ip="$saved_v4_ip"
 			fi
 			saved_custom_dns="$(uci -q get "equipe_devices.$name_section.custom_dns" || true)"
 		fi
@@ -1470,9 +1493,9 @@ handle_devices() {
 			fi
 		fi
 		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s,"custom_dns":"%s","dmz":%s}\n' \
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s,"ip_protocol":"%s","global_ipv6_mode":"%s","custom_dns":"%s","dmz":%s}\n' \
 			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$limit_lan_bypass" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
-			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed" "$(json_escape "$saved_custom_dns")" "$dmz_active"
+			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed" "$(json_escape "$ip_protocol")" "$(json_escape "$cur_ipv6_mode")" "$(json_escape "$saved_custom_dns")" "$dmz_active"
 		;;
 	device-limits-list)
 		device_limits_json
@@ -1494,7 +1517,31 @@ handle_devices() {
 		case "$parental_mode" in custom|bypass|default) ;; *) parental_mode='default' ;; esac
 		case "$parental_block" in 1|true) parental_block=1 ;; *) parental_block=0 ;; esac
 		case "$safesearch" in 1|true) safesearch=1 ;; *) safesearch=0 ;; esac
-		case "$ipv6_allowed" in 1|true) ipv6_allowed=1 ;; *) ipv6_allowed=0 ;; esac
+		case "$ipv6_allowed" in
+			ipv6_only|2)
+				ip_protocol="ipv6_only"
+				ipv6_allowed=1
+				;;
+			1|true|dual_stack)
+				ip_protocol="dual_stack"
+				ipv6_allowed=1
+				;;
+			*)
+				ip_protocol="ipv4_only"
+				ipv6_allowed=0
+				;;
+		esac
+		if [ "$ip_protocol" = "ipv6_only" ]; then
+			cur_global_v6="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+			if [ "$cur_global_v6" = "ipv4_only" ]; then
+				echo 'Ative o IPv6 no roteador antes de definir um aparelho como IPv6 Puro' >&2
+				exit 2
+			fi
+			mode="automatic"
+			wan_route="default"
+			custom_dns=""
+			dmz_enabled=0
+		fi
 		clean_custom_dns=""
 		if [ -n "$custom_dns" ]; then
 			for dip in $(printf '%s' "$custom_dns" | tr ',;' ' '); do
@@ -1520,10 +1567,11 @@ handle_devices() {
 		fi
 		case "$target_dscp" in EF|AF41|AF31|CS4|CS6) ;; *) target_dscp="AF41" ;; esac
 		suffix="$(device_suffix "$mac")"; name_section="device_$(printf '%s' "$mac" | tr -d ':')"
-		if [ -z "$name" ]; then uci -q delete "equipe_devices.$name_section"
+		uci -q set "equipe_devices.$name_section=device"
+		uci -q set "equipe_devices.$name_section.mac=$mac"
+		if [ -z "$name" ]; then
+			uci -q delete "equipe_devices.$name_section.name" 2>/dev/null || true
 		else
-			uci -q set "equipe_devices.$name_section=device"
-			uci -q set "equipe_devices.$name_section.mac=$mac"
 			uci -q set "equipe_devices.$name_section.name=$name"
 		fi
 		host="$(find_dhcp_host "$mac")"
@@ -1537,7 +1585,32 @@ handle_devices() {
 			uci -q delete "equipe_devices.$name_section.custom_dns" 2>/dev/null || true
 			uci -q delete "dhcp.$tag_name" 2>/dev/null || true
 		fi
-		if [ "$wan_route" != default ]; then
+		if [ "$ip_protocol" = "ipv6_only" ]; then
+			prev_dhcp_ip=""
+			[ -n "$host" ] && prev_dhcp_ip="$(uci -q get "dhcp.$host.ip" || true)"
+			if [ -n "$prev_dhcp_ip" ] && [ "$prev_dhcp_ip" != "ignore" ] && valid_ipv4 "$prev_dhcp_ip"; then
+				uci -q set "equipe_devices.$name_section.saved_v4_ip=$prev_dhcp_ip"
+			fi
+			# RFC 8925 (DHCP Option 108 - IPv6-Only Preferred): informa nativamente iOS/iPadOS/macOS/Android 12+/Win11
+			# a nao configurar IPv4 (sem 169.254.x.x) e promover IPv6 imediatamente.
+			uci -q set dhcp.ark_v6only=tag
+			uci -q delete dhcp.ark_v6only.dhcp_option 2>/dev/null || true
+			uci -q add_list dhcp.ark_v6only.dhcp_option='108,1800'
+			[ -n "$host" ] || host="ark_$suffix"
+			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
+			[ -n "$dns_host_name" ] || dns_host_name="ark-$suffix"
+			uci -q set "dhcp.$host=host"
+			uci -q set "dhcp.$host.name=$dns_host_name"
+			uci -q set "dhcp.$host.mac=$mac"
+			uci -q delete "dhcp.$host.ip" 2>/dev/null || true
+			uci -q set "dhcp.$host.tag=ark_v6only"
+			# Remove lease IPv4 antigo para forcar DHCPDISCOVER -> DHCPOFFER com Option 108
+			if [ -z "${ARK_ROOT:-}" ] && [ -f /tmp/dhcp.leases ]; then
+				mac_lc="$(printf '%s' "$mac" | tr 'A-F' 'a-f')"
+				/etc/init.d/dnsmasq stop >/dev/null 2>&1 || true
+				sed -i "/$mac_lc/d" /tmp/dhcp.leases 2>/dev/null || true
+			fi
+		elif [ "$wan_route" != default ]; then
 			if [ -z "$ip" ]; then
 				if [ -f /tmp/dhcp.leases ]; then
 					ip="$(awk -v m="$(printf '%s' "$mac" | tr 'A-F' 'a-f')" '$2==m {print $3; exit}' /tmp/dhcp.leases)"
@@ -1563,6 +1636,7 @@ handle_devices() {
 			else
 				uci -q delete "dhcp.$host.tag" 2>/dev/null || true
 			fi
+			uci -q delete "equipe_devices.$name_section.saved_v4_ip" 2>/dev/null || true
 		elif [ "$mode" = reserved ]; then
 			[ -n "$host" ] || host="ark_$suffix"
 			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
@@ -1576,6 +1650,7 @@ handle_devices() {
 			else
 				uci -q delete "dhcp.$host.tag" 2>/dev/null || true
 			fi
+			uci -q delete "equipe_devices.$name_section.saved_v4_ip" 2>/dev/null || true
 		elif [ -n "$clean_custom_dns" ]; then
 			[ -n "$host" ] || host="ark_$suffix"
 			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
@@ -1585,8 +1660,10 @@ handle_devices() {
 			uci -q set "dhcp.$host.mac=$mac"
 			uci -q set "dhcp.$host.tag=$tag_name"
 			uci -q delete "dhcp.$host.ip" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.saved_v4_ip" 2>/dev/null || true
 		else
 			[ -z "$host" ] || uci -q delete "dhcp.$host"
+			uci -q delete "equipe_devices.$name_section.saved_v4_ip" 2>/dev/null || true
 		fi
 		priority_section="ark_priority_$suffix"
 		if [ "$priority" = 1 ]; then
@@ -1653,6 +1730,8 @@ handle_devices() {
 			uci -q delete "equipe_devices.$name_section.blocked_services" 2>/dev/null || true
 		fi
 		uci -q set "equipe_devices.$name_section.ipv6_allowed=$ipv6_allowed"
+		uci -q set "equipe_devices.$name_section.ip_protocol=$ip_protocol"
+		[ "$ip_protocol" != "ipv6_only" ] && uci -q delete "equipe_devices.$name_section.saved_ip_protocol" 2>/dev/null || true
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
 		if [ "$mwan3_changed" = 1 ]; then
 			mwan3_reorder_rules
@@ -1678,7 +1757,11 @@ handle_devices() {
 				fi
 				;;
 		esac
-		/etc/init.d/dnsmasq reload >/dev/null 2>&1
+		if [ "$ip_protocol" = "ipv6_only" ] && [ -z "${ARK_ROOT:-}" ]; then
+			/etc/init.d/dnsmasq start >/dev/null 2>&1 || /etc/init.d/dnsmasq reload >/dev/null 2>&1
+		else
+			/etc/init.d/dnsmasq reload >/dev/null 2>&1
+		fi
 		/etc/init.d/firewall reload >/dev/null 2>&1
 		if [ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ]; then
 			(sleep 1; /etc/init.d/mwan3 restart; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &

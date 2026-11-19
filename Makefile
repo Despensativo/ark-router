@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=2.2.7
+PKG_VERSION:=2.2.14
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -45,7 +45,7 @@ define Package/luci-app-ark-router-full
   SUBMENU:=3. Applications
   TITLE:=ARK Router Full operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +kmod-sched-act-police +irqbalance +luci-app-sqm +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br $(ARK_QOS_DEPENDS)
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +kmod-sched-act-police +irqbalance +luci-app-sqm +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +zerotier +speedtest-go +kmod-tun +kmod-jool-netfilter +jool-tools-netfilter +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br $(ARK_QOS_DEPENDS)
 endef
 
 define Package/luci-app-ark-router-full/description

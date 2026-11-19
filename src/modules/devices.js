@@ -17,7 +17,7 @@ const devicesMethods = {
 				const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
 				macs.forEach(function(m) {
 					const u = String(m).toUpperCase();
-					if (h.ip) reservedMap[u] = h.ip;
+					if (h.ip && h.ip !== 'ignore') reservedMap[u] = h.ip;
 					if (h.name) reservedNameMap[u] = h.name;
 				});
 			}
@@ -37,13 +37,26 @@ const devicesMethods = {
 		});
 
 		const limitsMap = deviceLimitsMap(data.names);
-		const ipv6Map = deviceIpv6Map(data.names, (values(data.equipeDashboardConfig).ipv6||{}).mode || 'dual_stack');
+		const globalIpv6Mode = (values(data.equipeDashboardConfig).ipv6||{}).mode || 'dual_stack';
+		const ipProtoMap = deviceIpProtocolMap(data.names, globalIpv6Mode);
+		const ipv6Map = deviceIpv6Map(data.names, globalIpv6Mode);
 		const parentalMap = deviceParentalMap(data.names);
 		const dhcp6Leases = (data.leases && data.leases.dhcp6_leases) || [];
 		const dhcp6ActiveMap = {};
+		const dhcp6IpMap = {};
 		dhcp6Leases.forEach(function(l) {
-			if (l.macaddr) dhcp6ActiveMap[String(l.macaddr).toUpperCase()] = true;
-			if (l.mac) dhcp6ActiveMap[String(l.mac).toUpperCase()] = true;
+			const m = String(l.macaddr || l.mac || '').toUpperCase();
+			if (!m) return;
+			dhcp6ActiveMap[m] = true;
+			const addr = (Array.isArray(l.ip6addrs) && l.ip6addrs[0]) || l.ip6addr || '';
+			if (addr && !dhcp6IpMap[m]) dhcp6IpMap[m] = String(addr).split('/')[0];
+		});
+		Object.keys(hostHints).forEach(function(k) {
+			const m = String(k || '').toUpperCase();
+			const h = hostHints[k];
+			if (!m || !h || dhcp6IpMap[m]) return;
+			const a6 = Array.isArray(h.ip6addrs) ? h.ip6addrs.find(function(x){ return x && String(x).indexOf('fe80:') !== 0; }) : '';
+			if (a6) dhcp6IpMap[m] = String(a6).split('/')[0];
 		});
 
 		const secRegex = /(ARK[-_]Secund[aá]rio|ARK[-_]Ponto|Ponto[-_]Adicional|Roteador[-_]Secund[aá]rio|secund[aá]rio)/i;
@@ -490,8 +503,9 @@ const devicesMethods = {
 			seen[mac]=1;
 			const w = deviceWifiInfo(mac, '');
 			const hName = (hostHints[mac] || {}).name || '';
-			let fallbackIp = (arpMap[mac] && arpMap[mac].ip) || '—';
-			if (fallbackIp && fallbackIp.indexOf('169.254.') === 0) fallbackIp = '—';
+			let fallbackIp = (arpMap[mac] && arpMap[mac].ip) || dhcp6IpMap[mac] || '—';
+			if (fallbackIp && fallbackIp.indexOf('169.254.') === 0) fallbackIp = dhcp6IpMap[mac] || '—';
+			if (ipProtoMap[mac] === 'ipv6_only') fallbackIp = dhcp6IpMap[mac] || 'IPv6 Puro';
 			devices.push({
 				mac: mac,
 				ip: fallbackIp,
@@ -586,7 +600,7 @@ const devicesMethods = {
 		// Include static DHCP hosts only if they are genuinely online right now
 		Object.keys(dhcpValues).forEach(function(k) {
 			const h = dhcpValues[k];
-			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip) return;
+			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip || h.ip === 'ignore') return;
 			const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
 			macs.forEach(function(m) {
 				const mac = String(m || '').toUpperCase();
@@ -626,6 +640,37 @@ const devicesMethods = {
 						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 					});
 				}
+			});
+		});
+		// Include active IPv6-only devices (wired or DHCPv6) even when no IPv4 lease exists
+		Object.keys(ipProtoMap).forEach(function(mac) {
+			if (ipProtoMap[mac] !== 'ipv6_only' || seen[mac]) return;
+			const hasV6Presence = !!(dhcp6ActiveMap[mac] || dhcp6IpMap[mac] || (rates[mac] && ((rates[mac].rx || 0) > 0 || (rates[mac].tx || 0) > 0)));
+			if (!hasV6Presence) return;
+			seen[mac] = 1;
+			const hint = hostHints[mac] || {};
+			const devName = names[mac] || hint.name || reservedNameMap[mac] || 'Dispositivo IPv6';
+			const w = deviceWifiInfo(mac, '');
+			devices.push({
+				mac: mac,
+				ip: dhcp6IpMap[mac] || 'IPv6 Puro',
+				name: devName,
+				hostname: hint.name || '',
+				network: w.network,
+				ssid: w.ssid,
+				band: w.band,
+				bandLabel: w.bandLabel,
+				isWifi: w.isWifi,
+				guest: w.isGuest,
+				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
+				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
 		const fingerprints = data.deviceFingerprints || {};
@@ -708,7 +753,9 @@ const devicesMethods = {
 						const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 					}
-					if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+					if (ipProtoMap[d.mac] === 'ipv6_only') {
+						badges.push(E('span', { class: 'ex-device-badge badge-ipv6-only', style: 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall' }, [ '🟣 IPv6 Puro' ]));
+					} else if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
 						badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 					}
 					if (this.dmzActive && ((this.dmzDestIp && this.dmzDestIp === d.ip) || (this.dmzMac && this.dmzMac === d.mac))) {
@@ -778,7 +825,9 @@ const devicesMethods = {
 				const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 			}
-			if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+			if (ipProtoMap[d.mac] === 'ipv6_only') {
+				badges.push(E('span', { class: 'ex-device-badge badge-ipv6-only', style: 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'IPv6 Puro: sem concessão DHCPv4 e com IPv4 bloqueado no firewall' }, [ '🟣 IPv6 Puro' ]));
+			} else if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
 				badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 			}
 			if (par && par.mode === 'bypass') {
@@ -904,16 +953,18 @@ const devicesMethods = {
 	quickReserveSecondary: function(d) {
 		const targetIp = (d.ip && d.ip !== '—') ? d.ip : '192.168.1.2';
 		const targetName = d.name || 'ARK-Secundario';
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['device-reserve-secondary', d.mac, targetIp, targetName]).then(L.bind(function(r) {
-			ui.addNotification(null, E('p', {}, [
-				'🔒 MAC ', E('strong', {}, [d.mac]), ' amarrado com sucesso ao IP ', E('strong', {}, [targetIp]), '! Nenhum outro aparelho receberá este IP.'
-			]), 'info');
-			window.setTimeout(function() {
-				window.location.reload();
-			}, 1500);
-		}, this)).catch(function(e) {
-			ui.addNotification(null, E('p', {}, ['Erro ao amarrar MAC: ' + (e.message || e)]), 'danger');
-		});
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['device-reserve-secondary', d.mac, targetIp, targetName])
+			.then(checkControlResult)
+			.then(L.bind(function(r) {
+				ui.addNotification(null, E('p', {}, [
+					'🔒 MAC ', E('strong', {}, [d.mac]), ' amarrado com sucesso ao IP ', E('strong', {}, [targetIp]), '! Nenhum outro aparelho receberá este IP.'
+				]), 'info');
+				window.setTimeout(function() {
+					window.location.reload();
+				}, 1500);
+			}, this)).catch(function(e) {
+				ui.addNotification(null, E('p', {}, ['Erro ao amarrar MAC: ' + (e.message || e)]), 'danger');
+			});
 	},
 	quickReserveIot: function(d) {
 		const targetIp = (d.ip && d.ip !== '—') ? d.ip : '';
@@ -1019,7 +1070,9 @@ const devicesMethods = {
 			btn.disabled = true;
 			btn.textContent = translateText('Limpando…');
 		}
-		fs.exec('/usr/sbin/equipe-dashboard-control', ['flush-stale-leases']).then(L.bind(function(res) {
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['flush-stale-leases'])
+			.then(checkControlResult)
+			.then(L.bind(function(res) {
 			let count = 0;
 			try {
 				const json = JSON.parse(res.stdout || '{}');
@@ -1540,54 +1593,84 @@ const devicesMethods = {
 			]));
 
 			// --- Seção: Protocolo de Internet / IPv6 Individual ---
-			let ipv6Allowed = (state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1);
+			const globalIpv6Mode = state.global_ipv6_mode || ((values((this.currentData || {}).equipeDashboardConfig).ipv6 || {}).mode) || 'dual_stack';
+			const globalIpv6Disabled = (globalIpv6Mode === 'ipv4_only');
+			let selectedIpProtocol = state.ip_protocol || ((state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1) ? 'dual_stack' : 'ipv4_only');
+			if (selectedIpProtocol !== 'dual_stack' && selectedIpProtocol !== 'ipv6_only' && selectedIpProtocol !== 'ipv4_only') {
+				selectedIpProtocol = 'dual_stack';
+			}
+
 			const ipv6BtnDual = E('button', {
 				type: 'button',
-				class: 'ex-priority-option-btn' + (ipv6Allowed ? ' active' : ''),
-				style: 'flex: 1; min-height: 40px; font-weight: 700;',
-				click: function() { setIpv6Mode(true); }
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'dual_stack' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;',
+				click: function() { setIpProtocol('dual_stack', true); }
 			}, [ '⚡ Pilha Dupla (IPv4 + IPv6)' ]);
+
+			const ipv6BtnOnly = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'ipv6_only' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;' + (globalIpv6Disabled ? ' opacity: 0.5; cursor: not-allowed;' : ''),
+				disabled: globalIpv6Disabled ? '' : null,
+				title: globalIpv6Disabled ? 'Ative o IPv6 global no roteador para usar o modo IPv6 Puro' : 'Bloqueia 100% do IPv4 e impede concessão DHCPv4 para este aparelho',
+				click: function() { if (!globalIpv6Disabled) setIpProtocol('ipv6_only', true); }
+			}, [ '🟣 IPv6 Puro (Sem IPv4)' ]);
 
 			const ipv6BtnBlocked = E('button', {
 				type: 'button',
-				class: 'ex-priority-option-btn' + (!ipv6Allowed ? ' active' : ''),
-				style: 'flex: 1; min-height: 40px; font-weight: 700;',
-				click: function() { setIpv6Mode(false); }
+				class: 'ex-priority-option-btn' + (selectedIpProtocol === 'ipv4_only' ? ' active' : ''),
+				style: 'flex: 1 1 150px; min-height: 40px; font-weight: 700;',
+				click: function() { setIpProtocol('ipv4_only', true); }
 			}, [ '🚫 IPv4 Puro (Bloquear IPv6)' ]);
 
 			const ipv6StatusPill = E('span', {
-				class: 'ex-pill ' + (ipv6Allowed ? 'online' : 'warning'),
-				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
+				class: 'ex-pill online',
+				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0;'
 			});
 
 			const ipv6DescText = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 6px; line-height: 1.4;' });
 
-			const setIpv6Mode = function(allowed) {
-				ipv6Allowed = !!allowed;
-				ipv6BtnDual.classList.toggle('active', ipv6Allowed);
-				ipv6BtnBlocked.classList.toggle('active', !ipv6Allowed);
-				if (ipv6Allowed) {
+			const setIpProtocol = function(proto, fromClick) {
+				selectedIpProtocol = proto;
+				ipv6BtnDual.classList.toggle('active', proto === 'dual_stack');
+				ipv6BtnOnly.classList.toggle('active', proto === 'ipv6_only');
+				ipv6BtnBlocked.classList.toggle('active', proto === 'ipv4_only');
+				ipv6StatusPill.style.background = '';
+				ipv6StatusPill.style.color = '';
+				ipv6StatusPill.style.borderColor = '';
+				if (proto === 'dual_stack') {
 					ipv6StatusPill.className = 'ex-pill online';
 					ipv6StatusPill.textContent = '⚡ PILHA DUPLA (LIBERADO)';
 					ipv6DescText.textContent = 'Este aparelho navega livremente com IPv4 e IPv6 em simultâneo. Recomendado para PCs Gamers, consoles e celulares.';
+				} else if (proto === 'ipv6_only') {
+					ipv6StatusPill.className = 'ex-pill';
+					ipv6StatusPill.style.background = 'rgba(168, 85, 247, 0.2)';
+					ipv6StatusPill.style.color = '#d8b4fe';
+					ipv6StatusPill.style.borderColor = 'rgba(168, 85, 247, 0.45)';
+					ipv6StatusPill.textContent = 'IPv6 PURO (SEM IPv4)';
+					ipv6DescText.textContent = 'Este aparelho não recebe endereço IPv4 no DHCP e tem 100% do tráfego IPv4 bloqueado no firewall. Reserva de IPv4, DMZ, DNS IPv4 e rota WAN IPv4 são desativados enquanto estiver em IPv6 Puro (sites exclusivamente IPv4 não abrirão sem NAT64).';
+					if (fromClick && isReserved) {
+						updateReserveMode(false);
+					}
 				} else {
 					ipv6StatusPill.className = 'ex-pill warning';
 					ipv6StatusPill.textContent = '🚫 BLOQUEIO ATIVO (IPv4 PURO)';
 					ipv6DescText.textContent = 'O firewall do roteador bloqueia 100% do tráfego IPv6 para este aparelho. Ele operará exclusivamente em IPv4 puro (ideal para TV Box, UniTV, IPTV e saídas dedicadas por WAN2).';
 				}
 			};
-			setIpv6Mode(ipv6Allowed);
+			setIpProtocol(selectedIpProtocol, false);
 
 			const ipv6ButtonGroup = E('div', {
 				class: 'ex-priority-button-grid',
 				style: 'margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'
 			}, [
 				ipv6BtnDual,
+				ipv6BtnOnly,
 				ipv6BtnBlocked
 			]);
 
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
-				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;' }, [
 					E('strong', {}, ['🌐 Protocolo de Internet Deste Aparelho (IPv4 / IPv6)']),
 					ipv6StatusPill
 				]),
@@ -1860,10 +1943,15 @@ const devicesMethods = {
 							click: function(ev) {
 								const b = ev.currentTarget;
 								b.disabled = true;
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['wol-target-save', device.mac, name.value.trim() || device.name || 'PC LAN', ipInput.value.trim() || device.ip || '', 'br-lan']).then(function() {
-									b.textContent = '⭐ Favoritado no WoL!';
-									selfDev.refreshWolCardSummary();
-								});
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wol-target-save', device.mac, name.value.trim() || device.name || 'PC LAN', ipInput.value.trim() || device.ip || '', 'br-lan'])
+									.then(checkControlResult)
+									.then(function() {
+										b.textContent = '⭐ Favoritado no WoL!';
+										selfDev.refreshWolCardSummary();
+									}).catch(function(err) {
+										b.disabled = false;
+										ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+									});
 							}
 						}, ['⭐ Fixar no WoL'])
 					])
@@ -1892,7 +1980,9 @@ const devicesMethods = {
 				btn.textContent = 'Salvando…';
 				const prioEnabled = (selectedPriority !== 'none') ? '1' : '0';
 				const dscpVal = (selectedPriority === 'video') ? 'AF31' : 'AF41';
-				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
+				const isV6Only = (selectedIpProtocol === 'ipv6_only');
+				const finalMode = isV6Only ? 'automatic' : (isReserved ? 'reserved' : 'automatic');
+				const finalIp = isV6Only ? '' : (isReserved ? ipInput.value.trim() : (device.ip || state.ip || ''));
 				const limEnabled = limitToggle.checked ? '1' : '0';
 				const limDown = limitToggle.checked ? (Math.round(Number(downInput.value)) || 0) : 0;
 				const limUp = limitToggle.checked ? (Math.round(Number(upInput.value)) || 0) : 0;
@@ -1900,10 +1990,11 @@ const devicesMethods = {
 				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
 				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
 				const limLanBypass = lanBypassToggle.checked ? '1' : '0';
-				const ipv6AllowedVal = ipv6Allowed ? '1' : '0';
-				const customDnsVal = customDnsInput.value.trim();
-				const dmzVal = dmzToggle.checked ? '1' : '0';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipv6AllowedVal,customDnsVal,dmzVal];
+				const ipProtocolVal = selectedIpProtocol;
+				const customDnsVal = isV6Only ? '' : customDnsInput.value.trim();
+				const dmzVal = isV6Only ? '0' : (dmzToggle.checked ? '1' : '0');
+				const finalWanRoute = isV6Only ? 'default' : selectedWanRoute;
+				const args=['device-save',device.mac,name.value.trim(),finalMode,finalIp,prioEnabled,dscpVal,finalWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipProtocolVal,customDnsVal,dmzVal];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();

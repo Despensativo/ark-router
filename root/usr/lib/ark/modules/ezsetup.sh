@@ -1693,10 +1693,10 @@ handle_ezsetup() {
 		;;
 	features)
 		cache="${ARK_ROOT}/tmp/ark-features.cache"
-		if [ -s "$cache" ]; then
+		if [ -s "$cache" ] && [ "$2" != "force" ] && [ -z "${ARK_MUTATION_LOCK_HELD:-}" ]; then
 			now="$(date +%s)"
 			mtime="$(date -r "$cache" +%s 2>/dev/null || echo 0)"
-			if [ $((now - mtime)) -lt 300 ] 2>/dev/null; then
+			if [ $((now - mtime)) -lt 20 ] 2>/dev/null; then
 				cat "$cache"
 				exit 0
 			fi

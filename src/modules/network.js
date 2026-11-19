@@ -170,15 +170,21 @@ const networkMethods = {
 		} else if (activeWans.length < 2) {
 			text('ex-mwan-mode', 'Link Único (Single-WAN)');
 			const toggle = document.getElementById('ex-mwan-toggle');
+			const mwanFeature = (this.capabilities.features && this.capabilities.features.mwan3) || {};
+			const mwanEnabled = !!(mwanFeature.active || (data.mwan && data.mwan.interfaces && Object.keys(data.mwan.interfaces).length > 0));
 			if (toggle) {
-				toggle.checked = false;
+				toggle.checked = mwanEnabled;
 				toggle.disabled = true;
-				toggle.title = 'Requer pelo menos 2 conexões WAN ativas para ativar o Multi-WAN.';
+				toggle.title = mwanEnabled ? 'Multi-WAN em espera: ativará balanceamento/failover automaticamente ao plugar um 2º cabo.' : 'Requer pelo menos 2 conexões WAN ativas para ativar o Multi-WAN.';
 			}
-			text('ex-mwan-toggle-state', 'INDISPONÍVEL (1 WAN)');
-			setPill('ex-mwan-status', 'standby', 'DESATIVADO');
+			text('ex-mwan-toggle-state', mwanEnabled ? 'STANDBY (1 LINK)' : 'DESATIVADO');
+			setPill('ex-mwan-status', 'standby', mwanEnabled ? 'STANDBY (1 LINK)' : 'DESATIVADO');
 			const subEl = document.getElementById('ex-mwan-toggle-desc');
-			if (subEl) subEl.textContent = 'O balanceamento e failover requerem pelo menos 2 conexões WAN ativas para operar. Com apenas 1 link, todo o tráfego flui normalmente por ele.';
+			if (subEl) {
+				subEl.textContent = mwanEnabled
+					? ('Multi-WAN configurado e ativo. Operando em espera com 1 link conectado (' + (activeWans[0] ? activeWans[0].label : 'WAN') + '). O balanceamento/failover engatará automaticamente quando o 2º cabo for conectado.')
+					: 'O balanceamento e failover requerem pelo menos 2 conexões WAN ativas para operar. Com apenas 1 link, todo o tráfego flui normalmente por ele.';
+			}
 		} else {
 			text('ex-mwan-mode', modeLabel);
 			const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
@@ -1650,7 +1656,56 @@ const networkMethods = {
 				savePromptBox
 			]);
 
+			let currentVlan = (cfg && (cfg.ark_vlan || (cfg.device && cfg.device.indexOf('.') !== -1 && cfg.device.split('.')[1]))) || '';
+			const vlanPreset = E('select', {
+				class: 'cbi-input-select',
+				'aria-label': 'Tag de VLAN da Operadora / Fibra',
+				change: function() {
+					if (vlanPreset.value === 'custom') {
+						vlanCustomWrap.style.display = 'block';
+						vlanCustomInput.focus();
+					} else {
+						vlanCustomWrap.style.display = 'none';
+						vlanCustomInput.value = vlanPreset.value;
+					}
+				}
+			}, [
+				E('option', { value: '' }, ['Nenhuma (Sem VLAN • Padrão)']),
+				E('option', { value: '10' }, ['Vivo Fibra (VLAN 10)']),
+				E('option', { value: '35' }, ['Claro / NET Fibra (VLAN 35)']),
+				E('option', { value: '85' }, ['Oi Fibra (VLAN 85)']),
+				E('option', { value: '40' }, ['TIM Live Fibra (VLAN 40)']),
+				E('option', { value: 'custom' }, ['Outra VLAN personalizada (1-4094)…'])
+			]);
+
+			const vlanCustomInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: '1',
+				max: '4094',
+				placeholder: 'Ex: 10, 35, 100',
+				value: currentVlan,
+				style: 'margin-top: 6px; width: 100%;'
+			});
+
+			const vlanCustomWrap = E('div', {
+				style: 'display: none; margin-top: 6px;'
+			}, [
+				E('label', { style: 'font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;' }, ['Digite o número da VLAN (1 a 4094):']),
+				vlanCustomInput
+			]);
+
+			if (currentVlan) {
+				if (['10', '35', '85', '40'].indexOf(String(currentVlan)) !== -1) {
+					vlanPreset.value = String(currentVlan);
+				} else {
+					vlanPreset.value = 'custom';
+					vlanCustomWrap.style.display = 'block';
+				}
+			}
+
 			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,(hint instanceof Node)?hint:(hint?E('small',{class:'ex-muted'},[hint]):'')]);};
+			const vlanField = field('VLAN de Internet (Operadora)', E('div', {}, [vlanPreset, vlanCustomWrap]), 'Necessário em conexões de fibra com modem em Bridge (ex: Vivo VLAN 10, Claro VLAN 35).');
 			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[
 				pppoeProfileBar,
 				field('Usuário PPPoE',username),
@@ -1693,6 +1748,7 @@ const networkMethods = {
 				field('Função',role),
 				field('Porta física',device,'Porta vinculada ao card selecionado'),
 				field('Tipo de conexão',proto),
+				vlanField,
 				field('Prioridade / Métrica (Peso)',metricInput,'Menor número = maior prioridade (ex: WAN1=10, WAN2=20). Não pode haver WANs com o mesmo peso.'),
 				field('Conectividade IPv6',ipv6Switch,'Habilita requisição de endereço e rota IPv6 nesta conexão WAN.'),
 				field(_t('Distribuir IPv6 na LAN'),delegateSwitch,delegateHint),
@@ -1750,13 +1806,23 @@ const networkMethods = {
 						}
 						const chosenIpv6 = ipv6Input.checked ? '1' : '0';
 						const chosenDelegate = (ipv6Input.checked && delegateInput.checked) ? '1' : '0';
+						const chosenVlan = (vlanPreset.value === 'custom' ? vlanCustomInput.value.trim() : vlanPreset.value.trim());
+						if (chosenVlan) {
+							const vNum = parseInt(chosenVlan, 10);
+							if (!vNum || vNum < 1 || vNum > 4094) {
+								if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
+								ui.addNotification(null, E('p', {}, ['VLAN ID inválido. Deve ser um número entre 1 e 4094.']), 'warning');
+								return;
+							}
+						}
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
-						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
-							ui.hideModal();
-							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
-						}).catch(function(e) {
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim(), 'vlan=' + (chosenVlan || '')];
+						return fs.exec('/usr/sbin/equipe-dashboard-control', args)
+							.then(checkControlResult)
+							.then(function(r) {
+								ui.hideModal();
+								reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
+							}).catch(function(e) {
 							if (btn) {
 								btn.removeAttribute('disabled');
 								btn.disabled = false;

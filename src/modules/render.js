@@ -2429,6 +2429,43 @@ const renderMethods = {
 		]);
 		return card;
 	},
+	renderV2CategoryTabs: function() {
+		const self = this;
+		const tabs = [
+			{ id: 'all', icon: '🌟', label: 'Todos' },
+			{ id: 'wan', icon: '🌐', label: 'Internet & WAN' },
+			{ id: 'wifi', icon: '📶', label: 'Wi-Fi & Redes' },
+			{ id: 'devices', icon: '📱', label: 'Dispositivos' },
+			{ id: 'sqm_perf', icon: '⚡', label: 'SQM & Desempenho' },
+			{ id: 'security_usb', icon: '🛡️', label: 'Segurança & USB' }
+		];
+		let currentActive = 'cockpit';
+		try {
+			currentActive = sessionStorage.getItem('ark_v2_active_panel') || 'cockpit';
+		} catch(e) {}
+
+		const tabButtons = tabs.map(function(t) {
+			const isAct = (t.id === currentActive) || (t.id === 'all' && currentActive === 'cockpit');
+			return E('button', {
+				type: 'button',
+				class: 'ex-cat-tab' + (isAct ? ' is-active' : ''),
+				'data-cat': t.id,
+				click: function() {
+					self.switchV2Panel(t.id === 'all' ? 'all' : t.id);
+				}
+			}, [
+				E('span', { class: 'ex-cat-tab-icon' }, [t.icon]),
+				E('span', { class: 'ex-cat-tab-label' }, [translateText(t.label)])
+			]);
+		});
+
+		return E('nav', {
+			id: 'ex-v2-category-tabs',
+			class: 'ex-category-tabs',
+			'data-ark-panels': 'always',
+			'aria-label': 'Filtro de seções do painel'
+		}, tabButtons);
+	},
 	toggleV2MobileSidebar: function(forceState) {
 		const sb = document.getElementById('ex-v2-sidebar');
 		const bd = document.getElementById('ex-v2-sidebar-backdrop');
@@ -2474,6 +2511,13 @@ const renderMethods = {
 			} else {
 				btn.classList.remove('is-active');
 			}
+		});
+
+		const catTabs = root.querySelectorAll('.ex-cat-tab[data-cat]');
+		Array.prototype.forEach.call(catTabs, function(tab) {
+			const cat = tab.getAttribute('data-cat');
+			const match = (cat === targetPanel) || (cat === 'all' && (targetPanel === 'all' || targetPanel === 'cockpit'));
+			tab.classList.toggle('is-active', match);
 		});
 
 		const singleModulePanels = {
@@ -2714,6 +2758,7 @@ const renderMethods = {
 
 		const mainEl = E('div', { class: 'ex-v2-main' }, [mobileBarEl]);
 		const quickStripEl = this.renderV2QuickStatusStrip(data);
+		const categoryTabsEl = this.renderV2CategoryTabs();
 		const statusOverviewEl = this.renderV2CockpitStatusOverview(data);
 		const switchPortsCardEl = this.renderV2SwitchPortsCard(data);
 
@@ -2721,6 +2766,7 @@ const renderMethods = {
 			mainEl.appendChild(el);
 			if (el.classList && el.classList.contains('ex-health-strip')) {
 				mainEl.appendChild(quickStripEl);
+				mainEl.appendChild(categoryTabsEl);
 				mainEl.appendChild(statusOverviewEl);
 			}
 			if (el.id === 'ex-history-samples') {
