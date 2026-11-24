@@ -29,3 +29,16 @@ Antes de editar **qualquer módulo compartilhado** (`common.sh`, `equipe-dashboa
 5. **Verificação Alvo**: Comando exato pós-edição (`shellcheck -s sh`, `tests/run_local_tests.sh`, teste unitário focal, e validação visual/VM UTM quando tocar UI ou runtime).
 
 Para template completo e checklist de entrega, leia `.agents/skills/ark-spec-impact/SKILL.md`.
+
+## 4. Padrão Visual Moderno 2026 (UI/UX & Anti-Slop)
+
+Para criar, refatorar ou polir interfaces visuais com padrão limpo e moderno (2026):
+- **Skill Principal**: `design` (*Design & Taste* — tipografia precisa, hierarquia limpa, ritmo de espaçamento e ciclo `Build -> Critique -> Refine`).
+- **Auditoria Obrigatória**: `anti-slop` (73 regras determinísticas para eliminar vícios visuais de IA: sombras inchadas, degradês clichês, emojis como ícones e bugs de grid).
+- **Refinamento & Referência**: `polimento-ui` (modo *Operate* para dashboards técnicos) e `ui-ux` (catálogo de contraste WCAG `4.5:1` e touch targets `44×44px`).
+- **Trava Embarcada ARK Router**: toda alteração visual no LuCI DEVE respeitar simultaneamente `.agents/skills/ark-theme-ui/SKILL.md` (DOM LuCI, touch targets `>= 40px`, `< 60 KiB` gzip no núcleo do tema e verificação por screenshot real Desktop + Mobile).
+
+## 5. Revisão Contínua Offline (PC sem Internet)
+
+- Utilize `sh scripts/offline-review.sh` (`--staged`, `--working`, `--range A..B`, `--full`, `--with-tests`) para auditoria local determinística de segurança, regressões, segredos, sintaxe POSIX/JS e orçamento de tema sem depender de nuvem/API.
+- Hooks Git versionados residem em `.githooks/` (`pre-commit` e `pre-push`), ativáveis em qualquer clone via `git config core.hooksPath .githooks`.

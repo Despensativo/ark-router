@@ -1,0 +1,7 @@
+#!/bin/sh
+# ARK Router — Offline pre-commit review hook (rápido, 100% local)
+# Ativado via: git config core.hooksPath .githooks
+set -eu
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec sh "$REPO_ROOT/scripts/offline-review.sh" --staged

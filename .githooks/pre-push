@@ -1,0 +1,11 @@
+#!/bin/sh
+# ARK Router — Offline pre-push review hook (auditoria completa sem rede)
+# Ativado via: git config core.hooksPath .githooks
+set -eu
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+if git rev-parse --verify '@{u}' >/dev/null 2>&1; then
+	exec sh "$REPO_ROOT/scripts/offline-review.sh" --range '@{u}..HEAD' --full
+else
+	exec sh "$REPO_ROOT/scripts/offline-review.sh" --working --full
+fi
