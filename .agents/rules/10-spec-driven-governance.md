@@ -37,6 +37,7 @@ Para criar, refatorar ou polir interfaces visuais com padrão limpo e moderno (2
 - **Auditoria Obrigatória**: `anti-slop` (73 regras determinísticas para eliminar vícios visuais de IA: sombras inchadas, degradês clichês, emojis como ícones e bugs de grid).
 - **Refinamento & Referência**: `polimento-ui` (modo *Operate* para dashboards técnicos) e `ui-ux` (catálogo de contraste WCAG `4.5:1` e touch targets `44×44px`).
 - **Trava Embarcada ARK Router**: toda alteração visual no LuCI DEVE respeitar simultaneamente `.agents/skills/ark-theme-ui/SKILL.md` (DOM LuCI, touch targets `>= 40px`, `< 60 KiB` gzip no núcleo do tema e verificação por screenshot real Desktop + Mobile).
+- **Verificação Visual Real Obrigatória (Zero Stub Sintético)**: Proibido usar HTML mockado/vazio (sem `overview.js` real) como evidência visual de UI. Toda auditoria visual deve usar `scripts/visual_capture.py` (`--mode offline --strict` renderizando o `overview.js` + CSS reais em HiDPI `2x`, ou `--mode live --url <VM/roteador>` em somente leitura) capturando Desktop (`1440×900`), Mobile (`390×844` + drawer), modais e páginas nativas LuCI, **e inspecionar os PNGs gerados via `read_file`**.
 
 ## 5. Revisão Contínua Offline (PC sem Internet)
 

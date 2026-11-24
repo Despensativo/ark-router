@@ -1,0 +1,467 @@
+{
+  "board": {
+    "kernel": "6.12.28",
+    "hostname": "ARK-W6x",
+    "system": "ARMv8 Processor rev 4",
+    "model": "Acer Predator Connect W6x (Stock Layout)",
+    "board_name": "acer,predator-connect-w6x-stock",
+    "rootfs_type": "squashfs",
+    "release": {
+      "distribution": "OpenWrt",
+      "version": "25.12.6",
+      "revision": "r33311-981c978eff",
+      "target": "mediatek/filogic",
+      "description": "OpenWrt 25.12.6 r33311-981c978eff"
+    }
+  },
+  "system_info": {
+    "uptime": 168012,
+    "load": [41942, 80608, 86506],
+    "memory": {
+      "total": 1034321920,
+      "free": 621400064,
+      "shared": 1822720,
+      "buffered": 44564480,
+      "available": 748994560,
+      "cached": 108527616
+    },
+    "root": {
+      "total": 59904,
+      "used": 10184,
+      "free": 49720,
+      "avail": 49720
+    },
+    "swap": {
+      "total": 0,
+      "free": 0
+    }
+  },
+  "features": {
+    "language": "pt-br",
+    "title": "ARK Router",
+    "operation_profile": "full",
+    "network_mode": "router",
+    "package_manager": "apk",
+    "current_theme": "ark",
+    "available_themes": ["ark", "bootstrap"],
+    "theme_customized": false,
+    "user_theme": "ark",
+    "ping_target": "cloudflare",
+    "ping_custom_ip": "",
+    "dev_mode": false,
+    "show_uninstalled_menus": false,
+    "appearance": {
+      "mode": "auto",
+      "primary": "#3b82f6",
+      "secondary": "#8b5cf6"
+    },
+    "features": {
+      "sqm": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "luci-app-sqm" },
+      "mwan3": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "luci-app-mwan3" },
+      "nlbwmon": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "luci-app-nlbwmon" },
+      "upnp": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "luci-app-upnp" },
+      "wifi": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false },
+      "history": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "equipe-traffic-history" },
+      "hardware_tune": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "ark-hardware-tune" },
+      "firewall_guard": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "ark-firewall-guard" },
+      "autowan": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "ark-autowan" },
+      "clock_preserver": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "ark-clock-preserver" },
+      "safe_shutdown": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "ark-safe-shutdown" },
+      "temperature": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false },
+      "custom_qos": { "installed": true, "active": false, "hidden": false, "user_disabled": false, "user_removed": false, "installable": false, "package": "custom_qos" },
+      "adblock": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "adguardhome", "engine": "adguardhome", "blocked_today": 14820, "queries_today": 68410 },
+      "wireguard": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "luci-proto-wireguard", "interface": "wg0", "peers": 3 },
+      "zerotier": { "installed": false, "active": false, "hidden": true, "user_disabled": false, "user_removed": false, "installable": true, "package": "zerotier" },
+      "speedify": { "installed": false, "active": false, "runtime_running": false, "hidden": true, "user_disabled": false, "user_removed": false, "installable": true, "supported": true, "state": "STOPPED", "adapters": [], "settings": {} },
+      "zram": { "installed": true, "active": false, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "kmod-zram", "mem_total_mb": 986, "cpu_cores": 4, "is_low_end_mips": false, "is_high_ram": true, "is_low_ram": false, "recommendation": "optional", "zram_size_mb": 0, "zram_used_mb": 0, "swappiness": 10 },
+      "ksmbd": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "ksmbd-server" },
+      "wol": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "etherwake" },
+      "usteer": { "installed": true, "active": true, "hidden": false, "user_disabled": false, "user_removed": false, "installable": true, "package": "usteer" },
+      "starlink_public": { "enabled": false, "url": "/starlink/", "read_only": true, "active_wan": "wan" },
+      "starlink_always_show": false,
+      "starlink_telemetry": { "enabled": false }
+    },
+    "hardware": {
+      "cpu_cores": 4,
+      "cpu_freq_mhz": 2000,
+      "cpu_freq_str": "2.0 GHz",
+      "cpu_arch": "aarch64",
+      "mem_total_mb": 986,
+      "flash_type": "NAND Flash (UBI)",
+      "wifi_160_supported": true,
+      "wifi_ax_supported": true,
+      "wifi_be_supported": false,
+      "wifi_6g_supported": true,
+      "wifi_320_supported": false,
+      "wifi_wed_supported": true,
+      "wifi_wed_enabled": true,
+      "wifi_maxpower_enabled": false,
+      "is_legacy_owrt": false,
+      "silicon": {
+        "class": "mediatek_filogic",
+        "name": "MediaTek Filogic 830 (MT7986A Quad-Core)",
+        "hw_offload_capable": true,
+        "wed_capable": true,
+        "multicore": true,
+        "ram_tier": "high",
+        "ram_tier_desc": "Alto Desempenho (1 GB RAM)",
+        "tuning_profile": "Filogic PPE + WED Hardware Offloading"
+      }
+    },
+    "https": {
+      "available": true,
+      "redirect": true,
+      "certificate": "local",
+      "ca_available": true,
+      "ca_fingerprint": "A1:B2:C3:D4:E5:F6:11:22:33:44",
+      "ca_download": "/ark-router/ark-router-ca.crt"
+    },
+    "update": {
+      "current": "2.2.15",
+      "repo": "Despensativo/ark-router",
+      "manager": "apk",
+      "asu_check": true
+    }
+  },
+  "interfaces": {
+    "interface": [
+      {
+        "interface": "lan",
+        "up": true,
+        "device": "br-lan",
+        "l3_device": "br-lan",
+        "proto": "static",
+        "uptime": 168012,
+        "ipv4-address": [{ "address": "192.168.73.1", "mask": 24 }],
+        "ipv6-address": [{ "address": "fd73:4152:4b00::1", "mask": 64 }],
+        "ipv6-prefix-assignment": [{ "address": "2001:db8:73::", "mask": 64 }]
+      },
+      {
+        "interface": "wan",
+        "up": true,
+        "device": "eth1",
+        "l3_device": "pppoe-wan",
+        "proto": "pppoe",
+        "uptime": 167940,
+        "ipv4-address": [{ "address": "198.51.100.42", "mask": 32 }],
+        "route": [{ "target": "0.0.0.0", "mask": 0, "nexthop": "198.51.100.1", "metric": 10 }],
+        "dns-server": ["1.1.1.1", "8.8.8.8"]
+      },
+      {
+        "interface": "wan6",
+        "up": true,
+        "device": "pppoe-wan",
+        "l3_device": "pppoe-wan",
+        "proto": "dhcpv6",
+        "uptime": 167930,
+        "ipv6-address": [{ "address": "2001:db8:100::42", "mask": 128 }],
+        "ipv6-prefix": [{ "address": "2001:db8:73::", "mask": 56 }]
+      },
+      {
+        "interface": "wan2",
+        "up": true,
+        "device": "lan4",
+        "l3_device": "lan4",
+        "proto": "dhcp",
+        "uptime": 91400,
+        "ipv4-address": [{ "address": "203.0.113.18", "mask": 24 }],
+        "route": [{ "target": "0.0.0.0", "mask": 0, "nexthop": "203.0.113.1", "metric": 20 }],
+        "dns-server": ["1.0.0.1", "9.9.9.9"]
+      },
+      {
+        "interface": "wg0",
+        "up": true,
+        "device": "wg0",
+        "l3_device": "wg0",
+        "proto": "wireguard",
+        "uptime": 167800,
+        "ipv4-address": [{ "address": "10.66.66.1", "mask": 24 }]
+      }
+    ]
+  },
+  "devices": {
+    "pppoe-wan": { "up": true, "mtu": 1500, "speed": 2500, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 19438291040, "tx_bytes": 4829104120, "rx_packets": 18293012, "tx_packets": 9123011 } },
+    "eth1": { "up": true, "mtu": 1508, "speed": 2500, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 19512891040, "tx_bytes": 4891204120 } },
+    "lan4": { "up": true, "mtu": 1500, "speed": 1000, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 2140982100, "tx_bytes": 512981200 } },
+    "lan1": { "up": true, "mtu": 1500, "speed": 1000, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 6239120410, "tx_bytes": 1249102930 } },
+    "lan2": { "up": true, "mtu": 1500, "speed": 1000, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 3128910200, "tx_bytes": 910293100 } },
+    "lan3": { "up": false, "mtu": 1500, "speed": 0, "duplex": false, "carrier": false, "statistics": { "rx_bytes": 0, "tx_bytes": 0 } },
+    "br-lan": { "up": true, "mtu": 1500, "speed": 2500, "duplex": true, "carrier": true, "statistics": { "rx_bytes": 9384910200, "tx_bytes": 21839102910 } }
+  },
+  "mwan": {
+    "interfaces": {
+      "wan": { "status": "online", "running": true, "enabled": true, "score": 5, "online": 167940, "track_ip": [{ "ip": "1.1.1.1", "status": "online", "latency": 4 }] },
+      "wan2": { "status": "online", "running": true, "enabled": true, "score": 5, "online": 91400, "track_ip": [{ "ip": "8.8.8.8", "status": "online", "latency": 12 }] }
+    },
+    "policies": {
+      "ipv4": { "balanced": [{ "interface": "wan", "percent": 75 }, { "interface": "wan2", "percent": 25 }] }
+    }
+  },
+  "uci": {
+    "network": {
+      "values": {
+        "lan": { ".type": "interface", ".name": "lan", "device": "br-lan", "proto": "static", "ipaddr": "192.168.73.1", "netmask": "255.255.255.0", "ip6assign": "64" },
+        "br_lan": { ".type": "device", ".name": "br_lan", "name": "br-lan", "type": "bridge", "ports": ["lan1", "lan2", "lan3"] },
+        "wan": { ".type": "interface", ".name": "wan", "device": "eth1", "proto": "pppoe", "metric": "10" },
+        "wan6": { ".type": "interface", ".name": "wan6", "device": "@wan", "proto": "dhcpv6" },
+        "wan2": { ".type": "interface", ".name": "wan2", "device": "lan4", "proto": "dhcp", "metric": "20" },
+        "eth1_dev": { ".type": "device", ".name": "eth1_dev", "name": "eth1", "mtu": "1508" }
+      }
+    },
+    "sqm": {
+      "values": {
+        "wan": { ".type": "queue", ".name": "wan", "enabled": "1", "interface": "pppoe-wan", "download": "580000", "upload": "290000", "qdisc": "cake", "script": "piece_of_cake.qos", "linklayer": "ethernet", "overhead": "44", "waveform_aplus": "1", "gaming_ports": "1" },
+        "wan2": { ".type": "queue", ".name": "wan2", "enabled": "0", "interface": "lan4", "download": "180000", "upload": "90000", "qdisc": "cake", "script": "piece_of_cake.qos", "linklayer": "ethernet", "overhead": "44" }
+      }
+    },
+    "qos_equipe": { "values": { "main": { ".type": "settings", "enabled": "1" } } },
+    "mwan3": {
+      "values": {
+        "wan": { ".type": "interface", "enabled": "1", "family": "ipv4", "track_ip": ["1.1.1.1", "8.8.8.8"] },
+        "wan2": { ".type": "interface", "enabled": "1", "family": "ipv4", "track_ip": ["1.0.0.1", "9.9.9.9"] },
+        "default_rule": { ".type": "rule", "dest_ip": "0.0.0.0/0", "use_policy": "wan_wan2_failover" }
+      }
+    },
+    "wireless": {
+      "values": {
+        "radio0": { ".type": "wifi-device", ".name": "radio0", "type": "mac80211", "band": "2g", "channel": "6", "htmode": "HE20", "country": "BR", "txpower": "20" },
+        "radio1": { ".type": "wifi-device", ".name": "radio1", "type": "mac80211", "band": "5g", "channel": "36", "htmode": "HE160", "country": "BR", "txpower": "23" },
+        "default_radio0": { ".type": "wifi-iface", ".name": "default_radio0", "device": "radio0", "network": "lan", "mode": "ap", "ssid": "CASA_ARK", "encryption": "sae-mixed", "ieee80211r": "1", "ieee80211k": "1", "ieee80211v": "1" },
+        "default_radio1": { ".type": "wifi-iface", ".name": "default_radio1", "device": "radio1", "network": "lan", "mode": "ap", "ssid": "CASA_ARK", "encryption": "sae-mixed", "ieee80211r": "1", "ieee80211k": "1", "ieee80211v": "1" },
+        "guest_radio0": { ".type": "wifi-iface", ".name": "guest_radio0", "device": "radio0", "network": "guest", "mode": "ap", "ssid": "Visitantes_ARK", "encryption": "psk2", "isolate": "1" }
+      }
+    },
+    "dhcp": {
+      "values": {
+        "lan": { ".type": "dhcp", "interface": "lan", "start": "100", "limit": "150", "leasetime": "12h" },
+        "dnsmasq": { ".type": "dnsmasq", "cachesize": "10000", "localise_queries": "1" }
+      }
+    },
+    "firewall": {
+      "values": {
+        "defaults": { ".type": "defaults", "input": "REJECT", "output": "ACCEPT", "forward": "REJECT", "flow_offloading": "1", "flow_offloading_hw": "1" }
+      }
+    },
+    "equipe_dashboard": {
+      "values": {
+        "main": { ".type": "settings", "language": "pt-br", "title": "ARK Router", "user_theme": "ark" },
+        "settings": { ".type": "settings", "ping_target": "cloudflare", "sqm_gaming_ports": "1" },
+        "ipv6": { ".type": "ipv6", "mode": "dual_stack" }
+      }
+    },
+    "equipe_devices": {
+      "values": {
+        "dev1": { ".type": "device", "mac": "AA:BB:CC:11:22:01", "name": "MacBook Pro Trabalho" },
+        "dev2": { ".type": "device", "mac": "AA:BB:CC:11:22:02", "name": "iPhone 16 Pro" },
+        "dev3": { ".type": "device", "mac": "AA:BB:CC:11:22:03", "name": "Apple TV 4K Sala" },
+        "dev4": { ".type": "device", "mac": "AA:BB:CC:11:22:04", "name": "PlayStation 5" },
+        "dev5": { ".type": "device", "mac": "AA:BB:CC:11:22:05", "name": "Smart TV OLED 65" }
+      }
+    }
+  },
+  "wireless_status": {
+    "radio0": {
+      "up": true,
+      "config": { "band": "2g", "channel": "6", "htmode": "HE20", "country": "BR" },
+      "interfaces": [
+        { "section": "default_radio0", "ifname": "phy0-ap0", "config": { "mode": "ap", "ssid": "CASA_ARK", "network": ["lan"], "encryption": "sae-mixed" } },
+        { "section": "guest_radio0", "ifname": "phy0-ap1", "config": { "mode": "ap", "ssid": "Visitantes_ARK", "network": ["guest"], "encryption": "psk2" } }
+      ]
+    },
+    "radio1": {
+      "up": true,
+      "config": { "band": "5g", "channel": "36", "htmode": "HE160", "country": "BR" },
+      "interfaces": [
+        { "section": "default_radio1", "ifname": "phy1-ap0", "config": { "mode": "ap", "ssid": "CASA_ARK", "network": ["lan"], "encryption": "sae-mixed" } }
+      ]
+    }
+  },
+  "dhcp_leases": {
+    "dhcp_leases": [
+      { "hostname": "MacBook-Pro", "ipaddr": "192.168.73.101", "macaddr": "AA:BB:CC:11:22:01", "expires": 38200 },
+      { "hostname": "iPhone-16-Pro", "ipaddr": "192.168.73.102", "macaddr": "AA:BB:CC:11:22:02", "expires": 40100 },
+      { "hostname": "AppleTV-Sala", "ipaddr": "192.168.73.103", "macaddr": "AA:BB:CC:11:22:03", "expires": 41200 },
+      { "hostname": "PS5-Console", "ipaddr": "192.168.73.104", "macaddr": "AA:BB:CC:11:22:04", "expires": 36000 },
+      { "hostname": "LG-OLED-65", "ipaddr": "192.168.73.105", "macaddr": "AA:BB:CC:11:22:05", "expires": 39500 },
+      { "hostname": "Galaxy-S24", "ipaddr": "192.168.73.106", "macaddr": "AA:BB:CC:11:22:06", "expires": 35100 },
+      { "hostname": "iPad-Air", "ipaddr": "192.168.73.107", "macaddr": "AA:BB:CC:11:22:07", "expires": 32400 },
+      { "hostname": "Echo-Dot-Quarto", "ipaddr": "192.168.73.108", "macaddr": "AA:BB:CC:11:22:08", "expires": 29800 },
+      { "hostname": "Visitante-Phone", "ipaddr": "192.168.74.52", "macaddr": "AA:BB:CC:11:22:09", "expires": 14400 }
+    ]
+  },
+  "device_stations": {
+    "main_wifi_count": 6,
+    "guest_wifi_count": 1,
+    "total_wifi_count": 7,
+    "total_wired_count": 2,
+    "stations": [
+      { "mac": "AA:BB:CC:11:22:01", "ifname": "phy1-ap0", "ssid": "CASA_ARK", "band": "5g", "band_label": "5 GHz Wi-Fi 6", "signal": -51, "rx_bytes": 4829104200, "tx_bytes": 1129304100, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:02", "ifname": "phy1-ap0", "ssid": "CASA_ARK", "band": "5g", "band_label": "5 GHz Wi-Fi 6", "signal": -56, "rx_bytes": 1829304100, "tx_bytes": 412930100, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:05", "ifname": "phy1-ap0", "ssid": "CASA_ARK", "band": "5g", "band_label": "5 GHz Wi-Fi 6", "signal": -61, "rx_bytes": 9281920100, "tx_bytes": 284910200, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:06", "ifname": "phy1-ap0", "ssid": "CASA_ARK", "band": "5g", "band_label": "5 GHz Wi-Fi 6", "signal": -64, "rx_bytes": 912039100, "tx_bytes": 192039100, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:07", "ifname": "phy1-ap0", "ssid": "CASA_ARK", "band": "5g", "band_label": "5 GHz Wi-Fi 6", "signal": -58, "rx_bytes": 1420391200, "tx_bytes": 218391000, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:08", "ifname": "phy0-ap0", "ssid": "CASA_ARK", "band": "2g", "band_label": "2.4 GHz", "signal": -67, "rx_bytes": 182930100, "tx_bytes": 62910200, "is_guest": false },
+      { "mac": "AA:BB:CC:11:22:09", "ifname": "phy0-ap1", "ssid": "Visitantes_ARK", "band": "2g", "band_label": "2.4 GHz", "signal": -70, "rx_bytes": 312910200, "tx_bytes": 84910200, "is_guest": true }
+    ],
+    "wired": [
+      { "mac": "AA:BB:CC:11:22:03", "port": "lan1", "speed": 1000 },
+      { "mac": "AA:BB:CC:11:22:04", "port": "lan2", "speed": 1000 }
+    ]
+  },
+  "lan_status": {
+    "ipaddr": "192.168.73.1",
+    "netmask": "255.255.255.0",
+    "dhcp_start": "192.168.73.100",
+    "dhcp_end": "192.168.73.249",
+    "start": "100",
+    "limit": "150",
+    "preset": "192",
+    "supported": true,
+    "ipv6_mode": "dual_stack",
+    "ipv6_relay": "0",
+    "ipv6_label": "Pilha Dupla Global",
+    "ula_prefix": "fd73:4152:4b00::/48",
+    "prefix_delegated": "2001:db8:73::/56",
+    "dns": ["1.1.1.1", "8.8.8.8"],
+    "dhcp_enabled": true,
+    "network_mode": "router",
+    "uplink_dev": "br-lan",
+    "igmp_snooping": true
+  },
+  "perf_status": {
+    "conntrack_recycle": true,
+    "ram_autopurge": true,
+    "speedify_encryption": true,
+    "speedify_installed": false,
+    "speedify_log_cap": false,
+    "nlbwmon_lite": true,
+    "irqbalance_installed": true,
+    "irqbalance_active": true,
+    "conntrack_count": 1428,
+    "conntrack_max": 65536,
+    "mem_total_kb": 1010080,
+    "mem_avail_kb": 731440,
+    "root_total_kb": 59904,
+    "root_used_kb": 10184,
+    "root_avail_kb": 49720,
+    "dns_allservers": true,
+    "dns_servers": "1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4",
+    "dns_blocker_active": true,
+    "dns_blocker_name": "AdGuard Home",
+    "wifi_supplicant_disable": false,
+    "ram_trim_interval": "6",
+    "igmp_snooping": true
+  },
+  "hardware_info": {
+    "model": "Acer Predator Connect W6x (Stock Layout)",
+    "board": "acer,predator-connect-w6x-stock",
+    "target": "mediatek/filogic",
+    "release": "OpenWrt 25.12.6",
+    "kernel": "6.12.28",
+    "wifi_wed_supported": true,
+    "wifi_wed_enabled": true,
+    "silicon": {
+      "class": "mediatek_filogic",
+      "name": "MediaTek Filogic 830 (MT7986A Quad-Core)",
+      "hw_offload_capable": true,
+      "wed_capable": true,
+      "multicore": true,
+      "ram_tier": "high",
+      "ram_tier_desc": "Alto Desempenho (1 GB RAM)",
+      "tuning_profile": "Filogic PPE + WED Hardware Offloading"
+    },
+    "cpu": {
+      "cores": 4,
+      "arch": "aarch64",
+      "arch_desc": "ARMv8 (64-bit)",
+      "model": "ARM Cortex-A53 Quad-Core",
+      "freq_mhz": 2000,
+      "freq_str": "2.0 GHz",
+      "usage_pct": 18
+    },
+    "memory": {
+      "total_kb": 1010080,
+      "free_kb": 606836,
+      "avail_kb": 731440,
+      "cached_kb": 105984,
+      "buffers_kb": 43520,
+      "total_mb": 986,
+      "avail_mb": 714
+    },
+    "storage": {
+      "flash_type": "NAND Flash (UBI)",
+      "overlay_total_kb": 59904,
+      "overlay_avail_kb": 49720,
+      "overlay_avail_mb": 48,
+      "tmp_total_kb": 505040,
+      "tmp_avail_kb": 489200,
+      "tmp_avail_mb": 478
+    },
+    "wifi": {
+      "wifi_be": false,
+      "wifi_ax": true,
+      "wifi_ac": true,
+      "wifi_n": true,
+      "wifi_320": false,
+      "wifi_160": true,
+      "wifi_6g": true,
+      "wifi_wed_supported": true,
+      "wifi_wed_enabled": true,
+      "wifi_wed_configured": true,
+      "wifi_wed_reboot_required": false
+    },
+    "offload": {
+      "ppe_present": true,
+      "ppe_bound_flows": 412,
+      "ppe_unbound_flows": 14,
+      "wed_supported": true,
+      "wed_runtime_enabled": true,
+      "wed_configured_enabled": true,
+      "wed_reboot_required": false,
+      "wed_debug_present": true,
+      "wed_conflict_sqm": false,
+      "wed_missing_hw_offload": false
+    },
+    "thermal_profile": {
+      "silicon_class": "mediatek_filogic",
+      "warn_c": 75,
+      "crit_c": 90,
+      "max_c": 105
+    },
+    "thermal_sensors": [
+      { "zone": "thermal_zone0", "label": "SoC CPU", "temp_c": 50, "warn_c": 75, "crit_c": 90 },
+      { "zone": "thermal_zone1", "label": "Wi-Fi 5GHz", "temp_c": 52, "warn_c": 80, "crit_c": 95 },
+      { "zone": "thermal_zone2", "label": "Wi-Fi 2.4GHz", "temp_c": 48, "warn_c": 80, "crit_c": 95 },
+      { "zone": "thermal_zone3", "label": "Switch PHY", "temp_c": 49, "warn_c": 80, "crit_c": 95 }
+    ],
+    "ports": {
+      "eth1": { "role": "wan", "label": "WAN 2.5G", "up": true, "carrier": 1, "speed": 2500, "duplex": "full" },
+      "lan1": { "role": "lan", "label": "LAN 1", "up": true, "carrier": 1, "speed": 1000, "duplex": "full" },
+      "lan2": { "role": "lan", "label": "LAN 2", "up": true, "carrier": 1, "speed": 1000, "duplex": "full" },
+      "lan3": { "role": "lan", "label": "LAN 3", "up": false, "carrier": 0, "speed": 0, "duplex": "unknown" },
+      "lan4": { "role": "wan2", "label": "WAN2 / LAN 4", "up": true, "carrier": 1, "speed": 1000, "duplex": "full" }
+    },
+    "firewall": {
+      "engine": "fw4",
+      "desc": "Moderno (nftables puro)"
+    }
+  },
+  "doctor_status": {
+    "status": "OK",
+    "errors": 0,
+    "warnings": 0,
+    "fixes_applied": 0,
+    "checks": [
+      { "name": "Memoria RAM", "status": "OK", "message": "714 MB livres de 986 MB disponiveis (28% em uso)." },
+      { "name": "Espaco Flash (/overlay)", "status": "OK", "message": "48.5 MB livres em NAND UBI (17% usado)." },
+      { "name": "Saude do Storage (/overlay)", "status": "OK", "message": "Sistema de arquivos operando em Read/Write saudavel." },
+      { "name": "OOM Killer (Kernel)", "status": "OK", "message": "Kernel estavel. Sem registros de OOM Killer." },
+      { "name": "SQM wan", "status": "OK", "message": "CAKE vinculado corretamente a pppoe-wan (overhead 44B)." },
+      { "name": "MTU Baby Jumbo (wan)", "status": "OK", "message": "Porta fisica eth1 (1508B) e pppoe-wan (1500B) alinhados." },
+      { "name": "Aceleracao PPE / WED", "status": "OK", "message": "412 fluxos em hardware offload sem conflito." },
+      { "name": "NAT64 / DNS64 (Jool)", "status": "OK", "message": "Nenhuma instancia residual ativa fora de IPv6 Puro." },
+      { "name": "Firewall (fw4 nftables)", "status": "OK", "message": "Regras WAN REJECT e protecao anti-lockout ativas." },
+      { "name": "Relogio NTP & Certificados TLS", "status": "OK", "message": "Hora sincronizada e CA local integra." }
+    ]
+  }
+}
