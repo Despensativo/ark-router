@@ -40,7 +40,7 @@ apply_wan_proto() {
 
 		# Estabilidade de Fibra Optica (LCP Echo Adaptativo + Backoff contra bloqueio RADIUS)
 		uci -q set "network.$iface.keepalive=5 10"
-		local cur_pppd_opts="$($uci_cmd get "network.$iface.pppd_options" 2>/dev/null || uci -q get "network.$iface.pppd_options" || true)"
+		local cur_pppd_opts="$(uci -q get "network.$iface.pppd_options" || true)"
 		case "$cur_pppd_opts" in
 			*lcp-echo-adaptive*) ;;
 			*)
@@ -69,6 +69,10 @@ apply_wan_proto() {
 			else
 				uci -q set "network.$iface.mtu=1492"
 			fi
+			[ -n "$wan_phys_dev" ] && ark_ensure_phys_device_mtu "$wan_phys_dev" 1500 >/dev/null 2>&1 || true
+		else
+			# Garante que a porta fisica pai do PPPoE tenha MTU >= 1500 (evita herdar 1492 de DHCP anterior)
+			[ -n "$wan_phys_dev" ] && ark_ensure_phys_device_mtu "$wan_phys_dev" 1500 >/dev/null 2>&1 || true
 		fi
 	elif [ "$proto" = static ]; then
 		valid_ipv4 "$ipaddr" && valid_ipv4 "$netmask" || { echo 'IPv4 estatico invalido' >&2; return 2; }

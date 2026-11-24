@@ -37,85 +37,15 @@ ark_calculate_rps_mask() {
 ark_tune_irq_affinity() {
 	local cores="$1"
 	[ -z "$cores" ] || [ "$cores" -lt 2 ] 2>/dev/null && return 0
-	[ -f /proc/interrupts ] && [ -d /proc/irq ] || return 0
 
-	local eth_mask=2
-	local eth_alt_mask=2
-	local wifi_mask=2
-
-	if [ "$cores" -ge 8 ]; then
-		# 8+ Cores (x86 Mini-PCs, BPi-R4, Servidores Proxmox/Bare-Metal):
-		# Core 0: SO / Userspace / LuCI / Web
-		# Core 1: Ethernet WAN/TX (0x2)
-		# Core 2: Ethernet LAN/RX (0x4)
-		# Core 3: Wi-Fi (0x8)
-		# Cores 4+: Softirqs, RPS, CAKE SQM, Crypto
-		eth_mask=2
-		eth_alt_mask=4
-		wifi_mask=8
-	elif [ "$cores" -ge 4 ]; then
-		# Quad/Hexa-Core (Acer Predator W6x MT7986, T7 IPQ5332, x86 Quad):
-		# Core 0: SO / Userspace / AdGuard / DNS
-		# Core 1: Ethernet Ring 0 / TX (0x2)
-		# Core 2: Wi-Fi 2.4/5/6 GHz (0x4)
-		# Core 3: Ethernet Ring 1 / RX + SQM / CAKE (0x8)
-		eth_mask=2
-		eth_alt_mask=8
-		wifi_mask=4
-	elif [ "$cores" -ge 2 ]; then
-		# Dual-Core (Cudy WR3000 v1 MT7981, IPQ5018, etc.):
-		# Core 0: SO / Userspace
-		# Core 1: Rede completa (Ethernet + Wi-Fi) (0x2)
-		eth_mask=2
-		eth_alt_mask=2
-		wifi_mask=2
+	if command -v ark_hw_tune_irq_affinity >/dev/null 2>&1; then
+		ark_hw_tune_irq_affinity "$cores"
+		return 0
 	fi
-
-	# Filtro universal abrangendo MediaTek, Qualcomm, Realtek, Broadcom, Intel e VirtIO
-	local eth_idx=0
-	awk '/ethernet|mtk_eth|edma|nss|igb|ixgbe|i40e|e1000|r8169|r8125|virtio|mt76|mt79|ath|qca|rtw|rtl|brcm|wifi|wlan/ {sub(/:/, "", $1); print $1, $NF}' /proc/interrupts 2>/dev/null | while read -r irq name; do
-		[ -n "$irq" ] && [ -f "/proc/irq/$irq/smp_affinity" ] || continue
-		case "$name" in
-			*ethernet*|mtk_eth|*eth*|*edma*|*nss*|*igb*|*ixgbe*|*i40e*|*e1000*|*r8169*|*r8125*|*virtio*)
-				if [ "$((eth_idx % 2))" -eq 0 ]; then
-					echo "$eth_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
-				else
-					echo "$eth_alt_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
-				fi
-				eth_idx=$((eth_idx + 1))
-				;;
-			mt76*|mt79*|ath*|qca*|rtw*|rtl*|brcm*|*wifi*|*wlan*)
-				echo "$wifi_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
-				;;
-		esac
-	done
-
-	# Pin threaded NAPI kthreads (e.g., napi/mtk_eth-*, napi/phy*, mt76-tx*) to match IRQ masks.
-	# Keep all Wi-Fi NAPI and mt76-tx kthreads unified on wifi_mask (Core 2 on 4-core routers)
-	# to eliminate cross-core spinlock contention between mt76-tx and Wi-Fi IRQ rings.
-	[ -w /sys/module/mtk_eth/parameters/rx_dim_max_us ] && echo 40 > /sys/module/mtk_eth/parameters/rx_dim_max_us 2>/dev/null || true
-	if command -v taskset >/dev/null 2>&1; then
-		local napi_eth_idx=0
-		ps -w 2>/dev/null | awk '/\[napi\/|\[mt76-tx/ {print $1, $NF}' | while read -r npid nname; do
-			[ -n "$npid" ] || continue
-			case "$nname" in
-				*mtk_eth*|*eth*|*edma*|*nss*|*igb*|*ixgbe*)
-					if [ "$((napi_eth_idx % 2))" -eq 0 ]; then
-						taskset -p "$eth_mask" "$npid" >/dev/null 2>&1 || true
-					else
-						taskset -p "$eth_alt_mask" "$npid" >/dev/null 2>&1 || true
-					fi
-					command -v chrt >/dev/null 2>&1 && chrt -f -p 1 "$npid" >/dev/null 2>&1 || true
-					napi_eth_idx=$((napi_eth_idx + 1))
-					;;
-				*phy*|*mt76*|*ath*|*wlan*|*wifi*)
-					taskset -p "$wifi_mask" "$npid" >/dev/null 2>&1 || true
-					command -v chrt >/dev/null 2>&1 && chrt -f -p 1 "$npid" >/dev/null 2>&1 || true
-					;;
-			esac
-		done
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+	if command -v ark_hw_tune_irq_affinity >/dev/null 2>&1; then
+		ark_hw_tune_irq_affinity "$cores"
 	fi
-	logger -t ark-hardware-tune "Afinidade de IRQ e NAPI distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
 }
 
 ark_tune_wifi_aql() {
@@ -234,10 +164,14 @@ ark_hardware_tune_apply() {
 		fi
 	fi
 
-	# Suppress stray Link-Local IPv6 (fe80::) on raw physical PPPoE ports (e.g. eth1 / wan_modem)
+	# Suppress stray Link-Local IPv6 (fe80::) on raw physical/VLAN PPPoE ports (e.g. eth1 / eth1.10 / wan_modem)
 	# so MLD/RS/ICMPv6 multicast never leaks outside the pppoe-wan tunnel toward the ONT.
-	local _w_ifc _w_proto _w_dev _net_dirty=0
-	for _w_ifc in wan wan1 wan2; do
+	local _w_ifc _w_proto _w_dev _w_parent _net_dirty=0
+	for _w_ifc in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.=]*\)=interface$/\1/p'); do
+		case "$_w_ifc" in
+			wan|wan[0-9]*|wwan*) ;;
+			*) continue ;;
+		esac
 		_w_proto="$(uci -q get "network.${_w_ifc}.proto" 2>/dev/null || echo '')"
 		_w_dev="$(uci -q get "network.${_w_ifc}.device" || uci -q get "network.${_w_ifc}.ifname" || echo '')"
 		if [ -n "$(uci -q get "network.${_w_ifc}_modem" 2>/dev/null)" ]; then
@@ -248,18 +182,21 @@ ark_hardware_tune_apply() {
 		fi
 		[ -n "$_w_dev" ] || continue
 		case "$_w_dev" in
-			br-*|lo|pppoe*|wg*|tun*|tap*) continue ;;
+			@*|br-*|lo|pppoe*|wg*|tun*|tap*) continue ;;
 		esac
+		_w_parent="${_w_dev%%.*}"
 		if [ "$_w_proto" = "pppoe" ]; then
-			sysctl -q -w "net.ipv6.conf.${_w_dev}.disable_ipv6=1" 2>/dev/null || true
+			[ -w "/proc/sys/net/ipv6/conf/${_w_dev}/disable_ipv6" ] && echo 1 > "/proc/sys/net/ipv6/conf/${_w_dev}/disable_ipv6" 2>/dev/null || true
+			[ "$_w_parent" != "$_w_dev" ] && [ -w "/proc/sys/net/ipv6/conf/${_w_parent}/disable_ipv6" ] && echo 1 > "/proc/sys/net/ipv6/conf/${_w_parent}/disable_ipv6" 2>/dev/null || true
 		elif [ "$_w_proto" = "dhcp" ] || [ "$_w_proto" = "static" ]; then
-			sysctl -q -w "net.ipv6.conf.${_w_dev}.disable_ipv6=0" 2>/dev/null || true
+			[ -w "/proc/sys/net/ipv6/conf/${_w_dev}/disable_ipv6" ] && echo 0 > "/proc/sys/net/ipv6/conf/${_w_dev}/disable_ipv6" 2>/dev/null || true
 		fi
 	done
 	[ "$_net_dirty" = "1" ] && uci commit network 2>/dev/null || true
 
-	# Source common runtime if available
-	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+	# Source common runtime and shared hardware-tuning helper
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/common.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/common.sh"
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
 
 	# Normalização defensiva de modelo OEM em RAM (/tmpfs)
 	local cur_model="$(cat /tmp/sysinfo/model 2>/dev/null || echo '')"
@@ -282,10 +219,12 @@ ark_hardware_tune_apply() {
 
 	logger -t ark-hardware-tune "Iniciando calibracao de hardware: ${cpu_cores} CPUs (RPS Mask: ${rps_mask}), $((mem_total_kb / 1024)) MB RAM."
 
-	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0)
+	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0) e calibrar CPUFreq com guarda térmica
 	ark_tune_irq_affinity "$cpu_cores"
+	command -v ark_hw_tune_cpufreq >/dev/null 2>&1 && ark_hw_tune_cpufreq
 	ark_tune_wifi_aql
 	ark_tune_tcp_stack "$mem_total_kb"
+	ark_hw_latency_profile
 
 	# Calibracao Inteligente de ZRAM (Respeita escolha do usuario em equipe_perf e protege CPUs fracas)
 	local zram_cfg="$(uci -q get equipe_perf.settings.zram_enabled || echo 'auto')"
@@ -332,37 +271,100 @@ ark_hardware_tune_apply() {
 	fi
 
 	# -------------------------------------------------------------------------
-	# PERFIL 1: LOW-SPEC (RAM <= 192 MB ou 1 Núcleo de CPU)
-	# Exemplo: D-Link DGL-5500 (128 MB RAM, MIPS 720 MHz single-core, 16 MB Flash)
-	# Prioridade: Economia estrita de RAM para evitar OOM e zero overhead de RPS
+	# EIXO 1: BUFFERS, MEMÓRIA, CONEXÕES E QDISC BASE (DIRIGIDO POR RAM)
+	# Desacoplado da topologia de CPU/IRQ/RPS (BPi-R4 4GB 4-core mantém pipeline 4-core).
 	# -------------------------------------------------------------------------
+	local ram_tier="high"
+	local tcp_buf=16777216
+	local qdisc_mem="64Mb"
+	local qdisc_limit=10240
+	local qdisc_ecn="ecn"
+	local subq_list="1 2 3 4 5 6 7 8 9 a b c d e f 10"
+	local backlog=10000
+	local budget=1200
+	local uhttpd_conns=150
+	local min_free=65536
+	local dev_weight=256
+
 	if [ "$mem_total_kb" -le 196608 ] || [ "$cpu_cores" -le 1 ]; then
-		logger -t ark-hardware-tune "Aplicando Perfil Low-Spec (Economia de RAM & CPU mono-core)."
-		# uhttpd dinamico
-		[ "$(uci -q get uhttpd.main.max_connections)" != "30" ] && { uci -q set uhttpd.main.max_connections='30'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
+		ram_tier="low"
+		uhttpd_conns=30
+		backlog=1000
+		min_free=4096
+		budget=300
+		dev_weight=64
+		tcp_buf=1048576
+		qdisc_mem="2Mb"
+		qdisc_limit=1024
+		qdisc_ecn=""
+		subq_list=""
+		logger -t ark-hardware-tune "Aplicando Eixo RAM Low-Spec (Economia de RAM & CPU mono-core, Latency: ${ARK_LAT_MODE})."
+	elif [ "$mem_total_kb" -le 524288 ]; then
+		ram_tier="mid"
+		uhttpd_conns=80
+		backlog=5000
+		min_free=16384
+		budget=300
+		dev_weight=64
+		tcp_buf=4194304
+		qdisc_mem="16Mb"
+		qdisc_limit=10240
+		logger -t ark-hardware-tune "Aplicando Eixo RAM Mid-Spec ($((mem_total_kb / 1024)) MB RAM, ${cpu_cores} Cores, Latency: ${ARK_LAT_MODE})."
+	elif [ "$mem_total_kb" -le 1572864 ]; then
+		ram_tier="high"
+		uhttpd_conns=150
+		backlog=10000
+		min_free=65536
+		budget=1200
+		dev_weight=256
+		tcp_buf=16777216
+		qdisc_mem="64Mb"
+		qdisc_limit=10240
+		logger -t ark-hardware-tune "Aplicando Eixo RAM High-Spec ($((mem_total_kb / 1024)) MB RAM, ${cpu_cores} Cores, Latency: ${ARK_LAT_MODE})."
+	else
+		ram_tier="ultra"
+		uhttpd_conns=150
+		backlog=25000
+		min_free=131072
+		budget=1000
+		dev_weight=256
+		tcp_buf=16777216
+		qdisc_mem="64Mb"
+		qdisc_limit=10240
+		subq_list="1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20"
+		if [ "$mem_total_kb" -ge 3670016 ]; then
+			tcp_buf=33554432
+			qdisc_limit=20480
+			backlog=50000
+		fi
+		logger -t ark-hardware-tune "Aplicando Eixo RAM Ultra-Spec ($((mem_total_kb / 1024)) MB RAM, ${cpu_cores} Cores, Latency: ${ARK_LAT_MODE})."
+	fi
 
-		sysctl -q -w net.core.netdev_max_backlog=1000 2>/dev/null || true
-		sysctl -q -w vm.min_free_kbytes=4096 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 1048576" 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 1048576" 2>/dev/null || true
+	# uhttpd dinamico
+	[ "$(uci -q get uhttpd.main.max_connections)" != "$uhttpd_conns" ] && {
+		uci -q set "uhttpd.main.max_connections=$uhttpd_conns"
+		uci -q set uhttpd.main.tcp_keepalive='1'
+		uci commit uhttpd
+		/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+	}
 
-		# Qdisc leve (2 MB de memória máxima por interface, limite 1024 pacotes)
-		# Mantido ativo mesmo com flow_offloading_hw=1 para proteger pacotes de controle/handshake na CPU
-		for iface in $(ls /sys/class/net 2>/dev/null); do
-			case "$iface" in
-				eth*|lan*)
-					[ -d "/sys/class/net/$iface" ] || continue
-					ark_tune_preserve_root "$iface" && continue
-					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 2Mb limit 1024 target 5ms quantum 1514 2>/dev/null || true
-					;;
-			esac
-		done
+	sysctl -q -w "net.core.netdev_max_backlog=$backlog" 2>/dev/null || true
+	sysctl -q -w "vm.min_free_kbytes=$min_free" 2>/dev/null || true
+	sysctl -q -w "net.core.dev_weight=$dev_weight" 2>/dev/null || true
+	sysctl -q -w "net.core.netdev_budget=$budget" 2>/dev/null || true
+	if command -v ark_hw_apply_budget_usecs >/dev/null 2>&1; then
+		ark_hw_apply_budget_usecs "${ARK_BUDGET_USECS:-8000}" >/dev/null 2>&1 || true
+	else
+		sysctl -q -w "net.core.netdev_budget_usecs=${ARK_BUDGET_USECS:-8000}" 2>/dev/null || true
+	fi
+	sysctl -q -w "net.ipv4.tcp_rmem=4096 87380 $tcp_buf" 2>/dev/null || true
+	sysctl -q -w "net.ipv4.tcp_wmem=4096 65536 $tcp_buf" 2>/dev/null || true
 
-		# Regras de DSCP: fw4 usa /etc/nftables.d/15-ark-dscp-priority.nft; fw3 legado usa iptables mangle
+	# RFS desativado em roteadores para preservar ordenacao estrita de pacotes TCP encaminhados ao Wi-Fi
+	sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
+
+	# Regras de DSCP em Low-Spec/fw3 legado: fw4 usa /etc/nftables.d/15-ark-dscp-priority.nft
+	if [ "$ram_tier" = "low" ]; then
 		if command -v is_fw4 >/dev/null 2>&1 && is_fw4; then
 			:
 		elif command -v is_fw3 >/dev/null 2>&1 && is_fw3 && command -v iptables >/dev/null 2>&1; then
@@ -393,264 +395,52 @@ ark_hardware_tune_apply() {
 			iptables -t mangle -C PREROUTING -i br-lan -p udp ! --dport 53 ! --dport 443 -m length --length 0:256 -m dscp --dscp 0 -j DSCP --set-dscp-class cs4 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -i br-lan -p udp ! --dport 53 ! --dport 443 -m length --length 0:256 -m dscp --dscp 0 -j DSCP --set-dscp-class cs4 2>/dev/null || true
 		fi
+	fi
 
 	# -------------------------------------------------------------------------
-	# PERFIL 2: MID-SPEC (192 MB < RAM <= 512 MB, 2 Núcleos de CPU)
-	# Exemplo: Cudy WR3000 v1 (MediaTek MT7981 Dual-Core 1.3 GHz, 256 MB RAM)
+	# EIXO 2: TOPOLOGIA DE CPU (RPS) + PERFIL UNIFICADO DE LATÊNCIA (NAPI/GRO/GSO)
+	# Fonte única de verdade via /usr/lib/ark/hw-tune.sh
 	# -------------------------------------------------------------------------
-	elif [ "$mem_total_kb" -le 524288 ] || [ "$cpu_cores" -le 2 ]; then
-		logger -t ark-hardware-tune "Aplicando Perfil Mid-Spec (Dual-Core equilibrado, RPS Mask: ${rps_mask})."
-		# uhttpd dinamico
-		[ "$(uci -q get uhttpd.main.max_connections)" != "80" ] && { uci -q set uhttpd.main.max_connections='80'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
+	local wifi_active=0
+	ark_hw_detect_wifi_active && wifi_active=1
+	local wan_phys_list="$(ark_hw_list_wan_phys_devs)"
 
-		sysctl -q -w net.core.netdev_max_backlog=5000 2>/dev/null || true
-		sysctl -q -w vm.min_free_kbytes=16384 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 4194304" 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 4194304" 2>/dev/null || true
-
-		# RFS desativado em roteadores (evita colisao de hash com sockets locais e reordenacao TCP no Wi-Fi)
-		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
-
-		# RPS cirurgico nos 2 nucleos + GRO coalescing de 250us na WAN para A-MSDU/A-MPDU Wi-Fi
-		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		for iface_dir in /sys/class/net/*; do
-			[ -d "$iface_dir" ] || continue
-			local ifname="${iface_dir##*/}"
-			local rps_target=0
-			local rfs_target=0
-			case "$ifname" in
-				pppoe*)
-					rps_target="$rps_mask"
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
-					rps_target=0
-					;;
-			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ]; then
-				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
-				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
-			fi
-			case "$ifname" in
-				ifb*)
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-			esac
-			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
-				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
-			done
-			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
-				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
-			done
+	local iface_dir ifname rps_target q
+	for iface_dir in /sys/class/net/*; do
+		[ -d "$iface_dir" ] || continue
+		ifname="${iface_dir##*/}"
+		rps_target="$(ark_hw_compute_rps_target "$ifname" "$cpu_cores" "$wifi_active" "$wan_phys_list")"
+		for q in "$iface_dir"/queues/rx-*/rps_cpus; do
+			[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
 		done
-
-		for iface in $(ls /sys/class/net 2>/dev/null); do
-			case "$iface" in
-				eth*|lan*)
-					[ -d "/sys/class/net/$iface" ] || continue
-					ark_tune_preserve_root "$iface" && continue
-					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
-					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
-					done
-					;;
-			esac
+		for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
+			[ -f "$q" ] && echo 0 > "$q" 2>/dev/null || true
 		done
+		ark_hw_apply_iface_latency "$ifname"
+	done
 
-	# -------------------------------------------------------------------------
-	# PERFIL 3: HIGH-SPEC (512 MB < RAM <= 1536 MB, 3 a 6 Núcleos de CPU)
-	# Exemplo: Acer Predator W6x (MT7986 Quad-Core 2.0 GHz, 1 GB RAM)
-	# Prioridade: Pipeline 4-Core Dedicado (CPU3=DMA RX, CPU2=Wi-Fi, CPU1=Download, CPU0=Upload)
-	# -------------------------------------------------------------------------
-	elif [ "$mem_total_kb" -le 1572864 ] && [ "$cpu_cores" -lt 8 ]; then
-		logger -t ark-hardware-tune "Aplicando Perfil High-Spec (Quad/Hexa-Core 1GB RAM, RPS Mask: ${rps_mask})."
-		# uhttpd dinamico
-		[ "$(uci -q get uhttpd.main.max_connections)" != "150" ] && { uci -q set uhttpd.main.max_connections='150'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
-
-		sysctl -q -w net.core.netdev_max_backlog=10000 2>/dev/null || true
-		sysctl -q -w vm.min_free_kbytes=65536 2>/dev/null || true
-		sysctl -q -w net.core.dev_weight=256 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget=1200 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 16777216" 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 16777216" 2>/dev/null || true
-
-		# RFS desativado em roteadores para preservar ordenacao estrita de pacotes TCP encaminhados ao Wi-Fi
-		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
-
-		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		local wan_dl_mask="$rps_mask"
-		local lan_ul_mask=1
-		local wifi_ul_mask=1
-		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-			# Pipeline 4-Core Multi-Queue RPS (Zero Backlog em /proc/net/softnet_stat sob Carga Combinada 16x16):
-			# CPU 3 (0x8): Hardware Ethernet DMA RX Dedicado (IRQ 123 mtk_napi_rx, rps=0)
-			# CPU 0..2 (0x7): 3-Core Hash RPS para Upload Cabeado (lan1..4 rps=7 -> pppoe-wan HFSC/CAKE)
-			# CPU 0..1 (0x3): 2-Core Hash RPS para Download WAN (pppoe-wan rps=3 -> ifb4pppoe-wan HFSC/CAKE)
-			wan_dl_mask="3"
-			lan_ul_mask="7"
-			wifi_ul_mask="3"
-		fi
-		for iface_dir in /sys/class/net/*; do
-			[ -d "$iface_dir" ] || continue
-			local ifname="${iface_dir##*/}"
-			local rps_target=0
-			local rfs_target=0
-			case "$ifname" in
-				pppoe*)
-					rps_target="$wan_dl_mask"
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 128 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-				lan[0-9]*)
-					[ "$cpu_cores" -ge 4 ] && rps_target="$lan_ul_mask" || rps_target=0
-					;;
-				phy*|wlan*|ath*|ra*)
-					[ "$cpu_cores" -ge 4 ] && rps_target="$wifi_ul_mask" || rps_target=0
-					;;
-				lo|ifb*|br-*|eth*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
-					rps_target=0
-					;;
-			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ] || [ "$ifname" = "eth0" ]; then
-				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
-				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
-			fi
-			case "$ifname" in
-				ifb*)
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-			esac
-			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
-				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
-			done
-			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
-				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
-			done
-		done
-
-		# txqueuelen 1000 + gro_max_size 16384 (reduz 4x o atraso de serializacao de super-pacotes no CAKE no-split-gso mantendo 91% do ganho de CPU)
-		for iface in $(ls /sys/class/net 2>/dev/null); do
-			case "$iface" in
-				eth*|lan*)
-					[ -d "/sys/class/net/$iface" ] || continue
-					ark_tune_preserve_root "$iface" && continue
-					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
-					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
-					done
-					;;
-			esac
-		done
-
-	# -------------------------------------------------------------------------
-	# PERFIL 4: ULTRA-SPEC / ENTERPRISE / X86 (RAM > 1.5 GB ou >= 8 Núcleos)
-	# Exemplos: Mini PCs x86 (Intel N100/N305, Core i5/i7/i9, AMD Ryzen), Banana Pi BPI-R4 (4GB RAM, SFP+ 10G)
-	# Servidores Proxmox / Bare Metal com portas 2.5 Gbps, 10 Gbps ou 25 Gbps
-	# Prioridade: Multi-Gigabit pleno, buffers gigantes para alto BDP, filas ultra-rápidas
-	# -------------------------------------------------------------------------
-	else
-		logger -t ark-hardware-tune "Aplicando Perfil Ultra-Spec / Enterprise (${cpu_cores} Cores, RPS Mask: ${rps_mask}, $((mem_total_kb / 1024)) MB RAM)."
-		# uhttpd dinamico
-		[ "$(uci -q get uhttpd.main.max_connections)" != "150" ] && { uci -q set uhttpd.main.max_connections='150'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
-
-		local tcp_buf=16777216
-		local qdisc_mem="64Mb"
-		local qdisc_limit=10240
-		local txq=1000
-		local backlog=25000
-
-		# Se máquina tiver 3.5 GB+ de RAM (servidores / x86 dedicados de 4GB a 64GB)
-		if [ "$mem_total_kb" -ge 3670016 ]; then
-			tcp_buf=33554432
-			qdisc_mem="64Mb"
-			qdisc_limit=20480
-			txq=1000
-			backlog=50000
-		fi
-
-		sysctl -q -w net.core.netdev_max_backlog="$backlog" 2>/dev/null || true
-		sysctl -q -w vm.min_free_kbytes=131072 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget=1000 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 $tcp_buf" 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 $tcp_buf" 2>/dev/null || true
-
-		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
-
-		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		for iface_dir in /sys/class/net/*; do
-			[ -d "$iface_dir" ] || continue
-			local ifname="${iface_dir##*/}"
-			local rps_target=0
-			local rfs_target=0
-			case "$ifname" in
-				pppoe*)
-					rps_target="$rps_mask"
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 128 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-				lan[0-9]*|phy*|wlan*|ath*|ra*)
-					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
-					;;
-				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
-					rps_target=0
-					;;
-			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ]; then
-				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
-				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
-			fi
-			case "$ifname" in
-				ifb*)
-					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-					;;
-			esac
-			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
-				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
-			done
-			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
-				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
-			done
-		done
-
-		for iface in $(ls /sys/class/net 2>/dev/null); do
-			case "$iface" in
-				eth*|lan*|en*|igb*|ixgbe*|i40e*)
-					[ -d "/sys/class/net/$iface" ] || continue
-					ark_tune_preserve_root "$iface" && continue
-					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
-					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen "$txq" gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+	local iface_path iface subq
+	for iface_path in /sys/class/net/*; do
+		[ -d "$iface_path" ] || continue
+		iface="${iface_path##*/}"
+		case "$iface" in
+			eth*|lan*|en*|igb*|ixgbe*|i40e*|igc*)
+				[ -d "/sys/class/net/$iface" ] || continue
+				ark_tune_preserve_root "$iface" && continue
+				ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
+				if [ -n "$qdisc_ecn" ]; then
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
 					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 ecn 2>/dev/null || true
-					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
+					for subq in $subq_list; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 ecn 2>/dev/null || true
 					done
-					;;
-			esac
-		done
-	fi
+				else
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
+					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
+				fi
+				;;
+		esac
+	done
 
 	# Ensure SQM ingress Voice Tin filters, cake_mq state, and AQL/NAPI low-latency bounds are preserved after hotplug/reload
 	if [ -f /usr/lib/ark/modules/sqm.sh ]; then

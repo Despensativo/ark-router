@@ -181,7 +181,7 @@ update_wan_led() {
 get_led_hardware_info() {
 	local model board wan_dev has_rgb rgb_multi_node rgb_trio_r rgb_trio_g rgb_trio_b p r_led r_base g_base
 	local b_base cur_rgb_hex cur_effect cur_speed first_led led cur_trigger cur_brightness name sub type color
-	local pwr_org_bri planet_org_bri port_num
+	local pwr_org_bri planet_org_bri port_num _led_p
 	cleanup_orphan_leds
 	model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
@@ -237,8 +237,9 @@ get_led_hardware_info() {
 	printf '{"model":"%s","board":"%s","wan_dev":"%s","topology":"%s","has_rgb":%s,"rgb_multi_node":"%s","rgb_trio_r":"%s","current_rgb_hex":"%s","current_effect":"%s","current_speed":"%s","leds":[' \
 		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$wan_dev")" "$(json_escape "$topol")" "$has_rgb" "$(json_escape "$rgb_multi_node")" "$(json_escape "$rgb_trio_r")" "$(json_escape "$cur_rgb_hex")" "$(json_escape "$cur_effect")" "$(json_escape "$cur_speed")"
 
-	for led in $(ls "$led_base" 2>/dev/null); do
-		[ -d "$led_base/$led" ] || continue
+	for _led_p in "$led_base"/*; do
+		[ -d "$_led_p" ] || continue
+		led="${_led_p##*/}"
 
 		if [ -n "$rgb_trio_g" ] && { [ "$led" = "$rgb_trio_g" ] || [ "$led" = "$rgb_trio_b" ]; }; then
 			continue
@@ -411,17 +412,17 @@ get_led_hardware_info() {
 				type="internet"
 				color="blue"
 				;;
-			*green:wan*|*green:internet*|*green*planet*|*internet*|*planet*|*web*)
-				name="Internet (Planeta / WAN)"
-				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then sub="Conectividade WAN ($wan_dev) — Online"; else sub="Conectividade WAN ($wan_dev) — Sem Conexão"; fi
-				type="internet"
-				color="green"
-				;;
 			*white:internet*|*white*planet*|*white:wan*)
 				name="Internet (Planeta / WAN)"
 				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then sub="Conectividade WAN ($wan_dev) — Online"; else sub="Conectividade WAN ($wan_dev) — Sem Conexão"; fi
 				type="internet"
 				color="white"
+				;;
+			*green:wan*|*green:internet*|*green*planet*|*internet*|*planet*|*web*)
+				name="Internet (Planeta / WAN)"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then sub="Conectividade WAN ($wan_dev) — Online"; else sub="Conectividade WAN ($wan_dev) — Sem Conexão"; fi
+				type="internet"
+				color="green"
 				;;
 			*blue:wan*)
 				name="Porta WAN"
@@ -435,13 +436,13 @@ get_led_hardware_info() {
 				type="internet"
 				case "$led" in *blue*) color="blue";; *) color="green";; esac
 				;;
-			*wifi2*|*wlan2*|*2g*|*2ghz*)
+			*wifi2*|*wlan2*|*2g*)
 				name="Wi-Fi 2.4 GHz"
 				sub="LED do Painel Frontal (2.4 GHz)"
 				type="wifi2g"
 				case "$led" in *blue*) color="blue";; *) color="green";; esac
 				;;
-			*wifi5*|*wlan5*|*5g*|*5ghz*)
+			*wifi5*|*wlan5*|*5g*)
 				name="Wi-Fi 5 GHz"
 				sub="LED do Painel Frontal (5 GHz)"
 				type="wifi5g"
@@ -696,7 +697,7 @@ set_led_rgb_color() {
 }
 
 set_led_preset() {
-	local preset wan_dev inet_led alert_led sec led wf_led p cand cand_pwr
+	local preset wan_dev inet_led alert_led sec led wf_led p cand cand_pwr _led_p _wf_p
 	preset="${1:-smart}"
 	cleanup_orphan_leds
 
@@ -718,7 +719,9 @@ set_led_preset() {
 			done
 			uci commit system
 			/etc/init.d/led restart >/dev/null 2>&1 || true
-			for led in $(ls /sys/class/leds/ 2>/dev/null); do
+			for _led_p in /sys/class/leds/*; do
+				[ -d "$_led_p" ] || continue
+				led="${_led_p##*/}"
 				echo none > "/sys/class/leds/$led/trigger" 2>/dev/null || true
 				echo 0 > "/sys/class/leds/$led/brightness" 2>/dev/null || true
 			done
@@ -746,7 +749,9 @@ EOF
 			chmod +x /etc/hotplug.d/net/99-ark-led-alert
 
 			# LEDs Wi-Fi ficam discretos/apagados no modo alerta em todos os fabricantes
-			for wf_led in $(ls /sys/class/leds/ 2>/dev/null); do
+			for _wf_p in /sys/class/leds/*; do
+				[ -d "$_wf_p" ] || continue
+				wf_led="${_wf_p##*/}"
 				case "$wf_led" in
 					*wifi*|*wlan*|*phy*|*2g*|*5g*|*6g*)
 						echo 0 > "/sys/class/leds/$wf_led/brightness" 2>/dev/null || true
@@ -964,7 +969,7 @@ get_led_status() {
 }
 
 detect_hardware_silicon_profile() {
-	local haystack meminfo_file="/proc/meminfo"
+	local haystack meminfo_file="/proc/meminfo" _wed_dir
 	[ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/proc/meminfo" ] && meminfo_file="${ARK_ROOT}/proc/meminfo"
 	silicon_model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	silicon_board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
@@ -1097,8 +1102,15 @@ detect_hardware_silicon_profile() {
 	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ]; then
 		silicon_hw_offload_capable=1
 	fi
-	if [ -d /sys/kernel/debug/wed0 ] || [ -d /sys/kernel/debug/wed1 ] || [ -d /sys/devices/platform/soc/*wed* ]; then
+	if [ -d /sys/kernel/debug/wed0 ] || [ -d /sys/kernel/debug/wed1 ]; then
 		silicon_wed_capable=1
+	else
+		for _wed_dir in /sys/devices/platform/soc/*wed*; do
+			if [ -d "$_wed_dir" ]; then
+				silicon_wed_capable=1
+				break
+			fi
+		done
 	fi
 }
 
@@ -1337,6 +1349,18 @@ system_hardware_auto_tune() {
 			rps_entries=0
 			;;
 	esac
+
+	# Alinha budget_usecs ao perfil unificado de latência (4ms com SQM ativo, 8ms sem SQM),
+	# respeitando o piso mínimo imposto pelo CONFIG_HZ do kernel (ex: HZ=100 -> 20000us)
+	if [ "$sqm_active" = 1 ]; then
+		budget_usecs=4000
+	else
+		budget_usecs=8000
+	fi
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+	if command -v ark_hw_apply_budget_usecs >/dev/null 2>&1; then
+		budget_usecs="$(ark_hw_apply_budget_usecs "$budget_usecs")"
+	fi
 
 	# Garantir rmem suficiente para o nlbwmon (minimo 1MB para evitar netlink overrun)
 	if [ "$nlbwmon_active" = 1 ] && [ "$rmem" -lt 1048576 ]; then
@@ -1611,15 +1635,32 @@ get_system_hardware_info_raw() {
 	[ -n "$tmp_total_kb" ] || tmp_total_kb=0
 	[ -n "$tmp_avail_kb" ] || tmp_avail_kb=0
 
-	# Wi-Fi Capabilities
+	# Wi-Fi Capabilities & Real Kernel Offload Telemetry (PPE/WED)
 	wifi_be=false; wifi_ax=false; wifi_ac=false; wifi_n=false; wifi_320=false; wifi_160=false; wifi_6g=false
-	wifi_wed_supported=false; wifi_wed_enabled=false
-	for mod in mt7915e mt7996e mt7921e; do
-		if [ -e "/sys/module/$mod/parameters/wed_enable" ]; then
-			wifi_wed_supported=true
-			[ "$(cat "/sys/module/$mod/parameters/wed_enable" 2>/dev/null)" = "Y" ] && wifi_wed_enabled=true
-		fi
-	done
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+	if command -v ark_hw_collect_offload_telemetry >/dev/null 2>&1; then
+		ark_hw_collect_offload_telemetry
+		wifi_wed_supported="$ARK_WED_SUPPORTED"
+		wifi_wed_enabled="$ARK_WED_RUNTIME_ENABLED"
+		wifi_wed_configured="$ARK_WED_CONFIGURED_ENABLED"
+		wifi_wed_reboot_required="$ARK_WED_REBOOT_REQUIRED"
+		ppe_present="$ARK_PPE_PRESENT"
+		ppe_bound_flows="$ARK_PPE_BOUND_FLOWS"
+		ppe_unbound_flows="$ARK_PPE_UNBOUND_FLOWS"
+		wed_debug_present="$ARK_WED_DEBUG_PRESENT"
+		wed_conflict_sqm="$ARK_WED_CONFLICT_SQM"
+		wed_missing_hw_offload="$ARK_WED_MISSING_HW_OFFLOAD"
+	else
+		wifi_wed_supported=false; wifi_wed_enabled=false; wifi_wed_configured=false; wifi_wed_reboot_required=false
+		ppe_present=false; ppe_bound_flows=0; ppe_unbound_flows=0
+		wed_debug_present=false; wed_conflict_sqm=false; wed_missing_hw_offload=false
+		for mod in mt7915e mt7996e mt7921e; do
+			if [ -e "/sys/module/$mod/parameters/wed_enable" ]; then
+				wifi_wed_supported=true
+				[ "$(cat "/sys/module/$mod/parameters/wed_enable" 2>/dev/null)" = "Y" ] && { wifi_wed_enabled=true; wifi_wed_configured=true; }
+			fi
+		done
+	fi
 	iw_cache="/tmp/ark-iw-info.cache"
 	if [ ! -s "$iw_cache" ]; then
 		iw list 2>/dev/null > "$iw_cache" || true
@@ -1660,8 +1701,11 @@ get_system_hardware_info_raw() {
 		"$(json_escape "$flash_type")" "$overlay_total_kb" "$overlay_avail_kb" $((overlay_avail_kb / 1024)) \
 		"$tmp_total_kb" "$tmp_avail_kb" $((tmp_avail_kb / 1024))
 
-	printf '"wifi":{"wifi_be":%s,"wifi_ax":%s,"wifi_ac":%s,"wifi_n":%s,"wifi_320":%s,"wifi_160":%s,"wifi_6g":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s},' \
-		"$wifi_be" "$wifi_ax" "$wifi_ac" "$wifi_n" "$wifi_320" "$wifi_160" "$wifi_6g" "$wifi_wed_supported" "$wifi_wed_enabled"
+	printf '"wifi":{"wifi_be":%s,"wifi_ax":%s,"wifi_ac":%s,"wifi_n":%s,"wifi_320":%s,"wifi_160":%s,"wifi_6g":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_wed_configured":%s,"wifi_wed_reboot_required":%s},' \
+		"$wifi_be" "$wifi_ax" "$wifi_ac" "$wifi_n" "$wifi_320" "$wifi_160" "$wifi_6g" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_wed_configured" "$wifi_wed_reboot_required"
+
+	printf '"offload":{"ppe_present":%s,"ppe_bound_flows":%s,"ppe_unbound_flows":%s,"wed_supported":%s,"wed_runtime_enabled":%s,"wed_configured_enabled":%s,"wed_reboot_required":%s,"wed_debug_present":%s,"wed_conflict_sqm":%s,"wed_missing_hw_offload":%s},' \
+		"$ppe_present" "$ppe_bound_flows" "$ppe_unbound_flows" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_wed_configured" "$wifi_wed_reboot_required" "$wed_debug_present" "$wed_conflict_sqm" "$wed_missing_hw_offload"
 
 	# Thermal Profile & Dynamic Sensor Trip Points
 	default_warn_c=75

@@ -1321,7 +1321,7 @@ handle_wifi() {
 			uci -q delete "wireless.$radio2.beacon_rate"
 			uci -q delete "wireless.$radio2.basic_rate"
 			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=1, multicast_to_unicast=0 e sono blindado em todas as interfaces AP 2.4G
-			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
+			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?${radio2}['\"]?" | cut -d. -f2); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				if [ "$mode" = "ap" ]; then
 					uci -q set "wireless.$iface.disassoc_low_ack=0"
@@ -1354,7 +1354,7 @@ EOF
 			echo 'enabled'
 		else
 			uci -q set "wireless.$radio2.iot_stability=0"
-			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
+			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?${radio2}['\"]?" | cut -d. -f2); do
 				if [ "$(uci -q get equipe_dashboard.wifi.wifi6_accel 2>/dev/null || echo 0)" != "1" ] && \
 				   [ "$(uci -q get "wireless.$iface.bss_transition" 2>/dev/null || echo 0)" != "1" ] && \
 				   [ "$(uci -q get "wireless.$iface.ieee80211k" 2>/dev/null || echo 0)" != "1" ]; then
@@ -1406,26 +1406,61 @@ EOF
 		;;
 	wifi-wed-toggle)
 		state="${2:-1}"
+		local root_p="${ARK_ROOT:-}"
+		local mod_d="${root_p}/etc/modules.d"
+		local mod_conf="${root_p}/etc/modules.conf"
+		local runtime_val="N" target_val="N" reboot_needed=0 sqm_conflict=0 hw_offload_missing=0 found_mod=0
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
-			mkdir -p /etc/modules.d
-			touch /etc/modules.conf
-			for mod in mt7915e mt7996e mt7921e; do
-				if [ -e "/sys/module/$mod/parameters/wed_enable" ] || lsmod 2>/dev/null | grep -q "$mod"; then
-					grep -q "options $mod wed_enable=Y" /etc/modules.conf || echo "options $mod wed_enable=Y" >> /etc/modules.conf
-					echo "$mod wed_enable=Y" > "/etc/modules.d/$mod"
-					echo Y > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
+			target_val="Y"
+		fi
+		mkdir -p "$mod_d"
+		touch "$mod_conf"
+		for mod in mt7915e mt7996e mt7921e; do
+			if [ -e "${root_p}/sys/module/$mod/parameters/wed_enable" ] || { [ -z "$root_p" ] && lsmod 2>/dev/null | grep -q "$mod"; }; then
+				found_mod=1
+				if [ -r "${root_p}/sys/module/$mod/parameters/wed_enable" ]; then
+					runtime_val="$(cat "${root_p}/sys/module/$mod/parameters/wed_enable" 2>/dev/null || echo 'N')"
 				fi
-			done
-			rm -f /tmp/ark-features.cache /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
-			echo 'enabled'
-		else
+				# Note: mt7915e/mt7996e read wed_enable ONLY at module probe (boot).
+				# Never write to /sys/module/*/parameters/wed_enable to fabricate a false runtime state.
+				if [ "$target_val" = "Y" ]; then
+					grep -q "options $mod wed_enable=Y" "$mod_conf" 2>/dev/null || echo "options $mod wed_enable=Y" >> "$mod_conf"
+					echo "$mod wed_enable=Y" > "${mod_d}/$mod"
+					[ "$runtime_val" != "Y" ] && [ "$runtime_val" != "1" ] && reboot_needed=1
+				else
+					sed -i "/options $mod wed_enable/d" "$mod_conf" 2>/dev/null || true
+					echo "$mod wed_enable=N" > "${mod_d}/$mod"
+					if [ "$runtime_val" = "Y" ] || [ "$runtime_val" = "1" ]; then
+						reboot_needed=1
+					fi
+				fi
+			fi
+		done
+		if [ "$found_mod" -eq 0 ] && [ "$target_val" = "N" ]; then
 			for mod in mt7915e mt7996e mt7921e; do
-				sed -i "/options $mod wed_enable/d" /etc/modules.conf 2>/dev/null || true
-				echo "$mod wed_enable=N" > "/etc/modules.d/$mod"
-				echo N > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
+				sed -i "/options $mod wed_enable/d" "$mod_conf" 2>/dev/null || true
+				[ -f "${mod_d}/$mod" ] && echo "$mod wed_enable=N" > "${mod_d}/$mod"
 			done
-			rm -f /tmp/ark-features.cache /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
-			echo 'disabled'
+		fi
+		if [ "$target_val" = "Y" ]; then
+			uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" && sqm_conflict=1
+			[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw 2>/dev/null || echo '0')" != "1" ] && hw_offload_missing=1
+		fi
+		rm -f "${root_p}/tmp/ark-features.cache" "${root_p}/tmp/ark-router-features.json" "${root_p}/tmp/ark-hw-cache.json" "${root_p}/tmp/ark-hw-cache.ts"
+		if [ "$target_val" = "Y" ]; then
+			if [ "$reboot_needed" -eq 1 ]; then
+				echo "enabled_reboot_required"
+			else
+				echo "enabled"
+			fi
+			[ "$sqm_conflict" -eq 1 ] && logger -t ark-wifi "WED habilitado no boot, porem SQM esta ativo (PPE/WED contornam SQM)."
+			[ "$hw_offload_missing" -eq 1 ] && logger -t ark-wifi "WED habilitado no boot, porem flow_offloading_hw=0 (WED exige Hardware Flow Offloading)."
+		else
+			if [ "$reboot_needed" -eq 1 ]; then
+				echo "disabled_reboot_required"
+			else
+				echo "disabled"
+			fi
 		fi
 		;;
 	wifi-wps-status)

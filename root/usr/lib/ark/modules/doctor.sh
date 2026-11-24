@@ -1577,8 +1577,8 @@ ark_doctor_audit() {
 			local s_label
 			case "$s_band:$s_ht" in
 				*6g*|3:*|*:HT320|*:EHT320) s_label="6GHz" ;;
-				*2g*|*11g*|*11b*|*11n*|*11beg*) s_label="2.4GHz" ;;
-				*5g*|*11a*|*11ac*|*11ax*|*11bea*) s_label="5GHz" ;;
+				*5g*|*11a*|*11bea*) s_label="5GHz" ;;
+				*2g*|*11g*|*11b*|*11n*) s_label="2.4GHz" ;;
 				*) s_label="$s_dev" ;;
 			esac
 
@@ -2496,11 +2496,12 @@ EOF
 					fi
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.0.0.1'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='0'
+					if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_dashboard.ipv6.mode || echo dual_stack)" = "ipv4_only" ]; then
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+					else
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+					fi
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='1'
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
 					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
@@ -2595,6 +2596,183 @@ EOF
 				fi
 			fi
 		fi
+	fi
+
+	# 26c. Auditoria de Arquitetura & Roteamento DNS (Ordem LAN IPv4/IPv6, noresolv e Rajada All-Servers)
+	if ! ark_is_satellite_or_ap; then
+		local _d_lan_ip _d_fb _d_blocker=0 _d_opt6="" _d_opt _d_first_v4 _d_ext_v4=0 _d_tok
+		local _d_v6_mode _d_ula="" _d_ula_pfx _d_v6_list _d_first_v6 _d_ext_v6=0
+		local _d_srvs _d_ext_srvs="" _d_dom_srvs="" _d_ext_cnt=0 _d_noresolv _d_alls
+		local _d_prov _d_seen_provs="" _d_dup_prov=0 _d_p1="" _d_p2="" _d_p1_prov="" _d_p1_fam="" _d_fam _d_s _d_clean_s
+		local _d_dhcp_dirty=0 _d_reload_dm=0 _d_reload_od=0
+
+		_d_lan_ip="$($uci_cmd get network.lan.ipaddr 2>/dev/null || echo '192.168.73.1')"
+		_d_fb="$($uci_cmd get equipe_perf.settings.dns_dhcp_fallback 2>/dev/null || echo '0')"
+		case "$_d_fb" in 1|true) _d_fb=1 ;; *) _d_fb=0 ;; esac
+		if [ "$($uci_cmd get equipe_perf.settings.adblock_enabled 2>/dev/null || echo 0)" = "1" ] || [ "$($uci_cmd get equipe_perf.settings.adguard_enabled 2>/dev/null || echo 0)" = "1" ]; then
+			_d_blocker=1
+		fi
+
+		# 26c.1 Ordem DNS LAN IPv4 (DHCP Option 6): roteador deve vir em 1o; externos so entram como fallback explicito
+		for _d_opt in $($uci_cmd get dhcp.lan.dhcp_option 2>/dev/null || true); do
+			case "$_d_opt" in
+				6,*) _d_opt6="${_d_opt#6,}" ;;
+			esac
+		done
+		if [ -n "$_d_opt6" ]; then
+			_d_first_v4="${_d_opt6%%,*}"
+			for _d_tok in $(printf '%s' "$_d_opt6" | tr ',' ' '); do
+				[ -n "$_d_tok" ] && [ "$_d_tok" != "$_d_lan_ip" ] && _d_ext_v4=1
+			done
+			if [ "$_d_first_v4" != "$_d_lan_ip" ] || { [ "$_d_ext_v4" = "1" ] && { [ "$_d_fb" = "0" ] || [ "$_d_blocker" = "1" ]; }; }; then
+				if [ "$auto_fix" = 1 ]; then
+					if command -v apply_lan_dhcp_dns >/dev/null 2>&1; then
+						if [ "$_d_fb" = "1" ] && [ "$_d_blocker" = "0" ]; then
+							apply_lan_dhcp_dns "$_d_lan_ip 1.1.1.1"
+						else
+							apply_lan_dhcp_dns "$_d_lan_ip"
+						fi
+						_d_dhcp_dirty=1
+						_d_reload_dm=1
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Roteamento DNS LAN (IPv4)" "FIXED" "DHCP Option 6 corrigido para priorizar o roteador ($_d_lan_ip) em 1o lugar (evitando bypass do cache RAM e DNS Turbo)."
+					fi
+				else
+					add_check "Roteamento DNS LAN (IPv4)" "WARN" "DHCP Option 6 (6,$_d_opt6) envia DNS externo antes ou fora do roteador ($_d_lan_ip), pulando o cache RAM e All-Servers."
+				fi
+			else
+				add_check "Roteamento DNS LAN (IPv4)" "OK" "DHCP Option 6 prioriza o roteador ($_d_lan_ip) em 1o lugar na LAN."
+			fi
+		fi
+
+		# 26c.2 Ordem DNS LAN IPv6 (RDNSS/DHCPv6): ULA do roteador em 1o lugar em modos nao-ipv6_only
+		_d_v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo 'dual_stack')"
+		if [ "$_d_v6_mode" != "ipv4_only" ] && [ "$_d_v6_mode" != "ipv6_only" ]; then
+			if [ -z "$root_prefix" ]; then
+				_d_ula="$(ip -6 addr show dev br-lan scope global 2>/dev/null | awk '/inet6 fd[0-9a-fA-F]{2}:/ {sub(/\/.*/, "", $2); print $2; exit}' || true)"
+			fi
+			if [ -z "$_d_ula" ]; then
+				_d_ula_pfx="$($uci_cmd get network.globals.ula_prefix 2>/dev/null || true)"
+				case "$_d_ula_pfx" in fd*::/*|FD*::/*) _d_ula="${_d_ula_pfx%%/*}1" ;; esac
+			fi
+			_d_v6_list="$($uci_cmd get dhcp.lan.dns 2>/dev/null || true)"
+			if [ -n "$_d_ula" ] && [ -n "$_d_v6_list" ]; then
+				_d_first_v6="$(printf '%s' "$_d_v6_list" | awk '{print $1}')"
+				for _d_tok in $_d_v6_list; do
+					[ "$_d_tok" != "$_d_ula" ] && _d_ext_v6=1
+				done
+				if [ "$_d_first_v6" != "$_d_ula" ] || { [ "$_d_ext_v6" = "1" ] && { [ "$_d_fb" = "0" ] || [ "$_d_blocker" = "1" ]; }; }; then
+					if [ "$auto_fix" = 1 ]; then
+						if ! command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1; then
+							[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network_ipv6_mwan.sh"
+						fi
+						command -v ark_sync_lan_ipv6_dns >/dev/null 2>&1 && ark_sync_lan_ipv6_dns no_restart || true
+						_d_reload_od=1
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Roteamento DNS LAN (IPv6)" "FIXED" "dhcp.lan.dns alinhado para anunciar o ULA do roteador ($_d_ula) em 1o lugar na LAN."
+					else
+						add_check "Roteamento DNS LAN (IPv6)" "WARN" "dhcp.lan.dns ($_d_v6_list) anuncia DNS IPv6 externo antes do roteador ($_d_ula), pulando cache RAM, All-Servers e regras locais."
+					fi
+				else
+					add_check "Roteamento DNS LAN (IPv6)" "OK" "RDNSS/DHCPv6 prioriza o roteador ($_d_ula) em 1o lugar na LAN."
+				fi
+			fi
+		fi
+
+		# 26c.3 Isolamento noresolv=1 e Eficiencia All-Servers (evitar vazamento resolv.conf.auto e rajada >2 servidores/duplicados)
+		_d_srvs="$($uci_cmd get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
+		for _d_s in $_d_srvs; do
+			case "$_d_s" in
+				/*) _d_dom_srvs="${_d_dom_srvs:+$_d_dom_srvs }$_d_s"; continue ;;
+				127.*|::1*|0.0.0.0*) continue ;;
+			esac
+			_d_clean_s="$(printf '%s' "$_d_s" | sed -E 's/#[0-9]+$//')"
+			if valid_ip "$_d_clean_s"; then
+				_d_ext_srvs="${_d_ext_srvs:+$_d_ext_srvs }$_d_clean_s"
+				_d_ext_cnt=$((_d_ext_cnt + 1))
+				case "$_d_clean_s" in
+					1.1.1.*|1.0.0.*|2606:4700:*) _d_prov="cloudflare" ;;
+					8.8.8.8|8.8.4.4|2001:4860:4860:*) _d_prov="google" ;;
+					9.9.9.9|149.112.112.*|2620:fe:*) _d_prov="quad9" ;;
+					94.140.14.*|94.140.15.*|2a10:50c0:*) _d_prov="adguard" ;;
+					208.67.222.*|208.67.220.*|2620:119:*) _d_prov="opendns" ;;
+					76.76.2.*|76.76.10.*|2606:1a40:*) _d_prov="controld" ;;
+					*) _d_prov="$_d_clean_s" ;;
+				esac
+				case " $_d_seen_provs " in
+					*" $_d_prov "*) _d_dup_prov=1 ;;
+					*) _d_seen_provs="${_d_seen_provs:+$_d_seen_provs }$_d_prov" ;;
+				esac
+			fi
+		done
+
+		if [ "$_d_ext_cnt" -gt 0 ]; then
+			_d_noresolv="$($uci_cmd get dhcp.@dnsmasq[0].noresolv 2>/dev/null || echo '0')"
+			if [ "$_d_noresolv" != "1" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set dhcp.@dnsmasq[0].noresolv='1'
+					_d_dhcp_dirty=1
+					_d_reload_dm=1
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Isolamento Upstream DNS (noresolv)" "FIXED" "noresolv=1 ativado para impedir mistura/duplicacao do resolv.conf.auto da operadora com os servidores DNS explicitos."
+				else
+					add_check "Isolamento Upstream DNS (noresolv)" "WARN" "Servidores DNS explicitos configurados com noresolv=0: o dnsmasq mistura e duplica consultas com o DNS da WAN (resolv.conf.auto)."
+				fi
+			else
+				add_check "Isolamento Upstream DNS (noresolv)" "OK" "noresolv=1 ativo: somente os servidores DNS configurados sao consultados."
+			fi
+
+			_d_alls="$($uci_cmd get dhcp.@dnsmasq[0].allservers 2>/dev/null || echo '0')"
+			if [ "$_d_alls" = "1" ] && { [ "$_d_ext_cnt" -gt 2 ] || [ "$_d_dup_prov" = "1" ]; }; then
+				if [ "$auto_fix" = 1 ]; then
+					# Seleciona ate 2 provedores distintos, priorizando par cruzado (1 IPv4 + 1 IPv6) quando disponivel
+					for _d_s in $_d_ext_srvs; do
+						case "$_d_s" in
+							1.1.1.*|1.0.0.*|2606:4700:*) _d_prov="cloudflare" ;;
+							8.8.8.8|8.8.4.4|2001:4860:4860:*) _d_prov="google" ;;
+							9.9.9.9|149.112.112.*|2620:fe:*) _d_prov="quad9" ;;
+							94.140.14.*|94.140.15.*|2a10:50c0:*) _d_prov="adguard" ;;
+							208.67.222.*|208.67.220.*|2620:119:*) _d_prov="opendns" ;;
+							76.76.2.*|76.76.10.*|2606:1a40:*) _d_prov="controld" ;;
+							*) _d_prov="$_d_s" ;;
+						esac
+						case "$_d_s" in *:*) _d_fam="v6" ;; *) _d_fam="v4" ;; esac
+						if [ -z "$_d_p1" ]; then
+							_d_p1="$_d_s"; _d_p1_prov="$_d_prov"; _d_p1_fam="$_d_fam"
+						elif [ "$_d_prov" != "$_d_p1_prov" ]; then
+							if [ -z "$_d_p2" ] || [ "$_d_fam" != "$_d_p1_fam" ]; then
+								_d_p2="$_d_s"
+								[ "$_d_fam" != "$_d_p1_fam" ] && break
+							fi
+						fi
+					done
+					[ -n "$_d_p1" ] || _d_p1="1.1.1.1"
+					$uci_cmd delete dhcp.@dnsmasq[0].server 2>/dev/null || true
+					$uci_cmd add_list "dhcp.@dnsmasq[0].server=$_d_p1"
+					[ -n "$_d_p2" ] && $uci_cmd add_list "dhcp.@dnsmasq[0].server=$_d_p2"
+					for _d_s in $_d_dom_srvs; do
+						$uci_cmd add_list "dhcp.@dnsmasq[0].server=$_d_s"
+					done
+					$uci_cmd set equipe_perf.settings=performance
+					$uci_cmd set "equipe_perf.settings.dns_servers=${_d_p1}${_d_p2:+ $_d_p2}"
+					$uci_cmd commit equipe_perf 2>/dev/null || true
+					_d_dhcp_dirty=1
+					_d_reload_dm=1
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Eficiência DNS All-Servers" "FIXED" "Lista DNS reduzida de $_d_ext_cnt servidores para 2 provedores distintos (${_d_p1}${_d_p2:+ + $_d_p2}), eliminando rajadas duplicadas."
+				else
+					add_check "Eficiência DNS All-Servers" "WARN" "All-Servers ativo com $_d_ext_cnt servidores (ou provedor duplicado): gera rajadas redundantes por consulta. Recomendado 2 provedores distintos."
+				fi
+			elif [ "$_d_alls" = "1" ]; then
+				add_check "Eficiência DNS All-Servers" "OK" "All-Servers otimizado com $_d_ext_cnt provedor(es) distinto(s) sem rajada duplicada."
+			fi
+		fi
+
+		if [ "$_d_dhcp_dirty" = "1" ]; then
+			$uci_cmd commit dhcp 2>/dev/null || true
+		fi
+		[ "$_d_reload_dm" = "1" ] && [ -z "$root_prefix" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		[ "$_d_reload_od" = "1" ] && [ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
 	fi
 
 	# 27. Auditoria do Transporte TCP do Host & Anti-Bufferbloat

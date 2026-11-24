@@ -281,7 +281,7 @@ const renderMethods = {
 		};
 		const wanCards=activeWans.map(L.bind(function(w){
 			const id='ex-'+w.domId;
-			return E('section',{class:'ex-card ex-wan-card'},[
+			return E('section',{id: id+'-card', class:'ex-card ex-wan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
 						E('h3',{},[w.label]),
@@ -400,7 +400,7 @@ const renderMethods = {
 				class: 'ex-mini-button ex-wan-edit-button',
 				click: L.bind(function(){this.editWan(nextWan.iface,port);},this)
 			}, ['Usar como '+nextWan.label]));
-			return E('section',{class:'ex-card ex-lan-card'},[
+			return E('section',{id: id+'-card', class:'ex-card ex-lan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
 						E('h3',{},[label]),
@@ -424,7 +424,7 @@ const renderMethods = {
 			const maxSpeed = uplinkPortInfo.max_speed || '2.5G';
 			const speedBadge = E('span', { class: 'ex-port-badge ' + (maxSpeed === '2.5G' ? 'speed-2500' : 'speed-1000') }, [maxSpeed]);
 			
-			return E('section', { class: 'ex-card ex-wan-card ex-ap-uplink-card' }, [
+			return E('section', { id: 'ex-ap-uplink-card', class: 'ex-card ex-wan-card ex-ap-uplink-card' }, [
 				E('div', { class: 'ex-card-title' }, [
 					E('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
 						E('h3', {}, [_t('Enlace de Entrada (Uplink)')]),
@@ -2548,13 +2548,22 @@ const renderMethods = {
 
 		if (scrollTargetId) {
 			window.setTimeout(function() {
-				const targetEl = document.getElementById(scrollTargetId);
+				let targetEl = document.getElementById(scrollTargetId);
+				if (!targetEl && scrollTargetId.indexOf('-card') !== -1) {
+					targetEl = document.getElementById(scrollTargetId.indexOf('wan') !== -1 ? 'ex-wans-grid-section' : 'ex-lan-ports-section');
+				}
 				if (targetEl) {
 					if (targetEl.classList.contains('is-collapsed')) {
 						const toggleBtn = targetEl.querySelector('.ex-accordion-toggle-btn');
 						if (toggleBtn) toggleBtn.click();
 					}
 					targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					targetEl.classList.remove('ex-card-target-flash');
+					void targetEl.offsetWidth;
+					targetEl.classList.add('ex-card-target-flash');
+					window.setTimeout(function() {
+						targetEl.classList.remove('ex-card-target-flash');
+					}, 2400);
 				}
 			}, 40);
 		}
@@ -3376,6 +3385,7 @@ const renderMethods = {
 				seenPorts[uplinkDev] = 1;
 				portDefs.push({
 					key: uplinkDev,
+					targetId: 'ex-ap-uplink-card',
 					label: portLabel(uplinkDev) + ' (' + maxSpd + ')',
 					role: 'UPLINK',
 					isWan: true,
@@ -3409,6 +3419,7 @@ const renderMethods = {
 					const isUp = !!(phy.carrier || (i && i.up && Number(phy.speed) > 0));
 					portDefs.push({
 						key: rawDev || w.iface,
+						targetId: 'ex-' + w.domId + '-card',
 						label: w.label + ' (' + physLbl + ')',
 						role: roleLbl,
 						isWan: true,
@@ -3444,6 +3455,7 @@ const renderMethods = {
 				const isUp = !!dev.carrier;
 				portDefs.push({
 					key: port,
+					targetId: 'ex-lan-' + portDomId(port) + '-card',
 					label: fullLbl,
 					role: isWanPort ? 'WAN → LAN' : 'LAN',
 					isWan: false,
@@ -3461,10 +3473,11 @@ const renderMethods = {
 				const speedStr = (rawSpd && Number(rawSpd[0]) > 0) ? (rawSpd[0] + ' Mbps') : 'Conectada';
 				const rawDup = String(pd.duplex || '').trim();
 				const duplexStr = (rawDup && rawDup !== 'unknown') ? rawDup : 'Full Duplex';
+				const targetSection = pd.targetId || (pd.isWan ? 'ex-wans-grid-section' : 'ex-lan-ports-section');
 				return E('div', {
 					class: 'ex-v2-port-box ' + (isUp ? 'port-up' : 'port-down'),
-					click: L.bind(function() { self.switchV2Panel('wan', 'ex-lan-ports-section'); }, self),
-					title: 'Clique para gerenciar portas de rede'
+					click: L.bind(function() { self.switchV2Panel('wan', targetSection); }, self),
+					title: _t('Clique para gerenciar portas de rede')
 				}, [
 					E('span', { class: 'ex-v2-port-role ' + (pd.isWan ? 'is-wan' : 'is-lan') }, [pd.role]),
 					E('div', { class: 'ex-v2-port-jack' }, [

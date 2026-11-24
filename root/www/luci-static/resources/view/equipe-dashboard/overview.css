@@ -3574,5 +3574,35 @@ body:has(.ex-v2-cockpit-layout) .ark-mobile-bar {
 	color: #ffffff;
 }
 
+.ex-card,
+.ex-lan-block,
+#ex-wans-grid-section,
+#ex-lan-ports-section {
+	scroll-margin-top: 18px;
+}
+
+@keyframes ex-card-glow-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+		border-color: rgba(56, 189, 248, 0.3);
+	}
+	30% {
+		box-shadow: 0 0 28px rgba(56, 189, 248, 0.65), 0 0 0 2px rgba(56, 189, 248, 0.85);
+		border-color: #38bdf8;
+	}
+	70% {
+		box-shadow: 0 0 24px rgba(56, 189, 248, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.6);
+		border-color: #38bdf8;
+	}
+	100% {
+		box-shadow: 0 8px 26px rgba(0, 0, 0, 0.055);
+		border-color: color-mix(in srgb, var(--section-accent) 24%, rgba(127, 127, 127, 0.17));
+	}
+}
+
+.ex-card-target-flash {
+	animation: ex-card-glow-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 
 

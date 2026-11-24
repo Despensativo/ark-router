@@ -673,7 +673,8 @@ dns_turbo_save() {
 		for ip in $valid_servers; do
 			uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
 		done
-		uci -q set dhcp.@dnsmasq[0].noresolv='0'
+		# Com servidores explicitos definidos, noresolv=1 evita duplicacao e vazamento para DNS lento da WAN em resolv.conf.auto
+		uci -q set dhcp.@dnsmasq[0].noresolv='1'
 	fi
 
 	for ds in $domain_servers; do
@@ -712,7 +713,15 @@ dns_turbo_save() {
 			uci commit equipe_perf
 		else
 			uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+			if [ -z "${ARK_ROOT:-}" ] && dnsmasq --help 2>&1 | grep -q 'use-stale-cache'; then
+				uci -q set "dhcp.@dnsmasq[0].extraconftext=use-stale-cache=3600"
+			fi
 		fi
+	fi
+	# Remove chave legada duplicada mantendo apenas dnsforwardmax (oficial OpenWrt)
+	if [ -n "$(uci -q get dhcp.@dnsmasq[0].dns_forward_max || true)" ]; then
+		[ -z "$(uci -q get dhcp.@dnsmasq[0].dnsforwardmax || true)" ] && uci -q set "dhcp.@dnsmasq[0].dnsforwardmax=$(uci -q get dhcp.@dnsmasq[0].dns_forward_max)"
+		uci -q delete dhcp.@dnsmasq[0].dns_forward_max
 	fi
 	command -v sanitize_dhcp_hostnames >/dev/null 2>&1 && sanitize_dhcp_hostnames
 	uci commit dhcp
@@ -768,6 +777,9 @@ dns_turbo_doh_toggle() {
 }
 
 _ark_dns_now_ms() {
+	if [ -z "${ARK_ROOT:-}" ] && command -v ucode >/dev/null 2>&1; then
+		ucode -e 'let t = clock(true); printf("%.0f\n", t[0] * 1000 + t[1] / 1000000);' 2>/dev/null && return 0
+	fi
 	if [ -r /proc/uptime ]; then
 		awk '{printf "%.0f\n", $1 * 1000}' /proc/uptime 2>/dev/null
 	else
@@ -775,55 +787,101 @@ _ark_dns_now_ms() {
 	fi
 }
 
+_ark_dns_probe_single() {
+	local domain="$1" ip="$2"
+	local t0 t1 ms out ans_count
+
+	# Fast-path with 1ms monotonic clock via ucode (OpenWrt 22.03+/25.x): avoids extra subshell/awk forks
+	# and uses -type=a to skip slow PTR reverse lookups (e.g. IPv6 2001:4860:4860::8888).
+	if [ -z "${ARK_ROOT:-}" ] && command -v ucode >/dev/null 2>&1; then
+		ucode -e '
+			import { popen } from "fs";
+			let dom = ARGV[0], ip = ARGV[1];
+			let cmd = "timeout 2 nslookup -type=a " + dom + " " + ip + " 2>/dev/null";
+			let t0 = clock(true);
+			let p = popen(cmd, "r");
+			let out = p ? (p.read("all") || "") : "";
+			if (p) p.close();
+			let t1 = clock(true);
+			let ms = int(((t1[0] - t0[0]) * 1000) + ((t1[1] - t0[1]) / 1000000) + 0.5);
+			if (ms < 1) ms = 1;
+			let ok = (index(out, "Name:") >= 0 || length(match(out, /^Address/gm) || []) >= 2) ? 1 : 0;
+			printf("%d|%d\n", ok, ok ? ms : 0);
+		' "$domain" "$ip" 2>/dev/null && return 0
+	fi
+
+	t0="$(_ark_dns_now_ms)"
+	out=""
+	if command -v timeout >/dev/null 2>&1; then
+		out="$(timeout 2 nslookup -type=a "$domain" "$ip" 2>/dev/null || true)"
+	else
+		out="$(nslookup -type=a -timeout=2 "$domain" "$ip" 2>/dev/null || nslookup -type=a "$domain" "$ip" 2>/dev/null || true)"
+	fi
+	t1="$(_ark_dns_now_ms)"
+	ans_count="$(printf '%s\n' "$out" | grep -c '^Address' 2>/dev/null || echo 0)"
+	if [ "$ans_count" -ge 2 ] 2>/dev/null || printf '%s\n' "$out" | grep -q 'Name:'; then
+		ms=$((t1 - t0))
+		[ "$ms" -lt 1 ] && ms=1
+		printf '1|%d\n' "$ms"
+	else
+		printf '0|0\n'
+	fi
+}
+
 dns_turbo_benchmark_json() {
 	local domain="${ARK_DNS_BENCHMARK_DOMAIN:-cloudflare.com}"
 	local tmp_res="/tmp/ark-dns-bench.$$"
-	local candidates isp_ip rfile line entry name ip t0 t1 ms ok out ans_count
+	local candidates="" isp_ip rfile line entry name ip t0 t1 ms ok out ans_count custom_arg clean_arg
 	local first=1 rec1="" rec2=""
 
-	candidates="Cloudflare|1.1.1.1 Google|8.8.8.8 Quad9|9.9.9.9 ControlD|76.76.2.0 AdGuard|94.140.14.14"
+	if [ "$#" -gt 0 ]; then
+		# Modo sonda direcionada (usado pelo botao "Testar Latencia dos Servidores" para medir resolucao DNS real IPv4/IPv6)
+		for custom_arg in "$@"; do
+			clean_arg="$(printf '%s' "$custom_arg" | sed -E 's/#[0-9]+$//' | tr -d ' ,;\t\r\n')"
+			[ -n "$clean_arg" ] || continue
+			valid_ip "$clean_arg" || continue
+			candidates="${candidates:+$candidates }Custom|${clean_arg}"
+		done
+	fi
 
-	# Detecta 1 DNS valido do provedor (WAN) se disponivel e distinto da lista padrao
-	isp_ip=""
-	for rfile in "${ARK_ROOT:-}/tmp/resolv.conf.d/resolv.conf.auto" "${ARK_ROOT:-}/tmp/resolv.conf.auto"; do
-		[ -r "$rfile" ] || continue
-		while IFS= read -r line; do
-			case "$line" in
-				nameserver*)
-					isp_ip="$(printf '%s' "$line" | awk '{print $2}' | tr -d '\r\n\t ')"
-					case "$isp_ip" in
-						''|127.*|0.0.0.0*|::1*|1.1.1.1|8.8.8.8|9.9.9.9|76.76.2.0|94.140.14.14)
-							isp_ip=""
-							continue
-							;;
-					esac
-					if valid_ip "$isp_ip"; then
-						candidates="$candidates Provedor_ISP|$isp_ip"
-						break
-					fi
-					isp_ip=""
-					;;
-			esac
-		done < "$rfile"
-		[ -n "$isp_ip" ] && break
-	done
+	if [ -z "$candidates" ]; then
+		candidates="Cloudflare|1.1.1.1 Google|8.8.8.8 Quad9|9.9.9.9 ControlD|76.76.2.0 AdGuard|94.140.14.14"
+
+		# Detecta 1 DNS valido do provedor (WAN) se disponivel e distinto da lista padrao
+		isp_ip=""
+		for rfile in "${ARK_ROOT:-}/tmp/resolv.conf.d/resolv.conf.auto" "${ARK_ROOT:-}/tmp/resolv.conf.auto"; do
+			[ -r "$rfile" ] || continue
+			while IFS= read -r line; do
+				case "$line" in
+					nameserver*)
+						isp_ip="$(printf '%s' "$line" | awk '{print $2}' | tr -d '\r\n\t ')"
+						case "$isp_ip" in
+							''|127.*|0.0.0.0*|::1*|1.1.1.1|8.8.8.8|9.9.9.9|76.76.2.0|94.140.14.14)
+								isp_ip=""
+								continue
+								;;
+						esac
+						if valid_ip "$isp_ip"; then
+							candidates="$candidates Provedor_ISP|$isp_ip"
+							break
+						fi
+						isp_ip=""
+						;;
+				esac
+			done < "$rfile"
+			[ -n "$isp_ip" ] && break
+		done
+	fi
 
 	: > "$tmp_res"
 	for entry in $candidates; do
 		name="${entry%%|*}"
 		ip="${entry#*|}"
-		t0="$(_ark_dns_now_ms)"
-		out=""
-		if command -v timeout >/dev/null 2>&1; then
-			out="$(timeout 2 nslookup "$domain" "$ip" 2>/dev/null || true)"
-		else
-			out="$(nslookup -timeout=2 "$domain" "$ip" 2>/dev/null || nslookup "$domain" "$ip" 2>/dev/null || true)"
-		fi
-		t1="$(_ark_dns_now_ms)"
-		ans_count="$(printf '%s\n' "$out" | grep -c '^Address' 2>/dev/null || echo 0)"
-		if [ "$ans_count" -ge 2 ] 2>/dev/null || printf '%s\n' "$out" | grep -q 'Name:'; then
-			ok=1
-			ms=$((t1 - t0))
+		out="$(_ark_dns_probe_single "$domain" "$ip")"
+		ok="${out%%|*}"
+		ms="${out#*|}"
+		if [ "$ok" = "1" ]; then
+			case "$ms" in ''|*[!0-9]*) ms=1 ;; esac
 			[ "$ms" -lt 1 ] && ms=1
 			printf '%06d|1|%s|%s|%d\n' "$ms" "$name" "$ip" "$ms" >> "$tmp_res"
 		else
@@ -1576,7 +1634,8 @@ handle_system() {
 		dns_turbo_doh_toggle "$@"
 		;;
 	dns-turbo-benchmark)
-		dns_turbo_benchmark_json
+		shift
+		dns_turbo_benchmark_json "$@"
 		;;
 	network-capacity-status)
 		network_capacity_status_json
@@ -1616,10 +1675,10 @@ handle_system() {
 		if [ -z "$fast_meta" ]; then
 			bind_arg=""
 			[ -n "$source_ip" ] && bind_arg="--bind-address=$source_ip"
-			fast_meta="$(wget $bind_arg -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
+			fast_meta="$(ark_wget_tls $bind_arg -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
 		fi
 		if [ -z "$fast_meta" ]; then
-			fast_meta="$(wget -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
+			fast_meta="$(ark_wget_tls -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
 		fi
 		if [ -n "$fast_meta" ]; then
 			printf '%s\n' "$fast_meta"

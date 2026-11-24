@@ -346,7 +346,9 @@ class AutorateGuards(unittest.TestCase):
         servers = self.sb.uci_get('dhcp.@dnsmasq[0].server')
         self.assertNotIn('127.0.0.1#5053', servers)
         self.assertIn('1.1.1.1', servers)
-        self.assertIn('2606:4700:4700::1111', servers)
+        self.assertIn('2001:4860:4860::8888', servers)
+        self.assertEqual(len(servers.split()), 2)
+        self.assertEqual(self.sb.uci_get('dhcp.@dnsmasq[0].noresolv'), '1')
 
     def test_ark_sync_doh_proxy_disable_cleans_sections(self):
         """Valida que ark_sync_doh_proxy disable remove seções e instâncias de proxy do UCI"""

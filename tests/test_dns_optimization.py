@@ -162,6 +162,112 @@ class TestDnsOptimization(unittest.TestCase):
         self.assertIn("fallback_dns:", common_src)
         self.assertNotIn("upstream_dns:/a", common_src)
 
+    def test_06_dns_turbo_save_enforces_noresolv_and_targeted_benchmark(self):
+        """Valida noresolv=1 em dns_turbo_save, limpeza de dns_forward_max legado e sonda direcionada IPv4+IPv6."""
+        self.sb.uci_set("equipe_perf.settings=performance")
+        self.sb.uci_set("equipe_perf.settings.dns_doh_enabled=0")
+        self.sb.uci_set("network.lan.ipaddr=192.168.73.1")
+        self.sb.uci_set("network.wan6=interface")
+        self.sb.uci_set("network.wan6.proto=dhcpv6")
+        self.sb.uci_set("network.wan6.device=@wan")
+        self.sb.uci_set("network.globals=globals")
+        self.sb.uci_set("network.globals.ula_prefix=fd73:0192:0168::/48")
+        self.sb.uci_set("dhcp.@dnsmasq[0].noresolv=0")
+        self.sb.uci_set("dhcp.@dnsmasq[0].dns_forward_max=3000")
+
+        res = self.sb.run_control("dns-turbo-save", "1", "1.1.1.1", "2001:4860:4860::8888", "", "", "0", "10000")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].noresolv"), "1")
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].allservers"), "1")
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].server"), "1.1.1.1 2001:4860:4860::8888")
+        self.assertIsNone(self.sb.uci_get("dhcp.@dnsmasq[0].dns_forward_max"))
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].dnsforwardmax"), "3000")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dhcp_option"), "6,192.168.73.1")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dns"), "fd73:0192:0168::1")
+
+        # Sonda direcionada IPv4 + IPv6 via dns-turbo-benchmark
+        self.spy(
+            "nslookup",
+            'ip=""\n'
+            'for a in "$@"; do ip="$a"; done\n'
+            'printf "Server: %s\\nAddress: %s#53\\n\\nName: cloudflare.com\\nAddress: 104.16.132.229\\n" "$ip" "$ip"\n'
+        )
+        res_b = self.sb.run_control("dns-turbo-benchmark", "1.1.1.1", "2001:4860:4860::8888")
+        self.assertEqual(res_b.returncode, 0, res_b.stderr)
+        bdata = json.loads(res_b.stdout)
+        self.assertTrue(bdata["ok"])
+        self.assertEqual({r["ip"] for r in bdata["results"]}, {"1.1.1.1", "2001:4860:4860::8888"})
+        self.assertTrue(all(r["ok"] for r in bdata["results"]))
+
+    def test_07_doctor_audits_and_fixes_lan_dns_order_noresolv_and_allservers_burst(self):
+        """Valida que ARK Doctor detecta e repara bypass de DNS LAN IPv4/IPv6, noresolv=0 e rajada duplicada All-Servers."""
+        self.sb.uci_set("network.lan.ipaddr=192.168.73.1")
+        self.sb.uci_set("network.wan6=interface")
+        self.sb.uci_set("network.wan6.proto=dhcpv6")
+        self.sb.uci_set("network.wan6.device=@wan")
+        self.sb.uci_set("network.globals=globals")
+        self.sb.uci_set("network.globals.ula_prefix=fd73:0192:0168::/48")
+        self.sb.uci_set("dhcp.lan.ra=server")
+        self.sb.uci_set("dhcp.lan.dhcpv6=server")
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("equipe_perf.settings=performance")
+        self.sb.uci_set("equipe_perf.settings.dns_dhcp_fallback=0")
+        self.sb.uci_set("equipe_perf.settings.dns_doh_enabled=0")
+        # Injeta os 4 erros reais encontrados em producao:
+        # 1) DHCP Option 6 com 1.1.1.1 na frente do roteador
+        # 2) dhcp.lan.dns com Cloudflare IPv6 na frente do ULA
+        # 3) noresolv=0 com servidores explicitos
+        # 4) All-Servers=1 com 4 servidores (Cloudflare v4+v6 + Google v4+v6)
+        self.sb.run_sh(
+            'uci -q delete dhcp.lan.dhcp_option\n'
+            'uci -q add_list dhcp.lan.dhcp_option="6,1.1.1.1,192.168.73.1"\n'
+            'uci -q delete dhcp.lan.dns\n'
+            'uci -q add_list dhcp.lan.dns="2606:4700:4700::1111"\n'
+            'uci -q add_list dhcp.lan.dns="fd73:0192:0168::1"\n'
+            'uci -q add_list dhcp.lan.dns="2606:4700:4700::1001"\n'
+            'uci -q delete dhcp.@dnsmasq[0].server\n'
+            'uci -q add_list dhcp.@dnsmasq[0].server="1.1.1.1"\n'
+            'uci -q add_list dhcp.@dnsmasq[0].server="2606:4700:4700::1111"\n'
+            'uci -q add_list dhcp.@dnsmasq[0].server="8.8.8.8"\n'
+            'uci -q add_list dhcp.@dnsmasq[0].server="2001:4860:4860::8888"\n'
+            'uci -q set dhcp.@dnsmasq[0].noresolv=0\n'
+            'uci -q set dhcp.@dnsmasq[0].allservers=1\n'
+            'uci commit dhcp\n'
+        )
+
+        # 1. Auditoria pura (0): detecta todos os 4 problemas como WARN sem mutar
+        res_audit = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res_audit.returncode, 0, res_audit.stderr)
+        checks = {c["name"]: c["status"] for c in json.loads(res_audit.stdout).get("checks", [])}
+        self.assertEqual(checks.get("Roteamento DNS LAN (IPv4)"), "WARN")
+        self.assertEqual(checks.get("Roteamento DNS LAN (IPv6)"), "WARN")
+        self.assertEqual(checks.get("Isolamento Upstream DNS (noresolv)"), "WARN")
+        self.assertEqual(checks.get("Eficiência DNS All-Servers"), "WARN")
+
+        # 2. Auto-reparo (--fix): corrige os 4 pontos
+        res_fix = self.sb.run_control("ark-doctor", "--json", "--fix")
+        self.assertEqual(res_fix.returncode, 0, res_fix.stderr)
+        fix_checks = {c["name"]: c["status"] for c in json.loads(res_fix.stdout).get("checks", [])}
+        self.assertEqual(fix_checks.get("Roteamento DNS LAN (IPv4)"), "FIXED")
+        self.assertEqual(fix_checks.get("Roteamento DNS LAN (IPv6)"), "FIXED")
+        self.assertEqual(fix_checks.get("Isolamento Upstream DNS (noresolv)"), "FIXED")
+        self.assertEqual(fix_checks.get("Eficiência DNS All-Servers"), "FIXED")
+
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dhcp_option"), "6,192.168.73.1")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.dns"), "fd73:0192:0168::1")
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].noresolv"), "1")
+        # Deve deduplicar para 2 provedores distintos em par cruzado IPv4 + IPv6
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].server"), "1.1.1.1 2001:4860:4860::8888")
+
+        # 3. Re-auditoria pos-reparo: todos os 4 retornam OK (idempotencia)
+        res_after = self.sb.run_control("ark-doctor", "--json")
+        after_checks = {c["name"]: c["status"] for c in json.loads(res_after.stdout).get("checks", [])}
+        self.assertEqual(after_checks.get("Roteamento DNS LAN (IPv4)"), "OK")
+        self.assertEqual(after_checks.get("Roteamento DNS LAN (IPv6)"), "OK")
+        self.assertEqual(after_checks.get("Isolamento Upstream DNS (noresolv)"), "OK")
+        self.assertEqual(after_checks.get("Eficiência DNS All-Servers"), "OK")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

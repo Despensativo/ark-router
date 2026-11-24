@@ -89,14 +89,15 @@ ark_sync_sqm_gaming_dns() {
 			/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
 		fi
 
-		# Restaura Anycast de ultra-baixa latencia direto no dnsmasq (Cloudflare + Google IPv4/IPv6)
+		# Restaura Anycast de ultra-baixa latencia direto no dnsmasq (2 provedores distintos sem rajada duplicada)
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
-		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.0.0.1'
-		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
-		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
-		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
-		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='0'
+		if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_dashboard.ipv6.mode || echo dual_stack)" = "ipv4_only" ]; then
+			uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+		else
+			uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+		fi
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='1'
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
 
@@ -238,43 +239,70 @@ ark_sync_gaming_ports_and_bql() {
 		gaming_on=1
 	fi
 
+	[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+	if command -v ark_hw_latency_profile >/dev/null 2>&1; then
+		ark_hw_latency_profile
+	else
+		ARK_GRO_CAP=65536; ARK_GRO_TO=20000; ARK_NAPI_DEF=2; ARK_BUDGET_USECS=8000
+		[ "$sqm_on" = "1" ] && { ARK_GRO_CAP=8192; ARK_BUDGET_USECS=4000; }
+	fi
+
+	# Always synchronize NAPI/GRO/GSO/budget using the unified profile whenever SQM state changes,
+	# regardless of gaming_ports, so disabling SQM restores 64KB GRO/GSO and enabling SQM never leaves 250ms coalescing.
+	if [ -z "${ARK_ROOT:-}" ]; then
+		if command -v ark_hw_apply_budget_usecs >/dev/null 2>&1; then
+			ark_hw_apply_budget_usecs "${ARK_BUDGET_USECS}" >/dev/null 2>&1 || true
+		else
+			sysctl -w "net.core.netdev_budget_usecs=${ARK_BUDGET_USECS}" >/dev/null 2>&1 || true
+		fi
+		local _wan_list="" _pdev
+		command -v ark_hw_list_wan_phys_devs >/dev/null 2>&1 && _wan_list="$(ark_hw_list_wan_phys_devs)"
+		for _pdev in eth0 eth1 wan $_wan_list; do
+			[ -d "/sys/class/net/$_pdev" ] || continue
+			command -v ark_hw_apply_iface_latency >/dev/null 2>&1 && ark_hw_apply_iface_latency "$_pdev"
+		done
+		for pppoe_dev in /sys/class/net/pppoe-*; do
+			[ -e "$pppoe_dev" ] || continue
+			command -v ark_hw_apply_iface_latency >/dev/null 2>&1 && ark_hw_apply_iface_latency "${pppoe_dev##*/}"
+		done
+		for ifb_dev in /sys/class/net/ifb*; do
+			[ -e "$ifb_dev" ] || continue
+			command -v ark_hw_apply_iface_latency >/dev/null 2>&1 && ark_hw_apply_iface_latency "${ifb_dev##*/}"
+		done
+	fi
+
 	if [ "$sqm_on" = "1" ] && [ "$gaming_on" = "1" ]; then
 		if [ -z "${ARK_ROOT:-}" ]; then
 			sysctl -w net.core.dev_weight=256 net.core.netdev_budget=1200 >/dev/null 2>&1 || true
-			for pdev in eth0 eth1 wan $(uci -q get network.wan.device 2>/dev/null || true); do
+			local _g_wan_list=""
+			command -v ark_hw_list_wan_phys_devs >/dev/null 2>&1 && _g_wan_list="$(ark_hw_list_wan_phys_devs)"
+			for pdev in eth0 eth1 wan $_g_wan_list; do
 				[ -d "/sys/class/net/$pdev" ] || continue
 				command -v ethtool >/dev/null 2>&1 && ethtool -A "$pdev" autoneg off rx off tx off 2>/dev/null || true
-				ip link set dev "$pdev" gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
 				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_max; do
 					[ -w "$bql_f" ] && echo 1879048192 > "$bql_f" 2>/dev/null || true
 				done
 				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_min; do
 					[ -w "$bql_f" ] && echo 524288 > "$bql_f" 2>/dev/null || true
 				done
-				[ -w "/sys/class/net/$pdev/gro_flush_timeout" ] && echo 20000 > "/sys/class/net/$pdev/gro_flush_timeout" 2>/dev/null || true
-				[ -w "/sys/class/net/$pdev/napi_defer_hard_irqs" ] && echo 2 > "/sys/class/net/$pdev/napi_defer_hard_irqs" 2>/dev/null || true
 				if tc qdisc show dev "$pdev" 2>/dev/null | grep -q "qdisc mq"; then
 					for fq_parent in $(tc qdisc show dev "$pdev" 2>/dev/null | awk '/qdisc fq_codel/ {for(i=1;i<=NF;i++) if($i=="parent") print $(i+1)}'); do
 						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 50ms interval 500ms ecn 2>/dev/null || true
 					done
 				fi
 			done
-			for pppoe_dev in /sys/class/net/pppoe-*; do
-				[ -e "$pppoe_dev" ] || continue
-				ip link set dev "${pppoe_dev##*/}" txqueuelen 128 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
-				[ -w "$pppoe_dev/gro_flush_timeout" ] && echo 0 > "$pppoe_dev/gro_flush_timeout" 2>/dev/null || true
-				[ -w "$pppoe_dev/napi_defer_hard_irqs" ] && echo 0 > "$pppoe_dev/napi_defer_hard_irqs" 2>/dev/null || true
-			done
-			for ifb_dev in /sys/class/net/ifb*; do
-				[ -e "$ifb_dev" ] || continue
-				ip link set dev "${ifb_dev##*/}" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
-			done
-			if [ "$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)" = "4" ] && grep -qE "mt76|mt79|ath|qca" /proc/interrupts 2>/dev/null; then
-				for lan_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus /sys/class/net/phy*/queues/rx-*/rps_cpus; do
-					[ -w "$lan_q" ] && echo 3 > "$lan_q" 2>/dev/null || true
-				done
-				for lan_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus; do
-					[ -w "$lan_q" ] && echo 7 > "$lan_q" 2>/dev/null || true
+			# Re-sync decoupled RPS topology (preserves wired-only 4-core CPU2 unlock & multi-queue RSS)
+			if command -v ark_hw_compute_rps_target >/dev/null 2>&1; then
+				local _cores _wifi_on=0 _ifd _ifn _rps_v _rq
+				_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+				ark_hw_detect_wifi_active && _wifi_on=1
+				for _ifd in /sys/class/net/pppoe* /sys/class/net/phy* /sys/class/net/wlan* /sys/class/net/lan[0-9]*; do
+					[ -d "$_ifd" ] || continue
+					_ifn="${_ifd##*/}"
+					_rps_v="$(ark_hw_compute_rps_target "$_ifn" "$_cores" "$_wifi_on" "$_g_wan_list")"
+					for _rq in "$_ifd"/queues/rx-*/rps_cpus; do
+						[ -w "$_rq" ] && echo "$_rps_v" > "$_rq" 2>/dev/null || true
+					done
 				done
 			fi
 			for phy_d in /sys/kernel/debug/ieee80211/phy*; do
@@ -292,21 +320,18 @@ ark_sync_gaming_ports_and_bql() {
 		printf 'active\n' > "$bql_state" 2>/dev/null || true
 	else
 		if [ -z "${ARK_ROOT:-}" ]; then
-			for pdev in eth0 eth1 wan $(uci -q get network.wan.device 2>/dev/null || true); do
+			local _r_wan_list=""
+			command -v ark_hw_list_wan_phys_devs >/dev/null 2>&1 && _r_wan_list="$(ark_hw_list_wan_phys_devs)"
+			for pdev in eth0 eth1 wan $_r_wan_list; do
 				[ -d "/sys/class/net/$pdev" ] || continue
 				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_max; do
 					[ -w "$bql_f" ] && echo 1879048192 > "$bql_f" 2>/dev/null || true
 				done
-				[ -w "/sys/class/net/$pdev/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$pdev/gro_flush_timeout" 2>/dev/null || true
-				[ -w "/sys/class/net/$pdev/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$pdev/napi_defer_hard_irqs" 2>/dev/null || true
 				if tc qdisc show dev "$pdev" 2>/dev/null | grep -q "qdisc mq"; then
 					for fq_parent in $(tc qdisc show dev "$pdev" 2>/dev/null | awk '/qdisc fq_codel/ {for(i=1;i<=NF;i++) if($i=="parent") print $(i+1)}'); do
 						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 5ms interval 100ms 2>/dev/null || true
 					done
 				fi
-			done
-			for pppoe_dev in /sys/class/net/pppoe-*; do
-				[ -e "$pppoe_dev" ] && ip link set dev "${pppoe_dev##*/}" txqueuelen 1000 2>/dev/null || true
 			done
 		fi
 		rm -f "$bql_state" 2>/dev/null || true
@@ -426,9 +451,16 @@ get_system_hardware_sqm_audit() {
 		fastpath_active="true"
 	fi
 
-	local hw_flowoffload_capable=0
-	if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
+	local hw_flowoffload_capable=0 _ppe_dir
+	if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ]; then
 		hw_flowoffload_capable=1
+	else
+		for _ppe_dir in /sys/devices/platform/soc/*ppe*; do
+			if [ -d "$_ppe_dir" ]; then
+				hw_flowoffload_capable=1
+				break
+			fi
+		done
 	fi
 
 	local hw_flowoffload_active=0

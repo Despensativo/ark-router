@@ -776,14 +776,28 @@ ark_sync_lan_ipv6_dns() {
 			esac
 		fi
 
-		desired_dns="2606:4700:4700::1111"
-		for tok in $isp_v6_list; do
-			desired_dns="$desired_dns $tok"
-		done
-		if [ -z "$isp_v6_list" ] && [ -n "$ula_ip6" ]; then
-			desired_dns="$desired_dns $ula_ip6"
+		local dns_fb blocker_on=0
+		dns_fb="$(uci -q get equipe_perf.settings.dns_dhcp_fallback || echo 0)"
+		case "$dns_fb" in 1|true) dns_fb=1 ;; *) dns_fb=0 ;; esac
+		if [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] || [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+			blocker_on=1
 		fi
-		desired_dns="$desired_dns 2606:4700:4700::1001"
+
+		# Regra de Ouro DNS: o proprio roteador (ULA) DEVE ser o 1o DNS da LAN para que
+		# clientes IPv6/Dual-Stack usem o cache RAM (0ms), All-Servers e regras locais.
+		# Externos so entram como 2o (fallback) quando explicitamente habilitado e sem bloqueador.
+		if [ -n "$ula_ip6" ]; then
+			desired_dns="$ula_ip6"
+			if [ "$dns_fb" = "1" ] && [ "$blocker_on" = "0" ]; then
+				desired_dns="$desired_dns 2606:4700:4700::1111"
+			fi
+		else
+			desired_dns="2606:4700:4700::1111"
+			for tok in $isp_v6_list; do
+				desired_dns="$desired_dns $tok"
+			done
+			desired_dns="$desired_dns 2606:4700:4700::1001"
+		fi
 	fi
 
 	cur_dns="$(uci -q get dhcp.lan.dns || true)"

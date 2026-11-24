@@ -1591,12 +1591,19 @@ exit 0
         res_off = self.sb.run_control("dns-turbo-save", "0", "1.1.1.1", "8.8.8.8", "", "", "0", "10000")
         self.assertEqual(res_off.returncode, 0, f"Falha em dns-turbo-save off: {res_off.stderr}")
         dns_list = self.sb.uci_get("dhcp.lan.dns") or ""
-        self.assertIn("2606:4700:4700::1111", dns_list)
-        self.assertIn("2804:14d:1::1", dns_list)
-        self.assertIn("2606:4700:4700::1001", dns_list)
+        # Sem fallback DHCP/RA, apenas o ULA do roteador e anunciado na LAN (evita bypass do cache RAM e DNS Turbo)
+        self.assertEqual(dns_list.strip(), "fd73:0192:0168::1")
         self.assertNotIn("fe80::1", dns_list)
         self.assertEqual(self.sb.uci_get("dhcp.lan.dhcpv6"), "server")
         self.assertEqual(self.sb.uci_get("dhcp.lan.dns_service"), "1")
+
+        # 1b. Com fallback habilitado (param 6 = 1), ULA do roteador vem SEMPRE em 1o e Cloudflare IPv6 em 2o
+        res_fb = self.sb.run_control("dns-turbo-save", "1", "1.1.1.1", "2001:4860:4860::8888", "", "", "1", "10000")
+        self.assertEqual(res_fb.returncode, 0, f"Falha em dns-turbo-save fallback: {res_fb.stderr}")
+        dns_fb = (self.sb.uci_get("dhcp.lan.dns") or "").split()
+        self.assertEqual(dns_fb[0], "fd73:0192:0168::1")
+        self.assertIn("2606:4700:4700::1111", dns_fb[1:])
+        self.assertNotIn("fe80::1", dns_fb)
 
         # 2. Cenario ONT so anunciando fe80::1 (sem DNSv6 global) + modo relay ativo
         with open(resolv_auto, "w", encoding="utf-8") as f:
@@ -1608,10 +1615,9 @@ exit 0
         self.assertEqual(self.sb.uci_get("dhcp.lan.ndp"), "relay")
         self.assertEqual(self.sb.uci_get("dhcp.lan.dhcpv6"), "server")
         self.assertIn(self.sb.uci_get("dhcp.wan.dhcpv6"), [None, ""])
-        dns_rel = self.sb.uci_get("dhcp.lan.dns") or ""
-        self.assertIn("2606:4700:4700::1111", dns_rel)
-        self.assertIn("fd73:0192:0168::1", dns_rel)
-        self.assertIn("2606:4700:4700::1001", dns_rel)
+        dns_rel = (self.sb.uci_get("dhcp.lan.dns") or "").split()
+        self.assertEqual(dns_rel[0], "fd73:0192:0168::1")
+        self.assertIn("2606:4700:4700::1111", dns_rel[1:])
         self.assertNotIn("fe80::1", dns_rel)
 
         # 3. Garante que o ARK Doctor aceita ra=relay + dhcpv6=server sem falso positivo de blackhole IPv6
@@ -1645,9 +1651,9 @@ exit 0
             nft_txt = f.read()
         self.assertIn("chain prerouting_dns64", nft_txt)
         self.assertIn("dnat ip6 to 2606:4700:4700::64", nft_txt)
-        # LAN global continua em DNS normal (nao afeta aparelhos Pilha Dupla!)
+        # LAN global continua em DNS normal (ULA do roteador em 1o, sem DNS64 global para nao afetar Pilha Dupla!)
         lan_dns = self.sb.uci_get("dhcp.lan.dns") or ""
-        self.assertIn("2606:4700:4700::1111", lan_dns)
+        self.assertIn("fd73:0192:0168::1", lan_dns)
         self.assertNotIn("2606:4700:4700::64 ", lan_dns)
         self.assertIn(self.sb.uci_get("dhcp.lan.ra_pref64"), [None, ""])
 
@@ -1669,12 +1675,12 @@ exit 0
         self.assertIn("2606:4700:4700::64", lan_dns_g6)
         self.assertIn("2606:4700:4700::6400", lan_dns_g6)
 
-        # Voltar para dual_stack global desliga Jool, remove PREF64 e restaura DNS normal
+        # Voltar para dual_stack global desliga Jool, remove PREF64 e restaura DNS normal (ULA do roteador)
         res_back = self.sb.run_control("ipv6-mode-set", "dual_stack")
         self.assertEqual(res_back.returncode, 0)
         self.assertFalse(os.path.exists(nat64_sh))
         self.assertIn(self.sb.uci_get("dhcp.lan.ra_pref64"), [None, ""])
-        self.assertIn("2606:4700:4700::1111", self.sb.uci_get("dhcp.lan.dns") or "")
+        self.assertIn("fd73:0192:0168::1", self.sb.uci_get("dhcp.lan.dns") or "")
 
     def test_41_doctor_ipv6_nat64_zero_false_positives_and_self_heal(self):
         """Valida que ARK Doctor audita NAT64/DNS64 e IPv6-Only global sem falsos positivos e realiza auto-reparo."""

@@ -163,20 +163,26 @@ class TestHardwareTune(unittest.TestCase):
             self.assertEqual(calc_mask, exp_mask, f"Falha no calculo de mascara para {cores} cores")
 
     def test_08_irq_affinity_function_presence_and_logic(self):
-        """Valida se ark_tune_irq_affinity, pinning de NAPI kthreads e calibracao RPS de ifb*/pppoe* estao presentes"""
-        tune_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "root", "etc", "init.d", "ark-hardware-tune")
+        """Valida delegacao limpa ao helper compartilhado hw-tune.sh, pinning de IRQ/NAPI e limites unificados"""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        tune_script = os.path.join(repo_root, "root", "etc", "init.d", "ark-hardware-tune")
+        helper_script = os.path.join(repo_root, "root", "usr", "lib", "ark", "hw-tune.sh")
         with open(tune_script, "r", encoding="utf-8") as f:
             content = f.read()
+        with open(helper_script, "r", encoding="utf-8") as f:
+            helper = f.read()
         self.assertIn("ark_tune_irq_affinity", content)
-        self.assertIn("smp_affinity", content)
-        self.assertIn("taskset -p", content)
-        self.assertIn("net.core.netdev_budget_usecs=20000", content)
-        self.assertIn("lo|ifb*|br-*|wg*", content)
-        self.assertIn("rx-gro-list off", content)
-        self.assertIn("gro_max_size 16384 gro_ipv4_max_size 16384", content)
+        self.assertIn("hw-tune.sh", content)
+        self.assertIn("ark_hw_latency_profile", content)
+        self.assertIn("ark_hw_tune_cpufreq", content)
+        self.assertIn("ark_hw_compute_rps_target", content)
         self.assertIn("net.netfilter.nf_flowtable_udp_timeout=180", content)
         self.assertIn("net.netfilter.nf_flowtable_tcp_timeout=1800", content)
         self.assertIn('echo "2 2500 5000" > "$phy/aql_txq_limit"', content)
+        self.assertIn("smp_affinity", helper)
+        self.assertIn("taskset -p", helper)
+        self.assertIn("rx-gro-list off", helper)
+        self.assertIn("lo|ifb*|br-*|wg*", helper)
 
     def test_09_sqm_cake_mq_and_auto_dscp_promotion(self):
         """Valida deteccao automatica de cake-mq multi-core em interfaces multi-fila e auditoria Auto-DSCP"""
@@ -417,6 +423,233 @@ class TestHardwareTune(unittest.TestCase):
         sqm_checks = [c for c in report.get("checks", []) if "SQM" in c.get("name", "")]
         for c in sqm_checks:
             self.assertNotEqual(c.get("status"), "FAIL", f"Ark Doctor acusou FAIL inesperado em configuracao otimizada: {c}")
+
+    def test_13_decoupled_rps_topology_matrix_and_rss_preservation(self):
+        """Valida topologia RPS desacoplada da RAM: 2-core, 4-core W6x/BPi-R4 (com/sem Wi-Fi), 8-core x86 RSS e VLAN WAN"""
+        # Simula WAN PPPoE sobre VLAN 10 (eth1.10 -> eth1) e NIC x86 multi-queue RSS (enp1s0 com 4 filas rx)
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.device=eth1.10")
+        for q in range(4):
+            os.makedirs(os.path.join(self.sb.sys_net, "enp1s0", "queues", f"rx-{q}"), exist_ok=True)
+        for dev in ("eth1", "eth1.10", "pppoe-wan", "lan1", "phy1-ap0"):
+            os.makedirs(os.path.join(self.sb.sys_net, dev, "queues", "rx-0"), exist_ok=True)
+
+        script = r'''
+. "$ARK_LIB_DIR/hw-tune.sh"
+wlist="$(ark_hw_list_wan_phys_devs)"
+echo "wan_list=$wlist"
+echo "2c_pppoe=$(ark_hw_compute_rps_target pppoe-wan 2 1 "$wlist")"
+echo "2c_eth1=$(ark_hw_compute_rps_target eth1 2 1 "$wlist")"
+echo "4c_wifi_pppoe=$(ark_hw_compute_rps_target pppoe-wan 4 1 "$wlist")"
+echo "4c_wifi_lan=$(ark_hw_compute_rps_target lan1 4 1 "$wlist")"
+echo "4c_wifi_phy=$(ark_hw_compute_rps_target phy1-ap0 4 1 "$wlist")"
+echo "4c_wired_pppoe=$(ark_hw_compute_rps_target pppoe-wan 4 0 "$wlist")"
+echo "4c_vlan_wan=$(ark_hw_compute_rps_target eth1.10 4 1 "$wlist")"
+echo "4c_phys_wan=$(ark_hw_compute_rps_target eth1 4 1 "$wlist")"
+echo "8c_rss_nic=$(ark_hw_compute_rps_target enp1s0 8 0 "$wlist")"
+echo "8c_wired_pppoe=$(ark_hw_compute_rps_target pppoe-wan 8 0 "$wlist")"
+echo "8c_wifi_pppoe=$(ark_hw_compute_rps_target pppoe-wan 8 1 "$wlist")"
+'''
+        res = self.sb.run_sh(script)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        vals = dict(line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line)
+        self.assertIn("eth1.10", vals["wan_list"])
+        self.assertIn("eth1", vals["wan_list"])
+        # Dual-core: PPPoE -> CPU0 (1), eth1 -> 0
+        self.assertEqual(vals["2c_pppoe"], "1")
+        self.assertEqual(vals["2c_eth1"], "0")
+        # Quad-core com Wi-Fi (W6x 1GB ou BPi-R4 4GB): pppoe=3, lan=7, phy=3, WAN phys/VLAN=0
+        self.assertEqual(vals["4c_wifi_pppoe"], "3")
+        self.assertEqual(vals["4c_wifi_lan"], "7")
+        self.assertEqual(vals["4c_wifi_phy"], "3")
+        self.assertEqual(vals["4c_vlan_wan"], "0")
+        self.assertEqual(vals["4c_phys_wan"], "0")
+        # Quad-core cabeado sem Wi-Fi: libera CPU2 -> pppoe=7 (CPU0..2)
+        self.assertEqual(vals["4c_wired_pppoe"], "7")
+        # x86 8-core: NIC multi-queue RSS preserva rps=0; PPPoE evita cores de IRQ Ethernet (CPU1,2)
+        self.assertEqual(vals["8c_rss_nic"], "0")
+        self.assertEqual(vals["8c_wired_pppoe"], "f9")  # CPUs 0,3,4,5,6,7
+        self.assertEqual(vals["8c_wifi_pppoe"], "f1")   # CPUs 0,4,5,6,7 (isola CPU3 Wi-Fi)
+
+    def test_14_multiqueue_rss_irq_affinity_distribution(self):
+        """Valida que NICs multi-queue RSS em x86 8-core distribuem IRQs entre multiplos nucleos em vez de esmagar em 2"""
+        proc_dir = os.path.join(self.sb.temp_dir, "proc")
+        os.makedirs(proc_dir, exist_ok=True)
+        # Simula 8 filas RSS de Intel igc/ixgbe sem Wi-Fi
+        with open(os.path.join(proc_dir, "interrupts"), "w") as f:
+            f.write("           CPU0       CPU1\n")
+            for idx in range(8):
+                irq = 40 + idx
+                f.write(f" {irq}: 0 0 PCI-MSI edge igc-rxtx-{idx}\n")
+                irq_dir = os.path.join(proc_dir, "irq", str(irq))
+                os.makedirs(irq_dir, exist_ok=True)
+                with open(os.path.join(irq_dir, "smp_affinity"), "w") as af:
+                    af.write("ff\n")
+
+        res = self.sb.run_sh('. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_tune_irq_affinity 8')
+        self.assertEqual(res.returncode, 0, res.stderr)
+        assigned = []
+        for idx in range(8):
+            with open(os.path.join(proc_dir, "irq", str(40 + idx), "smp_affinity")) as af:
+                assigned.append(af.read().strip())
+        # Deve usar todos os 8 nucleos distintos (CPU1..CPU7 + CPU0), nao alternar apenas 2 mascaras
+        self.assertEqual(len(set(assigned)), 8, f"IRQs RSS deveriam espalhar pelos 8 nucleos: {assigned}")
+        self.assertEqual(assigned, ["2", "4", "8", "10", "20", "40", "80", "1"])
+
+    def test_15_unified_latency_profile_and_pppoe_zero_coalescing(self):
+        """Valida perfil unificado NAPI/GRO/GSO/budget em 3 estados (SQM ON, HW Offload ON, CPU-only) e pppoe* sempre em 0"""
+        for dev in ("eth1", "pppoe-wan"):
+            d = os.path.join(self.sb.sys_net, dev)
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "gro_flush_timeout"), "w") as f:
+                f.write("250000\n")
+            with open(os.path.join(d, "napi_defer_hard_irqs"), "w") as f:
+                f.write("20\n")
+
+        # 1. HW Offload ON + SQM OFF -> gro_cap=65536, eth1=20000/2, pppoe-wan=0/0, budget_usecs=8000
+        self.sb.uci_set("sqm.wan1.enabled=0")
+        self.sb.uci_set("sqm.wan2.enabled=0")
+        self.sb.uci_set("firewall.@defaults[0].flow_offloading_hw=1")
+        res1 = self.sb.run_sh(
+            '. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_latency_profile; '
+            'ark_hw_apply_iface_latency eth1; ark_hw_apply_iface_latency pppoe-wan; '
+            'echo "$ARK_LAT_MODE|$ARK_GRO_CAP|$ARK_GRO_TO|$ARK_NAPI_DEF|$ARK_BUDGET_USECS"'
+        )
+        self.assertEqual(res1.returncode, 0, res1.stderr)
+        self.assertEqual(res1.stdout.strip(), "hw_offload|65536|20000|2|8000")
+        with open(os.path.join(self.sb.sys_net, "eth1", "gro_flush_timeout")) as f:
+            self.assertEqual(f.read().strip(), "20000")
+        with open(os.path.join(self.sb.sys_net, "pppoe-wan", "gro_flush_timeout")) as f:
+            self.assertEqual(f.read().strip(), "0")
+        with open(os.path.join(self.sb.sys_net, "pppoe-wan", "napi_defer_hard_irqs")) as f:
+            self.assertEqual(f.read().strip(), "0")
+
+        # 2. SQM ON (mesmo sem gaming_ports) -> gro_cap=8192, eth1=20000/2, pppoe-wan=0/0, budget_usecs=4000
+        self.sb.uci_set("sqm.wan1.enabled=1")
+        res2 = self.sb.run_sh(
+            '. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_latency_profile; '
+            'ark_hw_apply_iface_latency eth1; ark_hw_apply_iface_latency pppoe-wan; '
+            'echo "$ARK_LAT_MODE|$ARK_GRO_CAP|$ARK_GRO_TO|$ARK_NAPI_DEF|$ARK_BUDGET_USECS"'
+        )
+        self.assertEqual(res2.returncode, 0, res2.stderr)
+        self.assertEqual(res2.stdout.strip(), "sqm|8192|20000|2|4000")
+
+        # 3. CPU-only (SQM OFF + HW Offload OFF) -> gro_cap=65536, eth1=50000/4, pppoe-wan=0/0, budget_usecs=8000
+        self.sb.uci_set("sqm.wan1.enabled=0")
+        self.sb.uci_set("firewall.@defaults[0].flow_offloading_hw=0")
+        res3 = self.sb.run_sh(
+            '. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_latency_profile; '
+            'ark_hw_apply_iface_latency eth1; ark_hw_apply_iface_latency pppoe-wan; '
+            'echo "$ARK_LAT_MODE|$ARK_GRO_CAP|$ARK_GRO_TO|$ARK_NAPI_DEF|$ARK_BUDGET_USECS"'
+        )
+        self.assertEqual(res3.returncode, 0, res3.stderr)
+        self.assertEqual(res3.stdout.strip(), "cpu_only|65536|50000|4|8000")
+        with open(os.path.join(self.sb.sys_net, "eth1", "gro_flush_timeout")) as f:
+            self.assertEqual(f.read().strip(), "50000")
+        with open(os.path.join(self.sb.sys_net, "pppoe-wan", "gro_flush_timeout")) as f:
+            self.assertEqual(f.read().strip(), "0")
+
+    def test_16_cpufreq_thermal_guard_and_fixed_pll_noop(self):
+        """Valida cpufreq adaptativo: no-op em SoC sem cpufreq (MT7986), performance <75C e recuo termico >=75C"""
+        # 1. Sem cpufreq (como MT7986A): deve retornar 0 silenciosamente
+        res_noop = self.sb.run_sh('. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_tune_cpufreq')
+        self.assertEqual(res_noop.returncode, 0, res_noop.stderr)
+
+        # 2. Cria policy0 com thermal_zone0 a 55 C -> deve ativar performance
+        pol = os.path.join(self.sb.temp_dir, "sys", "devices", "system", "cpu", "cpufreq", "policy0")
+        tz = os.path.join(self.sb.temp_dir, "sys", "class", "thermal", "thermal_zone0")
+        os.makedirs(pol, exist_ok=True)
+        os.makedirs(tz, exist_ok=True)
+        with open(os.path.join(pol, "scaling_available_governors"), "w") as f:
+            f.write("conservative ondemand userspace powersave performance schedutil\n")
+        with open(os.path.join(pol, "scaling_governor"), "w") as f:
+            f.write("schedutil\n")
+        with open(os.path.join(pol, "energy_performance_preference"), "w") as f:
+            f.write("balance_performance\n")
+        with open(os.path.join(tz, "temp"), "w") as f:
+            f.write("55000\n")
+
+        res_cool = self.sb.run_sh('. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_tune_cpufreq')
+        self.assertEqual(res_cool.returncode, 0, res_cool.stderr)
+        with open(os.path.join(pol, "scaling_governor")) as f:
+            self.assertEqual(f.read().strip(), "performance")
+        with open(os.path.join(pol, "energy_performance_preference")) as f:
+            self.assertEqual(f.read().strip(), "performance")
+
+        # 3. Temperatura sobe para 82 C (>= 75 C): guarda termica recua para schedutil em modo auto
+        with open(os.path.join(tz, "temp"), "w") as f:
+            f.write("82000\n")
+        res_hot = self.sb.run_sh('. "$ARK_LIB_DIR/hw-tune.sh"; ark_hw_tune_cpufreq')
+        self.assertEqual(res_hot.returncode, 0, res_hot.stderr)
+        with open(os.path.join(pol, "scaling_governor")) as f:
+            self.assertEqual(f.read().strip(), "schedutil")
+        with open(os.path.join(pol, "energy_performance_preference")) as f:
+            self.assertEqual(f.read().strip(), "balance_performance")
+
+    def test_17_wed_toggle_no_false_positive_and_ppe_telemetry(self):
+        """Valida que wifi-wed-toggle nao fabrica estado runtime falso, sinaliza reboot_required e expoe telemetria PPE real"""
+        mod_dir = os.path.join(self.sb.temp_dir, "sys", "module", "mt7915e", "parameters")
+        ppe_dir = os.path.join(self.sb.temp_dir, "sys", "kernel", "debug", "ppe0")
+        os.makedirs(mod_dir, exist_ok=True)
+        os.makedirs(ppe_dir, exist_ok=True)
+        with open(os.path.join(mod_dir, "wed_enable"), "w") as f:
+            f.write("N\n")
+        with open(os.path.join(ppe_dir, "entries"), "w") as f:
+            f.write("00001 BND IPv4 5T\n00002 BND IPv4 5T\n00003 UNB IPv4 5T\n")
+
+        self.sb.uci_set("sqm.wan1.enabled=1")
+        self.sb.uci_set("firewall.@defaults[0].flow_offloading_hw=0")
+
+        # Ativar WED com kernel em N deve manter sysfs=N, gravar modules.d=Y e reportar enabled_reboot_required
+        res_on = self.sb.run_control("wifi-wed-toggle", "1")
+        self.assertEqual(res_on.returncode, 0, res_on.stderr)
+        self.assertEqual(res_on.stdout.strip(), "enabled_reboot_required")
+        with open(os.path.join(mod_dir, "wed_enable")) as f:
+            self.assertEqual(f.read().strip(), "N", "Nao deve sobrescrever sysfs wed_enable para fabricar falso positivo!")
+        with open(os.path.join(self.sb.temp_dir, "etc", "modules.d", "mt7915e")) as f:
+            self.assertIn("wed_enable=Y", f.read())
+
+        # Telemetria real no system-hardware-info deve expor divergencia runtime vs configured, PPE BND/UNB e conflitos
+        res_hw = self.sb.run_control("system-hardware-info")
+        self.assertEqual(res_hw.returncode, 0, res_hw.stderr)
+        hw = json.loads(res_hw.stdout)
+        off = hw.get("offload", {})
+        self.assertTrue(off.get("ppe_present"))
+        self.assertEqual(off.get("ppe_bound_flows"), 2)
+        self.assertEqual(off.get("ppe_unbound_flows"), 1)
+        self.assertTrue(off.get("wed_supported"))
+        self.assertFalse(off.get("wed_runtime_enabled"))
+        self.assertTrue(off.get("wed_configured_enabled"))
+        self.assertTrue(off.get("wed_reboot_required"))
+        self.assertTrue(off.get("wed_conflict_sqm"))
+        self.assertTrue(off.get("wed_missing_hw_offload"))
+
+    def test_18_pppoe_physical_mtu_floor_after_dhcp_manual_1492(self):
+        """Valida que migrar de DHCP com wan_manual_mtu=1492 para PPPoE nunca deixa a porta fisica pai abaixo de 1500"""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        hotplug = os.path.join(repo_root, "root", "etc", "hotplug.d", "iface", "05-ark-pppoe-babyjumbo")
+
+        eth1_dir = os.path.join(self.sb.sys_net, "eth1")
+        pppoe_dir = os.path.join(self.sb.sys_net, "pppoe-wan")
+        os.makedirs(eth1_dir, exist_ok=True)
+        os.makedirs(pppoe_dir, exist_ok=True)
+        with open(os.path.join(eth1_dir, "mtu"), "w") as f:
+            f.write("1492\n")
+        with open(os.path.join(pppoe_dir, "mtu"), "w") as f:
+            f.write("1492\n")
+
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.device=eth1")
+        self.sb.uci_set("equipe_dashboard.wan_profiles=wan_profiles")
+        self.sb.uci_set("equipe_dashboard.wan_profiles.wan_mtu_mode=manual")
+        self.sb.uci_set("equipe_dashboard.wan_profiles.wan_manual_mtu=1492")
+
+        res = self.sb.run_sh(f'ACTION=ifup INTERFACE=wan DEVICE=pppoe-wan sh "{hotplug}"')
+        self.assertEqual(res.returncode, 0, res.stderr)
+        with open(os.path.join(eth1_dir, "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1500", "Porta fisica eth1 deve subir para >= 1500 quando PPPoE L3 e 1492!")
+        with open(os.path.join(pppoe_dir, "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1492")
 
 
 if __name__ == "__main__":

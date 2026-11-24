@@ -15,28 +15,62 @@ case "$INTERFACE" in
 esac
 [ "$is_wan" = 1 ] || exit 0
 
-[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/common.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/common.sh"
 
 command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
 
+wan_dev="$(uci -q get "network.$INTERFACE.device" || uci -q get "network.$INTERFACE.ifname")"
 man_mtu="$(uci -q get "equipe_dashboard.wan_profiles.${INTERFACE}_manual_mtu" 2>/dev/null || uci -q get "network.$INTERFACE.mtu" 2>/dev/null || true)"
 mtu_mode="$(uci -q get "equipe_dashboard.wan_profiles.${INTERFACE}_mtu_mode" 2>/dev/null || true)"
 
+# Invariante fisico PPPoE: a porta fisica pai (e eventual VLAN) SEMPRE precisa suportar
+# phys_mtu >= l3_mtu + 8 (minimo 1500 para PPPoE 1492; 1508 para Baby Jumbo RFC 4638).
+# Nunca herdar MTU 1492 residual (ex: migracao de DHCP atras de ONT para PPPoE) na interface fisica pai.
+_ark_pppoe_ensure_parent_floor() {
+	local l3_target="${1:-1492}"
+	local need_phys=$((l3_target + 8))
+	[ "$need_phys" -lt 1500 ] && need_phys=1500
+	[ -n "$wan_dev" ] || return 0
+	if command -v ark_ensure_phys_device_mtu >/dev/null 2>&1; then
+		ark_ensure_phys_device_mtu "$wan_dev" "$need_phys" >/dev/null 2>&1 || ark_ensure_phys_device_mtu "$wan_dev" 1500 >/dev/null 2>&1 || true
+	fi
+}
+
 # Se modo manual foi configurado pelo usuario (1280 a 2000 bytes) ou MTU fixo definido na interface
 if [ "$mtu_mode" = "manual" ] && [ -n "$man_mtu" ] && [ "$man_mtu" -ge 1280 ] 2>/dev/null && [ "$man_mtu" -le 2000 ] 2>/dev/null; then
-	cur_dev_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
-	[ "$cur_dev_mtu" = "$man_mtu" ] || ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
-	printf '%s\n' "$man_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	case "$DEVICE" in
+		pppoe-*) _ark_pppoe_ensure_parent_floor "$man_mtu" ;;
+	esac
+	cur_dev_mtu="$(cat "${ARK_ROOT:-}/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	if [ "$cur_dev_mtu" != "$man_mtu" ]; then
+		if [ -n "${ARK_ROOT:-}" ] && [ -w "${ARK_ROOT}/sys/class/net/$DEVICE/mtu" ]; then
+			printf '%s\n' "$man_mtu" > "${ARK_ROOT}/sys/class/net/$DEVICE/mtu" 2>/dev/null || true
+		else
+			ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
+		fi
+	fi
+	printf '%s\n' "$man_mtu" > "${ARK_ROOT:-}/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
-	command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
+	if [ -z "${ARK_ROOT:-}" ]; then
+		command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
+	fi
 	exit 0
 fi
 
 # Se houver MTU explicito configurado na interface (ex: network.wan.mtu=1492)
 if [ -n "$man_mtu" ] && [ "$man_mtu" -ge 1280 ] 2>/dev/null && [ "$man_mtu" -lt 1500 ] 2>/dev/null; then
-	cur_dev_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
-	[ "$cur_dev_mtu" = "$man_mtu" ] || ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
-	printf '%s\n' "$man_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	case "$DEVICE" in
+		pppoe-*) _ark_pppoe_ensure_parent_floor "$man_mtu" ;;
+	esac
+	cur_dev_mtu="$(cat "${ARK_ROOT:-}/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	if [ "$cur_dev_mtu" != "$man_mtu" ]; then
+		if [ -n "${ARK_ROOT:-}" ] && [ -w "${ARK_ROOT}/sys/class/net/$DEVICE/mtu" ]; then
+			printf '%s\n' "$man_mtu" > "${ARK_ROOT}/sys/class/net/$DEVICE/mtu" 2>/dev/null || true
+		else
+			ip link set "$DEVICE" mtu "$man_mtu" 2>/dev/null || true
+		fi
+	fi
+	printf '%s\n' "$man_mtu" > "${ARK_ROOT:-}/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 fi
 
 # Se nao for interface PPPoE (ex: eth1 DHCP/Static), e nao ha configuracao especial,
