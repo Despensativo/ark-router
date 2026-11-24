@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.15
+
+- **Atualização Incremental v2.2.15 (24/11/2026)**:
+  - Auditoria completa (AUD-001..AUD-011), endurecimento TLS/mesh-export, tema <60KB com ark-guides.js sob demanda, limpeza de overview_v2.* e correção Jool NAT64 Running no Ark Doctor.
+
 ## 2.2.14
 
 - **IPv6 Puro (Por Dispositivo & Global) com Fallback Automático NAT64/DNS64 em Kernel (Jool) + ARK Doctor IPv6 Inteligente (19/11/2026)**:
