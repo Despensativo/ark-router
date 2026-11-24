@@ -1,0 +1,82 @@
+name: PR Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  pr_agent_job:
+    if: >-
+      ${{ github.event.sender.type != 'Bot' && (
+        github.event_name == 'pull_request' ||
+        (github.event.issue.pull_request && (
+          startsWith(github.event.comment.body, '/review') ||
+          startsWith(github.event.comment.body, '/describe') ||
+          startsWith(github.event.comment.body, '/improve') ||
+          startsWith(github.event.comment.body, '/ask')
+        ))
+      ) }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run PR-Agent with Gemini
+        if: ${{ secrets.GEMINI_API_KEY != '' }}
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          config.model: "gemini/gemini-2.5-flash"
+          config.fallback_models: '["gemini/gemini-2.5-flash"]'
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "false"
+          pr_reviewer.require_security_review: "true"
+          config.ignore_glob: '["root/www/luci-static/resources/view/equipe-dashboard/overview.js","root/www/luci-static/resources/view/equipe-dashboard/overview_v2.js","po/**","docs/CODE_MAP.md","dist/**"]'
+          pr_reviewer.extra_instructions: |
+            This repository is an embedded OpenWrt LuCI application and theme (ARK Router).
+            Check every PR strictly for:
+            1. Pure POSIX /bin/sh (BusyBox ash) compatibility: reject bashisms ([[ ]], arrays, $RANDOM, ${var//}, type -p) and fragile `for f in $(ls ...)`.
+            2. Dual OpenWrt firewall isolation: fw4 (nftables) vs fw3 (iptables) must branch exclusively via ark_firewall_engine() / is_fw4() / is_fw3() from /usr/lib/ark/common.sh; never invoke raw iptables without an is_fw3 guard.
+            3. UCI state preservation (anti-blind-restore): disable/revert/toggle routines must snapshot into saved_* and restore user settings rather than hardcoding defaults.
+            4. Security and network boundaries: flag CGI/RPC exposure on WAN interfaces (e.g., eth1 on Filogic), unverified TLS (--no-check-certificate / curl -k) on binary/package downloads, unquoted variables in shell sinks, and synchronous alert()/confirm()/prompt() in JS.
+            5. Frontend architecture: edits must target src/core/ or src/modules/ (never overview.js directly or overview_v2.*), keep theme minified assets under 60 KB, and avoid duplicating theme JS handlers across footer.ut/footer.htm and ark-theme.js.
+
+      - name: Run PR-Agent with OpenAI
+        if: ${{ secrets.GEMINI_API_KEY == '' && secrets.OPENAI_API_KEY != '' }}
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI.KEY: ${{ secrets.OPENAI_API_KEY }}
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "false"
+          pr_reviewer.require_security_review: "true"
+          config.ignore_glob: '["root/www/luci-static/resources/view/equipe-dashboard/overview.js","root/www/luci-static/resources/view/equipe-dashboard/overview_v2.js","po/**","docs/CODE_MAP.md","dist/**"]'
+          pr_reviewer.extra_instructions: |
+            This repository is an embedded OpenWrt LuCI application and theme (ARK Router).
+            Check every PR strictly for:
+            1. Pure POSIX /bin/sh (BusyBox ash) compatibility: reject bashisms ([[ ]], arrays, $RANDOM, ${var//}, type -p) and fragile `for f in $(ls ...)`.
+            2. Dual OpenWrt firewall isolation: fw4 (nftables) vs fw3 (iptables) must branch exclusively via ark_firewall_engine() / is_fw4() / is_fw3() from /usr/lib/ark/common.sh; never invoke raw iptables without an is_fw3 guard.
+            3. UCI state preservation (anti-blind-restore): disable/revert/toggle routines must snapshot into saved_* and restore user settings rather than hardcoding defaults.
+            4. Security and network boundaries: flag CGI/RPC exposure on WAN interfaces (e.g., eth1 on Filogic), unverified TLS (--no-check-certificate / curl -k) on binary/package downloads, unquoted variables in shell sinks, and synchronous alert()/confirm()/prompt() in JS.
+            5. Frontend architecture: edits must target src/core/ or src/modules/ (never overview.js directly or overview_v2.*), keep theme minified assets under 60 KB, and avoid duplicating theme JS handlers across footer.ut/footer.htm and ark-theme.js.
+
+      - name: Notify missing AI API secret
+        if: ${{ secrets.GEMINI_API_KEY == '' && secrets.OPENAI_API_KEY == '' }}
+        run: |
+          {
+            echo "### PR-Agent skipped (no API key configured)"
+            echo ""
+            echo "Configure \`GEMINI_API_KEY\` (recommended) or \`OPENAI_API_KEY\` in **Settings > Secrets and variables > Actions** to enable automatic AI PR reviews with \`qodo-ai/pr-agent\`."
+          } >> "$GITHUB_STEP_SUMMARY"

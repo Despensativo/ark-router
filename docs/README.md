@@ -26,6 +26,7 @@ Para iniciar qualquer tarefa de desenvolvimento ou manutenção sem perder tempo
 | `PLAYBOOK.md` *(Raiz do Workspace)* | Tabela de Armadilhas Proibidas `DO-NOT-REPEAT` (`ARK-01` a `ARK-11`) e 18 lições homologadas indexadas por linha. |
 | `TASK.md` *(Raiz do Workspace)* | Checkpoint operacional ativo (< 60 linhas). Histórico anterior arquivado em `tasks/done/`. |
 | **[`docs/CODE_MAP.md`](CODE_MAP.md)** | **Mapa Determinístico de Código e Execução**: Mapeamento exato de linhas de funções shell, métodos JS e rotas RPC. |
+| **[`docs/AUDIT_REPORT.md`](AUDIT_REPORT.md)** | **Relatório de Auditoria Estática (`AUD-001`–`AUD-011`)**: Achados verificados de segurança, POSIX shell, variáveis indefinidas, código morto e orçamento do tema. |
 | [`docs/audit/README.md`](audit/README.md) & [`docs/audit/STATUS.md`](audit/STATUS.md) | Ponto de entrada da auditoria incremental, lotes de verificação (000 a 034) e regras de controle de contexto. |
 | [`docs/audit/DECISIONS.md`](audit/DECISIONS.md) & [`docs/audit/INVENTORY.md`](audit/INVENTORY.md) | Decisões de produto aprovadas, cadeia de execução e matriz de propriedade/interferência. |
 | [`docs/audit/PLAN.md`](audit/PLAN.md), [`CORRECTION_AND_VALIDATION.md`](audit/CORRECTION_AND_VALIDATION.md), [`DEFAULTS_AND_INSTALLATION.md`](audit/DEFAULTS_AND_INSTALLATION.md), [`POLICIES_AND_EXCEPTIONS.md`](audit/POLICIES_AND_EXCEPTIONS.md), [`VIRTUAL_LAB.md`](audit/VIRTUAL_LAB.md) | Procedimentos formais de auditoria, padrões de instalação e políticas de exceção. |

@@ -6,10 +6,11 @@ ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL,
 
 - `src/core/` & `src/modules/`: modular frontend source files structured in clean, single-responsibility components (< 4,000 lines).
 - `scripts/build_frontend_bundle.py`: deterministic build script assembling modular frontend sources into `overview.js`.
-- `root/www/luci-static/resources/view/equipe-dashboard/overview.js`: generated LuCI SPA view bundle handling UI, polling, CBI components, and RPC orchestration.
+- `root/www/luci-static/resources/view/equipe-dashboard/overview.js`: generated LuCI SPA view bundle handling UI, polling, CBI components, and RPC orchestration. *(Note: `overview_v2.js` and `overview_v2.css` in the same directory are residual staging artifacts stripped by local APK/IPK builders and `install.sh`, pending exclusion/cleanup in `Makefile` — tracked in `docs/AUDIT_REPORT.md`.)*
 - `root/www/luci-static/resources/view/equipe-dashboard/overview.css`: responsive presentation, dark theme variables, cards, and modal styles.
 - `root/www/luci-static/ark/ark-theme.js`: visual injection, dynamic tables, modals, touch interactions, and hardware badges.
 - `root/usr/sbin/equipe-dashboard-control`: primary RPC dispatcher, capability detection, and system operations.
+- `root/usr/lib/ark/hw-tune.sh`: modular hardware calibration, NIC offload/RPS/NAPI, and latency tuning helper sourced by `ark-hardware-tune` and subsystem modules.
 - `root/usr/lib/ark/modules/*.sh`: modular shell subsystem handlers (WAN, Wi-Fi, mesh, hardware detection, LED control) called by the dispatcher.
 - `root/usr/sbin/ark-autowan-daemon`: continuous background auto-sensing daemon for port promotion/reversion.
 - `root/etc/hotplug.d/iface/99-ark-led-wan`: dynamic interface-driven WAN/Planet LED status updater.
