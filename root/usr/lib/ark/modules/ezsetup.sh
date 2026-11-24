@@ -689,20 +689,20 @@ ark_http_get() {
 	header="${2:-}"
 	if command -v curl >/dev/null 2>&1; then
 		if [ -n "$header" ]; then
-			curl -kfsSL -m 10 -H "$header" "$url" 2>/dev/null && return 0
+			ark_curl_tls -fsSL -m 10 -H "$header" "$url" 2>/dev/null && return 0
 		else
-			curl -kfsSL -m 10 "$url" 2>/dev/null && return 0
+			ark_curl_tls -fsSL -m 10 "$url" 2>/dev/null && return 0
 		fi
 	fi
 	if command -v wget >/dev/null 2>&1; then
 		if [ -n "$header" ]; then
-			wget -T 10 -qO- --no-check-certificate --header="$header" "$url" 2>/dev/null && return 0
+			ark_wget_tls -T 10 -qO- --header="$header" "$url" 2>/dev/null && return 0
 		else
-			wget -T 10 -qO- --no-check-certificate "$url" 2>/dev/null && return 0
+			ark_wget_tls -T 10 -qO- "$url" 2>/dev/null && return 0
 		fi
 	fi
 	if command -v uclient-fetch >/dev/null 2>&1; then
-		uclient-fetch -T 10 -qO- --no-check-certificate "$url" 2>/dev/null && return 0
+		ark_uclient_tls -T 10 -qO- "$url" 2>/dev/null && return 0
 	fi
 	return 1
 }
@@ -714,13 +714,13 @@ ark_http_download() {
 	timeout="${3:-35}"
 	rm -f "$dest"
 	if command -v curl >/dev/null 2>&1; then
-		curl -kfsSL -m "$timeout" "$url" -o "$dest" 2>/dev/null && [ -s "$dest" ] && return 0
+		ark_curl_tls -fsSL -m "$timeout" "$url" -o "$dest" 2>/dev/null && [ -s "$dest" ] && return 0
 	fi
 	if command -v wget >/dev/null 2>&1; then
-		wget -T "$timeout" --no-check-certificate -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+		ark_wget_tls -T "$timeout" -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
 	fi
 	if command -v uclient-fetch >/dev/null 2>&1; then
-		uclient-fetch -T "$timeout" --no-check-certificate -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+		ark_uclient_tls -T "$timeout" -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
 	fi
 	return 1
 }
@@ -1820,6 +1820,7 @@ handle_ezsetup() {
 		done
 		[ -n "$avail_themes" ] || avail_themes='"ark","bootstrap"'
 		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
+		user_theme="$(uci -q get equipe_dashboard.main.user_theme 2>/dev/null || uci -q get luci.main.user_theme 2>/dev/null || echo '')"
 		network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo '')"
 		cur_role="$(uci -q get equipe_dashboard.general.role || echo '')"
 		dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo '0')"

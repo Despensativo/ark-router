@@ -25,6 +25,11 @@ TARGETS = [
         "type": "js"
     },
     {
+        "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "ark", "ark-guides.js"),
+        "rel": os.path.join("www", "luci-static", "ark", "ark-guides.js"),
+        "type": "js"
+    },
+    {
         "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard", "overview.css"),
         "rel": os.path.join("www", "luci-static", "resources", "view", "equipe-dashboard", "overview.css"),
         "type": "css"

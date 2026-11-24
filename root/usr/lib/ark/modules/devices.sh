@@ -577,7 +577,7 @@ speedtest_download_fallback_mbps() {
 
 	# 1. Tenta obter múltiplos alvos da Netflix CDN (Fast.com) para multi-stream paralelo
 	token="YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"
-	fast_meta="$(wget $bind_opt -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null)"
+	fast_meta="$(ark_wget_tls $bind_opt -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null)"
 	urls="$(printf '%s' "$fast_meta" | grep -o 'https://[^"]*')"
 
 	if [ -n "$urls" ]; then
@@ -587,7 +587,7 @@ speedtest_download_fallback_mbps() {
 		for u in $urls $urls; do
 			count=$((count + 1))
 			[ "$count" -gt 8 ] && break
-			wget $bind_opt -T 15 -qO- --no-check-certificate "${u}&range=0-26214400" >/dev/null 2>&1 &
+			ark_wget_tls $bind_opt -T 15 -qO- "${u}&range=0-26214400" >/dev/null 2>&1 &
 			pids="$pids $!"
 		done
 		wait $pids
@@ -607,7 +607,7 @@ speedtest_download_fallback_mbps() {
 	pids=""
 	count=4
 	for i in 1 2 3 4; do
-		wget $bind_opt -T 15 -qO- --no-check-certificate --header='User-Agent: Mozilla/5.0' "https://speed.cloudflare.com/__down?bytes=25000000" >/dev/null 2>&1 &
+		ark_wget_tls $bind_opt -T 15 -qO- --header='User-Agent: Mozilla/5.0' "https://speed.cloudflare.com/__down?bytes=25000000" >/dev/null 2>&1 &
 		pids="$pids $!"
 	done
 	wait $pids
@@ -640,9 +640,9 @@ speedtest_upload_fallback_mbps() {
 	if command -v curl >/dev/null 2>&1; then
 		curl_bind=""
 		[ -n "$wan_src" ] && curl_bind="--interface $wan_src"
-		curl -k -s -m 15 $curl_bind -X POST --data-binary @"$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+		ark_curl_tls -s -m 15 $curl_bind -X POST --data-binary @"$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
 	elif command -v wget >/dev/null 2>&1; then
-		wget $bind_opt -T 15 -qO- --no-check-certificate --post-file="$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+		ark_wget_tls $bind_opt -T 15 -qO- --post-file="$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
 	fi
 	end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
 	rm -f "$up_file"
@@ -1059,7 +1059,7 @@ prepare_speedtest() {
 			version="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+[0-9]/{gsub(/:$/, "", $1); print $1; exit}')"
 			repo="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+https?:\/\//{gsub(/^\[|\]$/, "", $1); sub(/\/packages\.adb$/, "", $1); print $1; exit}')"
 			if [ -n "$version" ] && [ -n "$repo" ]; then
-				wget -T 45 --no-check-certificate -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || rm -rf "$stage"
+				ark_wget_tls -T 45 -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || rm -rf "$stage"
 			else
 				ark_run_limited 120 apk fetch --output "$stage" speedtest-go >/dev/null 2>&1 || rm -rf "$stage"
 			fi
@@ -1770,7 +1770,8 @@ handle_devices() {
 		;;
 	reboot-prepare)
 		token="$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | hexdump -v -e '/1 "%02x"' 2>/dev/null)"
-		[ -n "$token" ] || token="$(printf '%s' "$(date +%s)-$$-$RANDOM" | cksum | awk '{print $1}')"
+		[ -n "$token" ] || token="$(tr -d '-\n' </proc/sys/kernel/random/uuid 2>/dev/null || true)"
+		[ -n "$token" ] || token="$(printf '%08x%08x' "$(date +%s)" "$(printf '%s-%s' "$$" "$(cat /proc/uptime 2>/dev/null || echo 0)" | cksum | awk '{print $1}')")"
 		created="$(date +%s)"
 		umask 077
 		printf '%s %s\n' "$created" "$token" > /tmp/ark-router-reboot-token

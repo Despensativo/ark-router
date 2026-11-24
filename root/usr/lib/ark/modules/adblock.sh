@@ -336,7 +336,7 @@ try:
                 continue
             m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
             r = m.group(1) if m else s
-            wm = re.search(r'''^@@\|\|([a-z0-9.-]+)\^?$''', r.lower())
+            wm = re.search(r'''^@@\|\|([a-z0-9.-]+)\^?(?:[$]important)?$''', r.lower())
             if wm:
                 d = wm.group(1)
                 if d not in existing_wl: existing_wl.append(d)
@@ -353,7 +353,7 @@ try:
 
         final_rules = []
         for d in target_wl:
-            final_rules.append(f\"  - '@@||{d}^$important'\")
+            final_rules.append(f\"  - '@@||{d}^\$important'\")
         for d in target_bl:
             final_rules.append(f\"  - '||{d}^'\")
         for r in existing_other:
@@ -649,7 +649,7 @@ try:
     for d in OFFICIAL_WHITELIST:
         d_lower = d.lower().strip()
         if d_lower not in existing_whitelist_domains:
-            new_rules.append(f'@@||{d_lower}^$important')
+            new_rules.append(f'@@||{d_lower}^\$important')
             existing_whitelist_domains.add(d_lower)
             all_wl_list.append(d_lower)
             added_count += 1

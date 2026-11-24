@@ -202,11 +202,36 @@ send_via_resend() {
 			-d @"$tmp_json" \
 			https://api.resend.com/emails 2>"$fetch_err" || true)"
 	else
-		resp="$(uclient-fetch -4 -U "Mozilla/5.0 (ARK-Router; OpenWrt)" --no-check-certificate -T 20 -O - \
-			--header="Authorization: Bearer $api_key" \
-			--header="Content-Type: application/json" \
-			--post-file="$tmp_json" \
-			https://api.resend.com/emails 2>"$fetch_err" || true)"
+		local root_prefix f epoch tls_ready=0
+		root_prefix="${ARK_ROOT:-}"
+		epoch="${ARK_TLS_CLOCK_EPOCH:-$(date +%s 2>/dev/null || echo 0)}"
+		case "$epoch" in ''|*[!0-9]*) epoch=0 ;; esac
+		if [ "${ARK_TLS_STRICT:-0}" = "1" ]; then
+			tls_ready=1
+		elif [ "$epoch" -ge 1704067200 ] 2>/dev/null; then
+			if [ -n "${ARK_TLS_CA_FILE:-}" ] && [ -s "$ARK_TLS_CA_FILE" ]; then
+				tls_ready=1
+			elif [ -s "${root_prefix}/etc/ssl/certs/ca-certificates.crt" ] || [ -s "${root_prefix}/etc/ssl/cert.pem" ]; then
+				tls_ready=1
+			else
+				for f in "${root_prefix}/etc/ssl/certs/"*.crt "${root_prefix}/etc/ssl/certs/"*.pem; do
+					[ -s "$f" ] && { tls_ready=1; break; }
+				done
+			fi
+		fi
+		if [ "$tls_ready" -eq 1 ]; then
+			resp="$(uclient-fetch -4 -U "Mozilla/5.0 (ARK-Router; OpenWrt)" -T 20 -O - \
+				--header="Authorization: Bearer $api_key" \
+				--header="Content-Type: application/json" \
+				--post-file="$tmp_json" \
+				https://api.resend.com/emails 2>"$fetch_err" || true)"
+		else
+			resp="$(uclient-fetch -4 -U "Mozilla/5.0 (ARK-Router; OpenWrt)" --no-check-certificate -T 20 -O - \
+				--header="Authorization: Bearer $api_key" \
+				--header="Content-Type: application/json" \
+				--post-file="$tmp_json" \
+				https://api.resend.com/emails 2>"$fetch_err" || true)"
+		fi
 	fi
 
 	rm -f "$tmp_json"

@@ -48,6 +48,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-mesh-export'), '/www/cgi-bin/ark-mesh-export'),
     (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'ark-theme.js'), '/www/luci-static/ark/ark-theme.js'),
+    (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'ark-guides.js'), '/www/luci-static/ark/ark-guides.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'cascade.css'), '/www/luci-static/ark/cascade.css'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'mobile.css'), '/www/luci-static/ark/mobile.css'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'ucode', 'luci', 'template', 'themes', 'ark', 'header.ut'), '/usr/share/ucode/luci/template/themes/ark/header.ut'),

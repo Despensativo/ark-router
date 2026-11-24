@@ -10,21 +10,98 @@ if [ -z "$remote" ]; then
 fi
 
 # Anti-WAN / LAN isolation check
+client_is_lan_subnet() {
+	case "$remote" in
+		*:*)
+			case "$remote" in fe80:*|fd*) return 0 ;; esac
+			return 1
+			;;
+	esac
+	local lan_ip="" lan_mask="" lan_json=""
+	if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+		lan_json="$(ubus call network.interface.lan status 2>/dev/null || true)"
+		lan_ip="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+		lan_mask="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].mask' 2>/dev/null || true)"
+	fi
+	[ -n "$lan_ip" ] || lan_ip="$(uci -q get network.lan.ipaddr 2>/dev/null || true)"
+	[ -n "$lan_mask" ] || lan_mask="$(uci -q get network.lan.netmask 2>/dev/null || printf '24')"
+	[ -n "$lan_ip" ] && [ -n "$lan_mask" ] || return 1
+	awk -v client="$remote" -v lan="$lan_ip" -v mask="$lan_mask" '
+		function ipnum(ip, p) {
+			if (split(ip, p, ".") != 4) return -1
+			return (((p[1]*256+p[2])*256+p[3])*256+p[4])
+		}
+		function mask_bits(m, p, v, b, i) {
+			if (m ~ /^[0-9]+$/) return int(m)
+			v = ipnum(m)
+			if (v < 0) return -1
+			b = 0
+			for (i = 31; i >= 0; i--) {
+				if (int(v / (2 ^ i)) % 2 == 1) b++
+				else break
+			}
+			return b
+		}
+		BEGIN {
+			c = ipnum(client); l = ipnum(lan); bits = mask_bits(mask)
+			if (c < 0 || l < 0 || bits < 0 || bits > 32) exit 1
+			block = 2 ^ (32 - bits)
+			exit (int(c / block) == int(l / block)) ? 0 : 1
+		}'
+}
+
 is_authorized() {
 	[ "$remote" = "127.0.0.1" ] && return 0
 	[ "$remote" = "::1" ] && return 0
 
-	local dev=""
+	local dev="" wan_devs="" lan_devs="" sec="" d=""
 	case "$remote" in
 		*:*) dev="$(ip -6 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')" ;;
 		*)   dev="$(ip -4 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')" ;;
 	esac
 
-	case "$dev" in
-		br-lan*|lan*|eth0|eth1|lo) return 0 ;;
-		wg*|wireguard*|zt*|zerotier*) return 0 ;;
-		*) return 1 ;;
-	esac
+	for sec in $(uci -q show network 2>/dev/null | grep -E '=interface$' | cut -d. -f2 | cut -d= -f1); do
+		case "$sec" in
+			wan|wan[0-9]*|wwan*)
+				for d in $(uci -q get "network.$sec.device" 2>/dev/null || true) $(uci -q get "network.$sec.ifname" 2>/dev/null || true); do
+					[ -n "$d" ] && wan_devs="$wan_devs $d"
+				done
+				if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+					for d in $(ubus call "network.interface.$sec" status 2>/dev/null | jsonfilter -e '@.l3_device' -e '@.device' 2>/dev/null || true); do
+						[ -n "$d" ] && wan_devs="$wan_devs $d"
+					done
+				fi
+				;;
+		esac
+	done
+
+	if [ -n "$dev" ]; then
+		case "$dev" in
+			pppoe-*|wwan*) return 1 ;;
+		esac
+		for d in $wan_devs; do
+			[ "$dev" = "$d" ] && return 1
+		done
+
+		case "$dev" in
+			br-lan*|lan*|lo|wg*|wireguard*|zt*|zerotier*) return 0 ;;
+		esac
+
+		for d in $(uci -q get network.lan.device 2>/dev/null || true) $(uci -q get network.lan.ifname 2>/dev/null || true); do
+			[ -n "$d" ] && lan_devs="$lan_devs $d"
+		done
+		if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+			for d in $(ubus call network.interface.lan status 2>/dev/null | jsonfilter -e '@.l3_device' -e '@.device' 2>/dev/null || true); do
+				[ -n "$d" ] && lan_devs="$lan_devs $d"
+			done
+		fi
+		for d in $lan_devs; do
+			[ "$dev" = "$d" ] && return 0
+		done
+		return 1
+	fi
+
+	client_is_lan_subnet
 }
 
 if ! is_authorized; then
@@ -95,7 +172,7 @@ for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut
 done
 
 mesh_id="$(uci -q get wireless.extra_mesh_r1.mesh_id || echo 'ark-mesh')"
-mesh_key="$(uci -q get wireless.extra_mesh_r1.key || echo 'arkmeshkey123')"
+mesh_key="$(uci -q get wireless.extra_mesh_r1.key 2>/dev/null || true)"
 master_ip="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
 master_name="$(uci -q get equipe_dashboard.main.title || uci -q get system.@system[0].hostname || printf 'ARK Router')"
 wifi6_accel="$(uci -q get equipe_dashboard.wifi.wifi6_accel || echo 0)"

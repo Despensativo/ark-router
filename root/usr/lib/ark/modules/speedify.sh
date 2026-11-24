@@ -74,7 +74,7 @@ install_speedify_official() {
 	tmp="${TMPDIR:-/tmp}/ark-router-speedify-install.sh"
 	rm -f "$tmp"
 	inst_ok=0
-	if wget -q --no-check-certificate https://get.speedify.com -O "$tmp" && [ -s "$tmp" ]; then
+	if ark_wget_tls -q https://get.speedify.com -O "$tmp" && [ -s "$tmp" ]; then
 		sh "$tmp" --no-ui && inst_ok=1
 	fi
 	if [ "$inst_ok" -ne 1 ]; then
@@ -83,7 +83,7 @@ install_speedify_official() {
 		if [ -n "$ipk_file" ] && command -v opkg >/dev/null 2>&1; then
 			ipk_tmp="/tmp/$ipk_file"
 			rm -f "$ipk_tmp"
-			if wget -q --no-check-certificate "https://downloads.speedify.com/$ipk_file" -O "$ipk_tmp" && [ -s "$ipk_tmp" ]; then
+			if ark_wget_tls -q "https://downloads.speedify.com/$ipk_file" -O "$ipk_tmp" && [ -s "$ipk_tmp" ]; then
 				opkg install "$ipk_tmp" && inst_ok=1
 				rm -f "$ipk_tmp"
 			fi
@@ -182,7 +182,7 @@ speedify_fetch_package() {
 	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
 	tmp="$pkg.download.$$"
 	rm -f "$tmp"
-	wget -q --no-check-certificate "$url" -O "$tmp" || { rm -f "$tmp"; echo 'Falha ao baixar pacote Speedify. Se o roteador estiver sem Internet, envie o pacote para /tmp/ark-speedify-cache/speedify.apk e tente novamente.' >&2; return 1; }
+	ark_wget_tls -q "$url" -O "$tmp" || { rm -f "$tmp"; echo 'Falha ao baixar pacote Speedify. Se o roteador estiver sem Internet, envie o pacote para /tmp/ark-speedify-cache/speedify.apk e tente novamente.' >&2; return 1; }
 	[ -s "$tmp" ] || { rm -f "$tmp"; echo 'Download Speedify vazio ou invalido.' >&2; return 1; }
 	mv "$tmp" "$pkg"
 	return 0

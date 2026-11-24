@@ -61,6 +61,25 @@ acquire_lock() {
 	trap cleanup_starlink EXIT INT TERM HUP
 }
 
+_ark_tls_verify_ready() {
+	local root_prefix f epoch
+	[ "${ARK_TLS_STRICT:-0}" = "1" ] && return 0
+	root_prefix="${ARK_ROOT:-}"
+	if [ -n "${ARK_TLS_CA_FILE:-}" ]; then
+		[ -s "$ARK_TLS_CA_FILE" ] || return 1
+	elif [ ! -s "${root_prefix}/etc/ssl/certs/ca-certificates.crt" ] && [ ! -s "${root_prefix}/etc/ssl/cert.pem" ]; then
+		f=""
+		for f in "${root_prefix}/etc/ssl/certs/"*.crt "${root_prefix}/etc/ssl/certs/"*.pem; do
+			[ -s "$f" ] && break
+			f=""
+		done
+		[ -n "$f" ] || return 1
+	fi
+	epoch="${ARK_TLS_CLOCK_EPOCH:-$(date +%s 2>/dev/null || echo 0)}"
+	case "$epoch" in ''|*[!0-9]*) epoch=0 ;; esac
+	[ "$epoch" -ge 1704067200 ] 2>/dev/null
+}
+
 ensure_client() {
 	[ -x "$CLIENT_RAM" ] && { printf '%s' "$CLIENT_RAM"; return 0; }
 	[ -x "$CLIENT_FLASH" ] && { printf '%s' "$CLIENT_FLASH"; return 0; }
@@ -71,7 +90,11 @@ ensure_client() {
 	command -v wget >/dev/null 2>&1 || { echo 'wget não está disponível para preparar a telemetria.' >&2; return 1; }
 	free_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
 	[ "${free_kb:-0}" -ge 4096 ] || { echo 'RAM temporária insuficiente para o cliente Starlink.' >&2; return 1; }
-	wget -q --no-check-certificate -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	if _ark_tls_verify_ready; then
+		wget -q -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	else
+		wget -q --no-check-certificate -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	fi
 	chmod 755 "${CLIENT_RAM}.new" || { rm -f "${CLIENT_RAM}.new"; return 1; }
 	mv -f "${CLIENT_RAM}.new" "$CLIENT_RAM"
 	printf '%s' "$CLIENT_RAM"

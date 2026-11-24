@@ -20475,14 +20475,6 @@ const doctorPerfMethods = {
 			});
 			allserversToggle.checked = allserversActive;
 
-			const fallbackActive = !!status.dhcp_fallback;
-			const fallbackToggle = E('input', {
-				type: 'checkbox',
-				checked: fallbackActive ? '' : null,
-				style: 'width: 20px; height: 20px; cursor: pointer;'
-			});
-			fallbackToggle.checked = fallbackActive;
-
 			const memMb = Number(status.mem_total_mb || 0);
 			let recCache = 10000;
 			let memBadgeText = '1 GB RAM (Alta Capacidade)';
@@ -20563,20 +20555,16 @@ const doctorPerfMethods = {
 
 			const ipInputs = [
 				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1 ou 2606:4700:4700::1111', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '8.8.8.8', placeholder: 'ex: 8.8.8.8 ou 2001:4860:4860::8888', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[2] || '1.0.0.1', placeholder: 'ex: 1.0.0.1 ou 2606:4700:4700::1001', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[3] || '8.8.4.4', placeholder: 'ex: 8.8.4.4 ou 2001:4860:4860::8844', style: 'width: 100%; box-sizing: border-box;' })
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '2001:4860:4860::8888', placeholder: 'ex: 8.8.8.8 ou 2001:4860:4860::8888', style: 'width: 100%; box-sizing: border-box;' })
 			];
 
 			const latBadges = [
-				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
-				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
 				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
 				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms'])
 			];
 
 			const applyPreset = function(arr) {
-				for (let i = 0; i < 4; i++) {
+				for (let i = 0; i < ipInputs.length; i++) {
 					ipInputs[i].value = arr[i] || '';
 					latBadges[i].textContent = '— ms';
 					latBadges[i].className = 'ex-pill standby';
@@ -20588,19 +20576,19 @@ const doctorPerfMethods = {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.1', '2606:4700:4700::1111', '8.8.8.8', '2001:4860:4860::8888']); }
+					click: function(){ applyPreset(['1.1.1.1', '2001:4860:4860::8888', '', '']); }
 				}, ['🚀 Dual-Stack (IPv4 + IPv6)']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['2606:4700:4700::1111', '2001:4860:4860::8888', '2606:4700:4700::1001', '2001:4860:4860::8844']); }
+					click: function(){ applyPreset(['2606:4700:4700::1111', '2001:4860:4860::8888', '', '']); }
 				}, ['🌐 IPv6 Cloudflare + Google']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['2620:fe::fe', '2606:4700:4700::1112', '2620:fe::9', '2606:4700:4700::1002']); }
+					click: function(){ applyPreset(['2620:fe::fe', '2606:4700:4700::1112', '', '']); }
 				}, ['🛡️ IPv6 Segurança (Quad9 + Cloudflare)']),
 				E('button', {
 					type: 'button',
@@ -20612,7 +20600,7 @@ const doctorPerfMethods = {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '1.0.0.2', '149.112.112.112']); }
+					click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '', '']); }
 				}, ['🛡️ Segurança (IPv4 Anti-Malware)']),
 				E('button', {
 					type: 'button',
@@ -20689,36 +20677,55 @@ const doctorPerfMethods = {
 					const btn = ev.currentTarget;
 					btn.disabled = true;
 					btn.textContent = 'Testando latências…';
-					const promises = ipInputs.map(function(inp, idx) {
+					const validIps = [];
+					ipInputs.forEach(function(inp, idx) {
 						const ip = inp.value.trim();
 						if (!ip) {
 							latBadges[idx].textContent = 'Vazio';
 							latBadges[idx].className = 'ex-pill offline';
-							return Promise.resolve();
+							return;
 						}
 						if (ip.indexOf('/') !== -1 || ip.indexOf('127.') === 0 || ip.indexOf('0.0.0.0') === 0 || ip.indexOf('::1') === 0) {
 							latBadges[idx].textContent = 'Inválido';
 							latBadges[idx].className = 'ex-pill offline';
-							return Promise.resolve();
+							return;
 						}
 						latBadges[idx].textContent = 'Medindo…';
 						latBadges[idx].className = 'ex-pill standby';
-						return fs.exec('/bin/ping', ['-c', '1', '-W', '2', ip]).then(function(res) {
-							const m = String(res.stdout || '').match(/time=([0-9.]+)\s*ms/);
-							if (m && m[1]) {
-								const ms = parseFloat(m[1]).toFixed(1);
-								latBadges[idx].textContent = ms + ' ms';
-								latBadges[idx].className = parseFloat(ms) < 20 ? 'ex-pill online' : 'ex-pill standby';
+						validIps.push(ip);
+					});
+					if (!validIps.length) {
+						btn.disabled = false;
+						btn.textContent = '🧪 Testar Latência dos Servidores';
+						return Promise.resolve();
+					}
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-benchmark'].concat(validIps)).then(function(res) {
+						let data = {};
+						try { data = JSON.parse(res.stdout || '{}'); } catch(e) { data = {}; }
+						const byIp = {};
+						(Array.isArray(data.results) ? data.results : []).forEach(function(item) {
+							if (item && item.ip) byIp[item.ip] = item;
+						});
+						ipInputs.forEach(function(inp, idx) {
+							const ip = inp.value.trim();
+							if (!ip || !byIp[ip]) return;
+							const item = byIp[ip];
+							if (item.ok && item.ms !== null && item.ms !== undefined) {
+								latBadges[idx].textContent = item.ms + ' ms';
+								latBadges[idx].className = item.ms <= 25 ? 'ex-pill online' : 'ex-pill standby';
 							} else {
-								latBadges[idx].textContent = 'Sem ping';
+								latBadges[idx].textContent = 'Falha';
 								latBadges[idx].className = 'ex-pill offline';
 							}
-						}).catch(function() {
-							latBadges[idx].textContent = 'Falha';
-							latBadges[idx].className = 'ex-pill offline';
 						});
-					});
-					Promise.all(promises).finally(function() {
+					}).catch(function() {
+						ipInputs.forEach(function(inp, idx) {
+							if (inp.value.trim()) {
+								latBadges[idx].textContent = 'Falha';
+								latBadges[idx].className = 'ex-pill offline';
+							}
+						});
+					}).finally(function() {
 						btn.disabled = false;
 						btn.textContent = '🧪 Testar Latência dos Servidores';
 					});
@@ -20733,14 +20740,6 @@ const doctorPerfMethods = {
 				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 2 (Secundário):']), latBadges[1] ]),
 					ipInputs[1]
-				]),
-				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
-					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 3 (Opcional):']), latBadges[2] ]),
-					ipInputs[2]
-				]),
-				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
-					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 4 (Opcional):']), latBadges[3] ]),
-					ipInputs[3]
 				])
 			]);
 
@@ -20799,19 +20798,6 @@ const doctorPerfMethods = {
 				}, [status.doh_installed ? '🔒 Ativar Dual-DoH Agora' : '🔒 Instalar e Ativar Dual-DoH'])
 			]) : '');
 
-			const fallbackWarn = E('div', {
-				class: 'alert-message warning',
-				style: 'margin-top: 8px; font-size: 0.8rem; line-height: 1.45; display: ' + (fallbackToggle.checked ? 'block' : 'none') + ';'
-			}, [
-				E('div', { style: 'width: 100%;' }, [
-					E('strong', {}, ['⚠️ Aviso de Compatibilidade com Filtros/AdBlock: ']),
-					'Ao enviar 1.1.1.1 diretamente via DHCP Option 6 aos aparelhos, celulares e Smart TVs poderão consultar 1.1.1.1 por fora do cache e da Lista Negra do roteador (a menos que a Interceptação de Porta 53 esteja ativa no Bloqueador). Para filtragem estrita, mantenha desligado.'
-				])
-			]);
-			fallbackToggle.addEventListener('change', function() {
-				fallbackWarn.style.display = fallbackToggle.checked ? 'block' : 'none';
-			});
-
 			const content = [
 				dohBanner,
 				hasDnsBlocker ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 6px;' }, [
@@ -20837,19 +20823,6 @@ const doctorPerfMethods = {
 					])
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
-					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
-						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
-							E('strong', {}, ['Redundância de Fallback no DHCP (1.1.1.1)']),
-							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Envia 1.1.1.1 como DNS secundário no DHCP. Se o roteador reiniciar, os aparelhos continuam navegando sem interrupção.'])
-						]),
-						E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
-							fallbackToggle,
-							E('span', { class: 'ex-switch-slider' })
-						])
-					]),
-					fallbackWarn
-				]),
-				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
 						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 							E('strong', {}, ['Tamanho do Cache DNS na Memória RAM (0ms)']),
@@ -20869,7 +20842,7 @@ const doctorPerfMethods = {
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
-						E('strong', {}, ['Servidores DNS Ativos (2 a 4)']),
+						E('strong', {}, ['Servidores DNS']),
 						E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [ benchmarkBtn, testBtn ])
 					]),
 					benchmarkResultsBox,
@@ -20892,12 +20865,9 @@ const doctorPerfMethods = {
 							};
 							const s1 = cleanIp(ipInputs[0].value);
 							const s2 = cleanIp(ipInputs[1].value);
-							const s3 = cleanIp(ipInputs[2].value);
-							const s4 = cleanIp(ipInputs[3].value);
 							const alls = hasDnsBlocker ? (status.allservers ? '1' : '0') : (allserversToggle.checked ? '1' : '0');
-							const fallback = fallbackToggle.checked ? '1' : '0';
 							const selectedCache = cacheSelect.value === 'custom' ? (parseInt(customCacheInput.value, 10) || 150) : (parseInt(cacheSelect.value, 10) || 10000);
-							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback, String(selectedCache)];
+							const args = ['dns-turbo-save', alls, s1, s2, '', '', '0', String(selectedCache)];
 							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 								if (r.code) throw new Error(r.stderr || 'Falha ao salvar DNS');
 								ui.hideModal();
@@ -21931,16 +21901,46 @@ const doctorPerfMethods = {
 			class: 'cbi-button cbi-button-neutral',
 			style: 'padding: 5px 12px; font-size: 0.8rem; font-weight: 700;',
 			click: function(ev) {
+				const btn = ev.currentTarget || copyLogBtn;
 				const txt = logPreEl.textContent || '';
+				const markCopied = function() {
+					btn.textContent = '✅ ' + _t('Copiado!');
+					setTimeout(function() { btn.textContent = '📋 ' + _t('Copiar Log'); }, 2000);
+				};
+				const fallbackCopy = function() {
+					let copied = false;
+					try {
+						const ta = document.createElement('textarea');
+						ta.value = txt;
+						ta.setAttribute('readonly', '');
+						ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+						document.body.appendChild(ta);
+						ta.focus();
+						ta.select();
+						if (ta.setSelectionRange) ta.setSelectionRange(0, txt.length);
+						copied = !!document.execCommand('copy');
+						document.body.removeChild(ta);
+					} catch (_e) {
+						copied = false;
+					}
+					if (copied) {
+						markCopied();
+						return;
+					}
+					try {
+						if (window.getSelection && document.createRange) {
+							const sel = window.getSelection();
+							const range = document.createRange();
+							range.selectNodeContents(logPreEl);
+							sel.removeAllRanges();
+							sel.addRange(range);
+						}
+					} catch (_e2) {}
+				};
 				if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-					navigator.clipboard.writeText(txt).then(function() {
-						ev.currentTarget.textContent = '✅ ' + _t('Copiado!');
-						setTimeout(function() { ev.currentTarget.textContent = '📋 ' + _t('Copiar Log'); }, 2000);
-					}).catch(function() {
-						prompt(_t('Copie o log abaixo:'), txt);
-					});
+					navigator.clipboard.writeText(txt).then(markCopied).catch(fallbackCopy);
 				} else {
-					prompt(_t('Copie o log abaixo:'), txt);
+					fallbackCopy();
 				}
 			}
 		}, ['📋 ' + _t('Copiar Log')]);
@@ -23564,7 +23564,7 @@ const renderMethods = {
 		};
 		const wanCards=activeWans.map(L.bind(function(w){
 			const id='ex-'+w.domId;
-			return E('section',{class:'ex-card ex-wan-card'},[
+			return E('section',{id: id+'-card', class:'ex-card ex-wan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
 						E('h3',{},[w.label]),
@@ -23683,7 +23683,7 @@ const renderMethods = {
 				class: 'ex-mini-button ex-wan-edit-button',
 				click: L.bind(function(){this.editWan(nextWan.iface,port);},this)
 			}, ['Usar como '+nextWan.label]));
-			return E('section',{class:'ex-card ex-lan-card'},[
+			return E('section',{id: id+'-card', class:'ex-card ex-lan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
 						E('h3',{},[label]),
@@ -23707,7 +23707,7 @@ const renderMethods = {
 			const maxSpeed = uplinkPortInfo.max_speed || '2.5G';
 			const speedBadge = E('span', { class: 'ex-port-badge ' + (maxSpeed === '2.5G' ? 'speed-2500' : 'speed-1000') }, [maxSpeed]);
 			
-			return E('section', { class: 'ex-card ex-wan-card ex-ap-uplink-card' }, [
+			return E('section', { id: 'ex-ap-uplink-card', class: 'ex-card ex-wan-card ex-ap-uplink-card' }, [
 				E('div', { class: 'ex-card-title' }, [
 					E('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
 						E('h3', {}, [_t('Enlace de Entrada (Uplink)')]),
@@ -25831,13 +25831,22 @@ const renderMethods = {
 
 		if (scrollTargetId) {
 			window.setTimeout(function() {
-				const targetEl = document.getElementById(scrollTargetId);
+				let targetEl = document.getElementById(scrollTargetId);
+				if (!targetEl && scrollTargetId.indexOf('-card') !== -1) {
+					targetEl = document.getElementById(scrollTargetId.indexOf('wan') !== -1 ? 'ex-wans-grid-section' : 'ex-lan-ports-section');
+				}
 				if (targetEl) {
 					if (targetEl.classList.contains('is-collapsed')) {
 						const toggleBtn = targetEl.querySelector('.ex-accordion-toggle-btn');
 						if (toggleBtn) toggleBtn.click();
 					}
 					targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					targetEl.classList.remove('ex-card-target-flash');
+					void targetEl.offsetWidth;
+					targetEl.classList.add('ex-card-target-flash');
+					window.setTimeout(function() {
+						targetEl.classList.remove('ex-card-target-flash');
+					}, 2400);
 				}
 			}, 40);
 		}
@@ -26659,6 +26668,7 @@ const renderMethods = {
 				seenPorts[uplinkDev] = 1;
 				portDefs.push({
 					key: uplinkDev,
+					targetId: 'ex-ap-uplink-card',
 					label: portLabel(uplinkDev) + ' (' + maxSpd + ')',
 					role: 'UPLINK',
 					isWan: true,
@@ -26692,6 +26702,7 @@ const renderMethods = {
 					const isUp = !!(phy.carrier || (i && i.up && Number(phy.speed) > 0));
 					portDefs.push({
 						key: rawDev || w.iface,
+						targetId: 'ex-' + w.domId + '-card',
 						label: w.label + ' (' + physLbl + ')',
 						role: roleLbl,
 						isWan: true,
@@ -26727,6 +26738,7 @@ const renderMethods = {
 				const isUp = !!dev.carrier;
 				portDefs.push({
 					key: port,
+					targetId: 'ex-lan-' + portDomId(port) + '-card',
 					label: fullLbl,
 					role: isWanPort ? 'WAN → LAN' : 'LAN',
 					isWan: false,
@@ -26744,10 +26756,11 @@ const renderMethods = {
 				const speedStr = (rawSpd && Number(rawSpd[0]) > 0) ? (rawSpd[0] + ' Mbps') : 'Conectada';
 				const rawDup = String(pd.duplex || '').trim();
 				const duplexStr = (rawDup && rawDup !== 'unknown') ? rawDup : 'Full Duplex';
+				const targetSection = pd.targetId || (pd.isWan ? 'ex-wans-grid-section' : 'ex-lan-ports-section');
 				return E('div', {
 					class: 'ex-v2-port-box ' + (isUp ? 'port-up' : 'port-down'),
-					click: L.bind(function() { self.switchV2Panel('wan', 'ex-lan-ports-section'); }, self),
-					title: 'Clique para gerenciar portas de rede'
+					click: L.bind(function() { self.switchV2Panel('wan', targetSection); }, self),
+					title: _t('Clique para gerenciar portas de rede')
 				}, [
 					E('span', { class: 'ex-v2-port-role ' + (pd.isWan ? 'is-wan' : 'is-lan') }, [pd.role]),
 					E('div', { class: 'ex-v2-port-jack' }, [

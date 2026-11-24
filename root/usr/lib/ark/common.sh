@@ -2862,7 +2862,7 @@ ark_is_readonly_action() {
 		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
-		sqm-resource-plan|dns-turbo-benchmark|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
+		sqm-resource-plan|dns-turbo-benchmark|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
 	esac
@@ -3090,6 +3090,60 @@ ark_usteer_apply_defaults() {
 	$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
 	$uci_cmd commit usteer 2>/dev/null || true
 	ark_usteer_sync_ssids 1
+}
+
+# Verifica se ha bundle de CAs TLS disponivel (suporta ARK_ROOT/ARK_TLS_CA_FILE em testes)
+ark_tls_ca_available() {
+	local root_prefix f
+	root_prefix="${ARK_ROOT:-}"
+	if [ -n "${ARK_TLS_CA_FILE:-}" ]; then
+		[ -s "$ARK_TLS_CA_FILE" ] && return 0
+		return 1
+	fi
+	if [ -s "${root_prefix}/etc/ssl/certs/ca-certificates.crt" ] || [ -s "${root_prefix}/etc/ssl/cert.pem" ]; then
+		return 0
+	fi
+	for f in "${root_prefix}/etc/ssl/certs/"*.crt "${root_prefix}/etc/ssl/certs/"*.pem; do
+		[ -s "$f" ] && return 0
+	done
+	return 1
+}
+
+# Retorna 0 quando validacao TLS estrita pode ser exigida (CA presente + relogio >= 2024-01-01)
+ark_tls_verify_ready() {
+	local epoch
+	[ "${ARK_TLS_STRICT:-0}" = "1" ] && return 0
+	ark_tls_ca_available || return 1
+	epoch="${ARK_TLS_CLOCK_EPOCH:-$(date +%s 2>/dev/null || echo 0)}"
+	case "$epoch" in
+		''|*[!0-9]*) epoch=0 ;;
+	esac
+	[ "$epoch" -ge 1704067200 ] 2>/dev/null
+}
+
+# Wrappers HTTP/HTTPS que exigem validacao TLS por padrao e recuam somente sem CA/relogio
+ark_wget_tls() {
+	if ark_tls_verify_ready; then
+		wget "$@"
+	else
+		wget --no-check-certificate "$@"
+	fi
+}
+
+ark_curl_tls() {
+	if ark_tls_verify_ready; then
+		curl "$@"
+	else
+		curl -k "$@"
+	fi
+}
+
+ark_uclient_tls() {
+	if ark_tls_verify_ready; then
+		uclient-fetch "$@"
+	else
+		uclient-fetch --no-check-certificate "$@"
+	fi
 }
 
 

@@ -218,7 +218,7 @@ def main():
 
     css_v1 = os.path.join(os.path.dirname(target_output), "overview.css")
     css_v2 = os.path.join(os.path.dirname(target_output), "overview_v2.css")
-    if os.path.isfile(css_v1):
+    if args.v2 and os.path.isfile(css_v1):
         shutil.copyfile(css_v1, css_v2)
 
     if not args.v2:

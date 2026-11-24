@@ -63,6 +63,7 @@ for js_file in "$REPO_DIR"/src/core/*.js "$REPO_DIR"/src/modules/*.js; do
 done
 check_node_syntax "$REPO_DIR/root/www/luci-static/resources/view/equipe-dashboard/overview.js"
 check_node_syntax "$REPO_DIR/root/www/luci-static/ark/ark-theme.js"
+check_node_syntax "$REPO_DIR/root/www/luci-static/ark/ark-guides.js"
 "$PYTHON_CMD" "$REPO_DIR/scripts/build_frontend_bundle.py" --check
 "$NODE_CMD" "$SCRIPT_DIR/test_ui_capability_sync.cjs"
 "$NODE_CMD" "$SCRIPT_DIR/test_card_accordions.mjs"
@@ -93,6 +94,8 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_post_upgrade_safeguards.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_dns_optimization.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_audit_wave1_wave2.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_audit_wave3.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 
 # 4. Auditoria de Contratos Funcionais, Preservação de Estado, Documentação e i18n

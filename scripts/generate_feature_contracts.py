@@ -43,7 +43,7 @@ FEATURES = [
         "name": "Tema ARK LuCI Responsivo, Header e Visual Mobile-First",
         "purpose": "Prover identidade visual moderna dark/light para LuCI, touch targets mínimos de 40px, desacoplamento de modais e scroll lock no main-right.",
         "state": "funcional",
-        "files": ["root/www/luci-static/ark/ark-theme.js", "root/www/luci-static/ark/cascade.css", "root/www/luci-static/ark/mobile.css", "root/usr/share/ucode/luci/template/themes/ark/header.ut", "root/usr/lib/lua/luci/view/themes/ark/header.htm"],
+        "files": ["root/www/luci-static/ark/ark-theme.js", "root/www/luci-static/ark/ark-guides.js", "root/www/luci-static/ark/cascade.css", "root/www/luci-static/ark/mobile.css", "root/usr/share/ucode/luci/template/themes/ark/header.ut", "root/usr/lib/lua/luci/view/themes/ark/header.htm"],
         "actions": ["ark-theme.js init()", "theme"],
         "rpc_endpoints": ["uci/get", "uci/set"],
         "acls": ["luci-app-equipe-dashboard"],

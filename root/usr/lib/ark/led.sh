@@ -118,7 +118,7 @@ ark_led_detect_topology() {
 		[ -d "$l" ] || continue
 		local b="$(basename "$l")"
 		case "$b" in
-			*wlan*|*wlan2*|*wlan5*|*wlan6*|*planet*|*internet*) continue ;;
+			*wlan*|*planet*|*internet*) continue ;;
 			*) port_led_count=$((port_led_count + 1)) ;;
 		esac
 	done
@@ -436,7 +436,7 @@ ark_led_set_effect() {
 
 # 4. Aplica presets completos do sistema com governança UCI
 ark_led_apply_preset() {
-	local led sec wf_led
+	local led sec wf_led _led_p _wf_p
 	local preset="${1:-smart}"
 	local custom_hex="${2:-}"
 	local custom_effect="${3:-}"
@@ -455,7 +455,9 @@ ark_led_apply_preset() {
 			ark_led_set_effect all "000000" off
 
 			# Atualiza nós sysfs globais
-			for led in $(ls "$led_base/" 2>/dev/null); do
+			for _led_p in "$led_base"/*; do
+				[ -e "$_led_p" ] || continue
+				led="${_led_p##*/}"
 				case "$led" in
 					aw21018_led) continue ;; # Tratado via HAL no nó específico
 					*)
@@ -492,7 +494,9 @@ ark_led_apply_preset() {
 			ark_led_set_effect front "ff0000" solid
 
 			# LEDs de Wi-Fi apagados no modo alerta para destacar a perda de sinal de internet
-			for wf_led in $(ls "$led_base/" 2>/dev/null); do
+			for _wf_p in "$led_base"/*; do
+				[ -e "$_wf_p" ] || continue
+				wf_led="${_wf_p##*/}"
 				case "$wf_led" in
 					*wifi*|*wlan*|*phy*|*2g*|*5g*|*6g*)
 						echo 0 > "$led_base/$wf_led/brightness" 2>/dev/null || true
