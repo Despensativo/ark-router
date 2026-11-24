@@ -26,16 +26,24 @@ if ! command -v node >/dev/null 2>&1; then
 	fi
 fi
 
-PYTHON_CMD="python3"
-if [ -x "/Users/user/.antigravity-tools-env/bin/python3" ]; then
-	PYTHON_CMD="/Users/user/.antigravity-tools-env/bin/python3"
-elif ! "$PYTHON_CMD" -c "import sys" >/dev/null 2>&1; then
-	if command -v python >/dev/null 2>&1 && python -c "import sys" >/dev/null 2>&1; then
-		PYTHON_CMD="python"
-	elif command -v py >/dev/null 2>&1 && py -c "import sys" >/dev/null 2>&1; then
-		PYTHON_CMD="py"
+if [ -z "${PYTHON_CMD:-}" ]; then
+	if [ -n "${ARK_PYTHON_CMD:-}" ] && [ -x "$ARK_PYTHON_CMD" ]; then
+		PYTHON_CMD="$ARK_PYTHON_CMD"
+	elif [ -x "/Users/user/.antigravity-tools-env/bin/python3" ]; then
+		PYTHON_CMD="/Users/user/.antigravity-tools-env/bin/python3"
+	else
+		PYTHON_CMD="python3"
+		if ! "$PYTHON_CMD" -c "import sys" >/dev/null 2>&1; then
+			if command -v python >/dev/null 2>&1 && python -c "import sys" >/dev/null 2>&1; then
+				PYTHON_CMD="python"
+			elif command -v py >/dev/null 2>&1 && py -c "import sys" >/dev/null 2>&1; then
+				PYTHON_CMD="py"
+			fi
+		fi
 	fi
 fi
+# Suítes extensas (ex.: test_wan_matrix.py com 44 casos) podem exceder 60s sob carga alta no Mac
+export ANTIGRAVITY_PYTHON_TIMEOUT="${ANTIGRAVITY_PYTHON_TIMEOUT:-180}"
 
 # 1. Validação de Sintaxe Shell e Auditoria Preventiva Anti-Colisão
 printf "${YELLOW}[1/5] Verificando sintaxe BusyBox ash e colisões entre módulos (.sh)...${NC}\n"

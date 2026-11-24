@@ -195,19 +195,30 @@ class AuditWave1Wave2Tests(unittest.TestCase):
         sh_files = _collect_root_shell_files()
         self.assertGreater(len(sh_files), 50)
 
-        workers = min(8, os.cpu_count() or 4)
-        buckets = [[] for _ in range(workers)]
-        bucket_sizes = [0] * workers
+        workers = min(4, os.cpu_count() or 4)
+        sc_timeout = int(os.environ.get("ARK_SHELLCHECK_TIMEOUT", "120"))
+        chunks = []
+        small_chunk = []
+        small_bytes = 0
         for fpath in sorted(sh_files, key=lambda p: os.path.getsize(p), reverse=True):
-            idx = min(range(workers), key=lambda i: bucket_sizes[i])
-            buckets[idx].append(fpath)
-            bucket_sizes[idx] += os.path.getsize(fpath)
+            fsize = os.path.getsize(fpath)
+            if fsize >= 32768:
+                chunks.append([fpath])
+                continue
+            if small_chunk and (len(small_chunk) >= 4 or small_bytes + fsize > 49152):
+                chunks.append(small_chunk)
+                small_chunk = []
+                small_bytes = 0
+            small_chunk.append(fpath)
+            small_bytes += fsize
+        if small_chunk:
+            chunks.append(small_chunk)
 
         aud9_files = [str(LEDS_MOD_SH), str(DOCTOR_SH), str(LED_SH), str(COMMON_SH)]
         cmds = [
-            ("err", [sc_bin, "-s", "sh", "-i", "SC1072,SC1073,SC1087,SC2045,SC2144,SC3028", "-f", "gcc"] + b)
-            for b in buckets
-            if b
+            ("err", [sc_bin, "-s", "sh", "-i", "SC1072,SC1073,SC1087,SC2045,SC2144,SC3028", "-f", "gcc"] + c)
+            for c in chunks
+            if c
         ] + [
             ("case", [sc_bin, "-s", "sh", "-i", "SC2221,SC2222", "-f", "gcc", f])
             for f in aud9_files
@@ -217,7 +228,7 @@ class AuditWave1Wave2Tests(unittest.TestCase):
 
         def _run_sc(item):
             kind, cmd = item
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=sc_timeout)
             return kind, res.returncode, res.stdout, res.stderr
 
         err_failures = []
