@@ -1381,7 +1381,7 @@ ark_doctor_audit() {
 			if [ -z "$root_prefix" ]; then
 				if [ "$nat64_jool_bin" = "0" ]; then
 					nat64_issues="pacotes Jool NAT64 ausentes (kmod-jool-netfilter / jool-tools-netfilter)"
-				elif ! jool -i ark_nat64 instance status >/dev/null 2>&1; then
+				elif ! ark_jool_instance_running "ark_nat64"; then
 					nat64_issues="${nat64_issues:+$nat64_issues; }instância Jool ark_nat64 inativa"
 				fi
 			fi
@@ -1429,7 +1429,7 @@ ark_doctor_audit() {
 			nat64_stale=0
 			[ -f "$nat64_sh_path" ] && nat64_stale=1
 			[ -n "$nat64_fw_inc" ] && nat64_stale=1
-			if [ -z "$root_prefix" ] && [ "$nat64_jool_bin" = "1" ] && jool -i ark_nat64 instance status >/dev/null 2>&1; then
+			if [ -z "$root_prefix" ] && [ "$nat64_jool_bin" = "1" ] && ark_jool_instance_running "ark_nat64"; then
 				nat64_stale=1
 			fi
 			if [ "$nat64_stale" = "1" ]; then

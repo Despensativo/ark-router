@@ -190,7 +190,7 @@
 
 ## 3. Índice Cirúrgico de Funções Backend (`root/usr/lib/ark/**/*.sh`)
 
-### `root/usr/lib/ark/common.sh` (3149 linhas, 116 funções)
+### `root/usr/lib/ark/common.sh` (3157 linhas, 117 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -310,6 +310,7 @@
 | `ark_wget_tls()` | `3125–3131` | 7L |
 | `ark_curl_tls()` | `3133–3139` | 7L |
 | `ark_uclient_tls()` | `3141–3147` | 7L |
+| `ark_jool_instance_running()` | `3150–3155` | 6L |
 
 ### `root/usr/lib/ark/dhcp_fingerprint.sh` (48 linhas, 0 funções)
 

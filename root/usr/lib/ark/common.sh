@@ -3146,4 +3146,12 @@ ark_uclient_tls() {
 	fi
 }
 
+# Verifica se instancia Jool NAT64 esta realmente ativa (jool status retorna 0 mesmo quando imprime "Dead")
+ark_jool_instance_running() {
+	local inst
+	inst="${1:-ark_nat64}"
+	command -v jool >/dev/null 2>&1 || return 1
+	jool -i "$inst" instance status 2>/dev/null | grep -Eq '^[[:space:]]*Running[[:space:]]*$'
+}
+
 

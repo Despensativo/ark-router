@@ -681,7 +681,7 @@ ark_sync_nat64_jool() {
 #!/bin/sh
 command -v jool >/dev/null 2>&1 || exit 0
 modprobe jool 2>/dev/null || true
-if ! jool -i ark_nat64 instance status >/dev/null 2>&1; then
+if ! jool -i ark_nat64 instance status 2>/dev/null | grep -Eq '^[[:space:]]*Running[[:space:]]*$'; then
 	jool instance add "ark_nat64" --netfilter --pool6 64:ff9b::/96 2>/dev/null || true
 	jool -i "ark_nat64" global update lowest-ipv6-mtu 1280 2>/dev/null || true
 fi
@@ -1656,7 +1656,7 @@ get_ipv6_status() {
 	command -v jool >/dev/null 2>&1 && jool_installed=true
 	nat64_active=false
 	if [ "$jool_installed" = "true" ] && [ -z "${ARK_ROOT:-}" ]; then
-		jool -i ark_nat64 instance status >/dev/null 2>&1 && nat64_active=true
+		ark_jool_instance_running "ark_nat64" && nat64_active=true
 	elif [ -f "${ARK_ROOT:-}/etc/ark/ark_nat64.sh" ]; then
 		nat64_active=true
 	fi

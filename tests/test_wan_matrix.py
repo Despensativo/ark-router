@@ -1756,6 +1756,51 @@ exit 0
         self.assertEqual(get_check(doc4_fix, "NAT64 / DNS64").get("status"), "FIXED")
         self.assertFalse(os.path.exists(nat64_sh))
 
+    def test_42_jool_dead_exit_zero_does_not_loop_doctor(self):
+        """jool -i ark_nat64 instance status retorna exit 0 mesmo imprimindo 'Dead'; deve exigir 'Running'."""
+        import subprocess
+        import tempfile
+        common_sh = os.path.join(REPO_DIR, "root", "usr", "lib", "ark", "common.sh")
+        doctor_sh = os.path.join(REPO_DIR, "root", "usr", "lib", "ark", "modules", "doctor.sh")
+        ipv6_sh = os.path.join(REPO_DIR, "root", "usr", "lib", "ark", "modules", "network_ipv6_mwan.sh")
+
+        with tempfile.TemporaryDirectory(prefix="ark_jool_dead_") as tmp:
+            mock_bin = os.path.join(tmp, "bin")
+            os.makedirs(mock_bin, exist_ok=True)
+            jool_path = os.path.join(mock_bin, "jool")
+
+            # 1. jool imprime "Dead" mas sai com exit code 0 -> ark_jool_instance_running DEVE retornar 1
+            with open(jool_path, "w", encoding="utf-8") as fh:
+                fh.write("#!/bin/sh\nprintf 'Dead\\n(Instance '\''ark_nat64'\'' does not exist.)\\n'\nexit 0\n")
+            os.chmod(jool_path, 0o755)
+            env = os.environ.copy()
+            env["PATH"] = f"{mock_bin}:/usr/bin:/bin"
+            rc_dead = subprocess.run(
+                ["sh", "-c", f'. "{common_sh}"; ark_jool_instance_running "ark_nat64"'],
+                env=env,
+                capture_output=True,
+                text=True,
+            ).returncode
+            self.assertNotEqual(rc_dead, 0, "ark_jool_instance_running tratou 'Dead' (rc=0) como instancia ativa!")
+
+            # 2. jool imprime "Running" e sai com exit code 0 -> ark_jool_instance_running DEVE retornar 0
+            with open(jool_path, "w", encoding="utf-8") as fh:
+                fh.write("#!/bin/sh\nprintf 'Running\\n'\nexit 0\n")
+            os.chmod(jool_path, 0o755)
+            rc_run = subprocess.run(
+                ["sh", "-c", f'. "{common_sh}"; ark_jool_instance_running "ark_nat64"'],
+                env=env,
+                capture_output=True,
+                text=True,
+            ).returncode
+            self.assertEqual(rc_run, 0, "ark_jool_instance_running falhou ao reconhecer instancia 'Running'!")
+
+        # 3. Nenhum modulo deve confiar no exit code cru de 'jool -i ark_nat64 instance status' sem filtrar Running
+        for path in (doctor_sh, ipv6_sh):
+            with open(path, "r", encoding="utf-8") as fh:
+                txt = fh.read()
+            self.assertNotIn("jool -i ark_nat64 instance status >/dev/null", txt, f"Checagem insegura em {path}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
