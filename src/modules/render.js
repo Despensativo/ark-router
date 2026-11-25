@@ -3,25 +3,6 @@ const renderMethods = {
 	render: function(loaded) {
 		const self = this;
 		if (typeof window !== 'undefined') window._arkViewInstance = this;
-		if (!window._arkEscModalAttached) {
-			window._arkEscModalAttached = true;
-			document.addEventListener('keydown', function(ev) {
-				if (ev.key === 'Escape' || ev.keyCode === 27) {
-					var modal = document.querySelector('.modal, .cbi-modal, #modal_overlay, div[class*="modal"]');
-					if (modal) {
-						ev.preventDefault();
-						if (typeof ui !== 'undefined' && typeof ui.hideModal === 'function') {
-							ui.hideModal();
-						} else if (window.L && L.ui && typeof L.ui.hideModal === 'function') {
-							L.ui.hideModal();
-						} else {
-							var btn = modal.querySelector('button.cbi-button-neutral, button.btn-neutral, .close');
-							if (btn) btn.click();
-						}
-					}
-				}
-			});
-		}
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';if(typeof window!=='undefined'){window.dashboardLanguage=dashboardLanguage;}this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		try {
 			if (typeof window !== 'undefined' && window.history && window.history.replaceState && window.location.search) {

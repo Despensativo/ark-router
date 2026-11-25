@@ -1045,8 +1045,15 @@ handle_speedify() {
 		speedify_status_json
 		;;
 	rpc-disconnect-test)
+		if [ "$(uci -q get equipe_dashboard.main.dev_mode 2>/dev/null || echo 0)" != "1" ]; then
+			echo 'rpc-disconnect-test disponivel apenas em Modo Desenvolvedor (dev_mode=1)' >&2
+			exit 2
+		fi
 		if [ -x /usr/sbin/ark-probe-disconnect ]; then
-			exec /usr/sbin/ark-probe-disconnect client "${2:-}" "${3:-9999}" "${4:-30}"
+			/usr/sbin/ark-probe-disconnect client "${2:-}" "${3:-9999}" "${4:-10}" &
+			_probe_pid=$!
+			( sleep 15; kill "$_probe_pid" 2>/dev/null || true ) >/dev/null 2>&1 &
+			wait "$_probe_pid" 2>/dev/null || true
 		else
 			echo 'Testador ark-probe-disconnect nao encontrado' >&2; exit 1
 		fi

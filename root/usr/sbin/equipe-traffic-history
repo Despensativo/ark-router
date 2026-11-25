@@ -5,6 +5,7 @@ persist='/etc/equipe-traffic-history.csv'
 state='/tmp/equipe-traffic-history.state'
 wan_daily='/tmp/equipe-wan-daily.csv'
 wan_daily_persist='/etc/equipe-wan-daily.csv'
+[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh 2>/dev/null || true
 
 read_counter() {
 	local device="$1" direction="$2" value
@@ -31,7 +32,6 @@ wan_interfaces() {
 	if [ "$found" -eq 0 ]; then
 		# Modo Satélite / Ponto de Acesso (sem interface WAN dedicada):
 		# Mede o tráfego da porta de uplink conectada ao Gateway mestre
-		. /usr/lib/ark/common.sh 2>/dev/null || true
 		dev="$(ark_ap_uplink_dev 2>/dev/null)"
 		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev='br-lan'
 		[ -d "/sys/class/net/$dev" ] && printf 'lan,%s\n' "$dev"
@@ -41,7 +41,7 @@ wan_interfaces() {
 flush_to_persist() {
 	local free_overlay_kb
 	free_overlay_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
-	if [ -n "$free_overlay_kb" ] && [ "$free_overlay_kb" -le 1024 ] 2>/dev/null; then
+	if [ -n "$free_overlay_kb" ] && [ "$free_overlay_kb" -le 2048 ] 2>/dev/null; then
 		return 0
 	fi
 	[ -s "$history" ] && cp "$history" "$persist" 2>/dev/null || true
@@ -144,12 +144,24 @@ $iface,$dev,$cur_rx,$cur_tx"
 pidfile='/var/run/equipe-traffic-history.pid'
 if [ -f "$pidfile" ]; then
 	old_pid="$(cat "$pidfile" 2>/dev/null)"
+	case "$old_pid" in ''|*[!0-9]*) old_pid="" ;; esac
 	if [ -n "$old_pid" ] && [ -d "/proc/$old_pid" ] && [ "$old_pid" != "$$" ]; then
-		exit 0
+		old_cmd="$(tr '\0' ' ' < "/proc/$old_pid/cmdline" 2>/dev/null || true)"
+		case "$old_cmd" in
+			*equipe-traffic-history*) exit 0 ;;
+		esac
 	fi
 fi
 echo "$$" > "$pidfile"
-trap 'flush_to_persist; rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
+_ark_hist_flushed=0
+_ark_hist_exit() {
+	[ "$_ark_hist_flushed" = "1" ] && return 0
+	_ark_hist_flushed=1
+	flush_to_persist
+	rm -f "$pidfile" 2>/dev/null || true
+}
+trap '_ark_hist_exit' EXIT
+trap '_ark_hist_exit; exit 0' INT TERM HUP
 
 rpcd_stuck_cycles=0
 check_rpcd_health() {

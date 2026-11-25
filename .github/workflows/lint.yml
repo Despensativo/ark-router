@@ -28,44 +28,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install ShellCheck
+      - name: Install ShellCheck and esbuild
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
+          npm install -g esbuild
 
-      - name: Check LuCI & modular JavaScript syntax
-        run: |
-          for f in src/core/*.js src/modules/*.js \
-            root/www/luci-static/resources/view/equipe-dashboard/overview.js \
-            root/www/luci-static/ark/ark-theme.js \
-            root/www/luci-static/ark/ark-guides.js; do
-            [ -f "$f" ] || continue
-            node --check "$f"
-          done
-
-      - name: Verify frontend bundle synchronization
-        run: python3 scripts/build_frontend_bundle.py --check
-
-      - name: Run shell, RPC, firewall and OpenWrt compliance audit
-        run: python3 scripts/audit_shell_scripts.py
-
-      - name: Run JS and documentation unit tests
-        run: |
-          node tests/test_ui_capability_sync.cjs
-          node tests/test_card_accordions.mjs
-          python3 tests/test_feature_remove_failures.py
-          python3 tests/test_audit_documentation.py
-          python3 tests/test_audit_wave1_wave2.py
-          python3 tests/test_audit_wave3.py
-          python3 tests/test_offline_review.py
-
-      - name: Verify feature contracts, state preservation, i18n, docs and CODE_MAP
-        run: |
-          python3 tests/verify_feature_contracts.py
-          python3 scripts/audit_state_preservation.py --strict
-          python3 scripts/audit_i18n.py --strict
-          python3 scripts/audit_docs.py --strict
-          python3 scripts/generate_code_map.py --check
+      - name: Run full local deterministic test suite (31 Python suites + JS + contracts + minification)
+        run: ARK_PYTHON_CMD=python3 bash tests/run_local_tests.sh
 
       - name: Check Ralph Loop, offline reviewer and Git hooks (POSIX sh)
         run: shellcheck -s sh scripts/ralph-loop.sh scripts/offline-review.sh .githooks/pre-commit .githooks/pre-push

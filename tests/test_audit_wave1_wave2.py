@@ -45,10 +45,14 @@ def _collect_root_shell_files():
 
 
 class AuditWave1Wave2Tests(unittest.TestCase):
-    def _run_mesh_export(self, remote_addr, route_dev, mesh_key=None):
+    def _run_mesh_export(self, remote_addr, route_dev, mesh_key=None, with_valid_token=True, http_host="", query_string=""):
         with tempfile.TemporaryDirectory(prefix="ark_mesh_exp_") as tmp:
             mock_bin = Path(tmp) / "bin"
             mock_bin.mkdir()
+            pair_file = Path(tmp) / "ark-mesh-pair.token"
+            if with_valid_token:
+                pair_file.write_text("PairSecretToken99 4102444800\n", encoding="utf-8")
+                pair_file.chmod(0o600)
 
             ip_sh = mock_bin / "ip"
             ip_sh.write_text(
@@ -113,7 +117,16 @@ class AuditWave1Wave2Tests(unittest.TestCase):
             env = os.environ.copy()
             env["PATH"] = f"{mock_bin}:{env.get('PATH', '')}"
             env["REMOTE_ADDR"] = remote_addr
-            env["QUERY_STRING"] = ""
+            env["QUERY_STRING"] = query_string
+            env["ARK_MESH_PAIR_FILE"] = str(pair_file)
+            if http_host:
+                env["HTTP_HOST"] = http_host
+            else:
+                env.pop("HTTP_HOST", None)
+            if with_valid_token:
+                env["HTTP_X_ARK_MESH_TOKEN"] = "PairSecretToken99"
+            else:
+                env.pop("HTTP_X_ARK_MESH_TOKEN", None)
 
             res = subprocess.run(["sh", str(MESH_EXPORT)], env=env, capture_output=True, text=True, timeout=10)
             self.assertEqual(res.returncode, 0, res.stderr)
@@ -127,12 +140,27 @@ class AuditWave1Wave2Tests(unittest.TestCase):
             ("203.0.113.50", ""),
         ]:
             with self.subTest(addr=addr, dev=dev):
-                out = self._run_mesh_export(addr, dev)
+                out = self._run_mesh_export(addr, dev, with_valid_token=True)
                 self.assertIn("Status: 403 Forbidden", out)
                 self.assertNotIn("SuperSecretWifiKey", out)
                 self.assertNotIn("arkmeshkey123", out)
 
-        out_lan = self._run_mesh_export("192.168.73.50", "br-lan", mesh_key=None)
+        # Unauthenticated LAN request without pairing token MUST be blocked (P0-SEC-01)
+        out_no_tok = self._run_mesh_export("192.168.73.50", "br-lan", with_valid_token=False)
+        self.assertIn("Status: 403 Forbidden", out_no_tok)
+        self.assertNotIn("SuperSecretWifiKey", out_no_tok)
+
+        # DNS Rebinding attack via external Host header MUST be blocked even with token
+        out_rebind = self._run_mesh_export("192.168.73.50", "br-lan", with_valid_token=True, http_host="evil-rebind.example.com")
+        self.assertIn("Status: 403 Forbidden", out_rebind)
+        self.assertNotIn("SuperSecretWifiKey", out_rebind)
+
+        # Leases endpoint remains accessible on LAN without exposing Wi-Fi keys
+        out_leases = self._run_mesh_export("192.168.73.50", "br-lan", with_valid_token=False, query_string="action=leases")
+        self.assertIn("Status: 200 OK", out_leases)
+        self.assertNotIn("SuperSecretWifiKey", out_leases)
+
+        out_lan = self._run_mesh_export("192.168.73.50", "br-lan", mesh_key=None, with_valid_token=True, http_host="192.168.73.1")
         self.assertIn("Status: 200 OK", out_lan)
         payload_lan = json.loads(re.split(r"\r?\n\r?\n", out_lan, maxsplit=1)[1])
         self.assertTrue(payload_lan["ok"])

@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.2.16"
+ARK_ROUTER_VERSION="2.2.17"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -1302,7 +1302,7 @@ ark_cleanup_dhcpv6_orphans() {
 
 # Sanitizacao Canonica de Interfaces WAN6 (prevencao contra device fisico bruto em vez de alias @wan)
 ark_sanitize_wan6_config() {
-	local sec claimed_parents
+	local sec="" claimed_parents=""
 	local root_prefix="${ARK_ROOT:-}"
 	local cfg="${root_prefix}/etc/config/network"
 	[ -f "$cfg" ] || return 0
@@ -2935,13 +2935,15 @@ ark_is_readonly_action() {
 		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
-		sqm-resource-plan|dns-turbo-benchmark|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|autowan-can-convert|autowan-can-convert-wan|speedify-user)
+		sqm-resource-plan|dns-turbo-benchmark|wireguard-client-conf-get|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
-	esac
-	case "$sub" in
-		status|get|list|check|scan|discover|audit|info)
-			return 0
+		profile|feature-dev-mode|feature-menu-policy|ksmbd-control|nlbwmon-action)
+			case "$sub" in
+				status|get|list|check|scan|discover|audit|info)
+					return 0
+					;;
+			esac
 			;;
 	esac
 	return 1
@@ -3226,6 +3228,30 @@ ark_uclient_tls() {
 	else
 		uclient-fetch --no-check-certificate "$@"
 	fi
+}
+
+# Download HTTPS estrito para pacotes/binarios executaveis (proibe downgrade --no-check-certificate / -k)
+ark_http_download_strict() {
+	local url dest timeout
+	url="$1"
+	dest="$2"
+	timeout="${3:-35}"
+	rm -f "$dest" 2>/dev/null || true
+	if ! ark_tls_verify_ready; then
+		echo "Erro de seguranca TLS: certificado CA ausente ou relogio dessincronizado (sincronize NTP antes de baixar pacotes)." >&2
+		return 1
+	fi
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL -m "$timeout" "$url" -o "$dest" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		wget -T "$timeout" -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -T "$timeout" -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	rm -f "$dest" 2>/dev/null || true
+	return 1
 }
 
 # Verifica se instancia Jool NAT64 esta realmente ativa (jool status retorna 0 mesmo quando imprime "Dead")

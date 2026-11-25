@@ -42,7 +42,7 @@ ark_doctor_audit() {
 	local s s_mtu real_phys_mtu real_ppp_mtu expected_ppp_mtu probed_ppp_mtu mtu_defect mtu_err_msg has_ppe flow_offload mwan_active_count w
 	local flow_offload_hw dnsmasq_pid lease_file lease_count dhcp_ignore sat_sqm_active sat_mwan_active igmp_cfg igmp_dev real_igmp has_uci_mesh sec
 	local orphan_mesh iface legacy_rules fw_user_file fw_user_has_iptables upnp_is_legacy sqm_is_legacy culprit q_dir has_zombie_dhcp has_bad_wan6_dev has_wan6_configured
-	local dev parent_wan seen_wan6_parents v6_mode missing_wan6 lan_cur_ra ipv6_mode_chk lan_ra_prefer_old has_managed_ra flg lan_slaac_active lan_wan_pfx_conflict
+	local dev="" parent_wan="" seen_wan6_parents="" v6_mode="" missing_wan6="" lan_cur_ra="" ipv6_mode_chk="" lan_ra_prefer_old="" has_managed_ra="" flg="" lan_slaac_active="" lan_wan_pfx_conflict=""
 	local pfx mac_collision_found mac_collision_dev mac_collision_val wan_macs w_iface w_dev w_mac d_sec lan_ports p_mac p_mac_lower
 	local pio_chk_f pio_chk_p _act_pfx _sqm_active _doh_running _doh_match
 	local wm rogue_netdev_found t ipv6_mode wan_has_ipv6 wan6_proto lan_ra lan_dhcpv6 filter_aaaa relay expected_service wan_masq6

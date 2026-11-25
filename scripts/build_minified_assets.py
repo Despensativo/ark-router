@@ -129,7 +129,7 @@ def build_minified():
             cmd = [npx_cmd, "-y", "esbuild", tool_src, "--minify", f"--outfile={tool_out}"]
             
         if item["type"] == "js":
-            cmd.extend(["--legal-comments=none"])
+            cmd.extend(["--charset=utf8", "--legal-comments=none"])
 
         res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", shell=(sys.platform == "win32"))
         if res.returncode != 0:

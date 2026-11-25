@@ -225,9 +225,18 @@ const speedtestMethods = {
 					}
 				}, 120);
 				
-				await new Promise(function(r){ setTimeout(r, 7000); });
+				const waitAbortable = function(ms, sig) {
+					return new Promise(function(resolve) {
+						if (sig && sig.aborted) { resolve(); return; }
+						const t = setTimeout(resolve, ms);
+						if (sig) sig.addEventListener('abort', function() { clearTimeout(t); resolve(); }, { once: true });
+					});
+				};
+
+				await waitAbortable(7000, abortCtrl.signal);
 				downRunning = false;
 				clearInterval(downInterval);
+				if (abortCtrl.signal.aborted) return;
 				
 				const finalDownEl = (performance.now() - tStartDown) / 1000;
 				const finalDownMbps = Math.round((bytesDown * 8) / (finalDownEl * 1000000));
@@ -274,9 +283,10 @@ const speedtestMethods = {
 					}
 				}, 120);
 				
-				await new Promise(function(r){ setTimeout(r, 7000); });
+				await waitAbortable(7000, abortCtrl.signal);
 				upRunning = false;
 				clearInterval(upInterval);
+				if (abortCtrl.signal.aborted) return;
 				
 				const finalUpEl = (performance.now() - tStartUp) / 1000;
 				const finalUpMbps = Math.round((bytesUp * 8) / (finalUpEl * 1000000));
@@ -355,6 +365,24 @@ const speedtestMethods = {
 				}}, ['Fechar'])
 			])
 		]);
+
+		const onAnyModalClose = function() {
+			if (!document.body.classList.contains('modal-overlay-active')) {
+				if (activeAbort) activeAbort.abort();
+				if (modalObs) modalObs.disconnect();
+				document.removeEventListener('keydown', escAbortListener, true);
+			}
+		};
+		const escAbortListener = function(ev) {
+			if (ev.key === 'Escape' || ev.keyCode === 27) {
+				if (activeAbort) activeAbort.abort();
+				if (modalObs) modalObs.disconnect();
+				document.removeEventListener('keydown', escAbortListener, true);
+			}
+		};
+		const modalObs = (typeof MutationObserver !== 'undefined') ? new MutationObserver(onAnyModalClose) : null;
+		if (modalObs) modalObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+		document.addEventListener('keydown', escAbortListener, true);
 
 		setTimeout(runEngine, 200);
 	},

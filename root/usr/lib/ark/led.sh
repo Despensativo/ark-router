@@ -584,6 +584,53 @@ ark_led_apply_preset() {
 	return 0
 }
 
+# Sincroniza apenas estado runtime sysfs/HAL de LEDs em hotplug/boot sem gravar UCI na Flash nem adquirir ark_mutation.lock
+ark_led_sync_runtime() {
+	local led_pwr cur_preset cur_eff cur_spd cur_col led_base _led_p led
+	led_pwr="$(uci -q get system.led_status.enabled 2>/dev/null || echo 1)"
+	cur_preset="$(uci -q get system.led_status.preset 2>/dev/null || echo smart)"
+	cur_eff="$(uci -q get system.led_status.effect 2>/dev/null || echo breathe)"
+	cur_spd="$(uci -q get system.led_status.speed 2>/dev/null || echo normal)"
+	cur_col="$(uci -q get system.led_status.hex_color 2>/dev/null || echo '#00FF00')"
+	led_base="$(_get_led_sys)"
+
+	ark_led_calibrate_curves >/dev/null 2>&1 || true
+
+	if [ "$led_pwr" = "0" ] || [ "$cur_preset" = "night" ] || [ "$cur_preset" = "off" ]; then
+		ark_led_stop_rainbow >/dev/null 2>&1 || true
+		ark_led_set_effect all "000000" off >/dev/null 2>&1 || true
+		for _led_p in "$led_base"/*; do
+			[ -e "$_led_p" ] || continue
+			led="${_led_p##*/}"
+			[ "$led" = "aw21018_led" ] && continue
+			echo none > "$led_base/$led/trigger" 2>/dev/null || true
+			echo 0 > "$led_base/$led/brightness" 2>/dev/null || true
+		done
+		return 0
+	fi
+
+	if [ "$cur_preset" = "rainbow" ] || [ "$cur_eff" = "rainbow" ]; then
+		ark_led_start_rainbow "$cur_spd" >/dev/null 2>&1 || true
+		return 0
+	fi
+
+	if [ "$cur_preset" = "alert" ]; then
+		ark_led_stop_rainbow >/dev/null 2>&1 || true
+		ark_led_update_wan_status >/dev/null 2>&1 || true
+		return 0
+	fi
+
+	ark_led_stop_rainbow >/dev/null 2>&1 || true
+	ark_led_normalize_hex "$cur_col" >/dev/null 2>&1 || true
+	if [ "$cur_eff" = "solid" ]; then
+		ark_led_set_effect all "${clean_hex:-00ff00}" solid "$cur_spd" >/dev/null 2>&1 || true
+	else
+		ark_led_set_effect all "${clean_hex:-00ff00}" breathe "$cur_spd" >/dev/null 2>&1 || true
+	fi
+	ark_led_update_wan_status >/dev/null 2>&1 || true
+	return 0
+}
+
 # 5. Monitoramento Dinâmico de Link WAN e Alertas
 ark_led_update_wan_status() {
 	local d cand

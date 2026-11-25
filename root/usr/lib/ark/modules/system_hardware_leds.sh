@@ -1223,6 +1223,18 @@ system_hardware_auto_tune() {
 		if [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1; then
 			nft delete flowtable inet fw4 ft 2>/dev/null || true
 		fi
+	elif [ "$mwan3_active" = 1 ]; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Fastpath desativado (Dual-WAN mwan3 exige marcação de rotas fwmark)"
+	elif uci -q show equipe_devices 2>/dev/null | grep -Eq "\.(dl_kbps|ul_kbps)='[1-9]"; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Fastpath desativado (Limites de banda por dispositivo ativos)"
+	elif [ "$(uci -q get equipe_dashboard.ipv6.mode 2>/dev/null || true)" = "ipv6_only" ]; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Fastpath desativado (Tradução NAT64 Jool ativa)"
 	elif [ "$flow_user_disabled" = "1" ]; then
 		uci -q set firewall.@defaults[0].flow_offloading=0
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0

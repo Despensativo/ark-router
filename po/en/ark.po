@@ -15397,3 +15397,48 @@ msgstr "Native 464XLAT/CLAT support on iOS, iPadOS, macOS, Android and Windows 1
 msgid "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
 msgstr "Can also be enabled individually per device (without affecting Dual-Stack devices) in the DEVICES card."
 
+msgid "Código de pareamento copiado:"
+msgstr "Pairing code copied:"
+
+msgid "Código de pareamento gerado no Mestre (3 min)"
+msgstr "Pairing code generated on the Master (3 min)"
+
+msgid "Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre."
+msgstr "Generates a temporary code (3 min) to authorize a Secondary Router to import Wi‑Fi and Mesh credentials from this Master."
+
+msgid "IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):"
+msgstr "LAN IPs or Subnets allowed inbound over VPN (comma-separated):"
+
+msgid "Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN"
+msgstr "Enter at least one LAN IP or CIDR range to allow over VPN"
+
+msgid "Janela de pareamento aberta por 3 minutos! Código:"
+msgstr "Pairing window open for 3 minutes! Code:"
+
+msgid "Política de acesso de entrada da VPN atualizada com sucesso!"
+msgstr "VPN inbound access policy updated successfully!"
+
+msgid "🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)"
+msgstr "🌐 Full Network: Admin Access + Entire LAN (Site-to-Site)"
+
+msgid "🎯 Acesso Admin + IPs ou Faixas Específicas da LAN"
+msgstr "🎯 Admin Access + Specific LAN IPs or Subnets"
+
+msgid "💾 Salvar Permissão de Entrada"
+msgstr "💾 Save Inbound Permission"
+
+msgid "🔑 Código do Mestre:"
+msgstr "🔑 Master Code:"
+
+msgid "🔑 Gerar Código (3 min)"
+msgstr "🔑 Generate Code (3 min)"
+
+msgid "🔑 Pareamento Seguro com Roteador Secundário (Satélite)"
+msgstr "🔑 Secure Pairing with Secondary Router (Satellite)"
+
+msgid "🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)"
+msgstr "🔒 Blocked / Commercial VPN (Outbound Only — blocks all inbound tunnel traffic)"
+
+msgid "🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)"
+msgstr "🛡️ VPN Tunnel Inbound Permission (What to allow?)"
+

@@ -17,14 +17,13 @@ chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod +x /usr/sbin/ark-doctor 2>/dev/null || true
 chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
 chmod +x /usr/sbin/ark-autowan-daemon 2>/dev/null || true
-chmod +x /usr/sbin/ark-port-ledd 2>/dev/null || true
-chmod +x /usr/sbin/ark-rainbowd 2>/dev/null || true
-chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
+chmod +x /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/sbin/ark-* /usr/sbin/starlink-* 2>/dev/null || true
+chmod +x /usr/lib/ark/*.sh /usr/lib/ark/ark-control 2>/dev/null || true
 chmod +x /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos 2>/dev/null || true
-chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
+chmod +x /usr/libexec/ark-starlink-telemetry /usr/libexec/ark-theme-ro 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
-chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
-chmod +x /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* 2>/dev/null || true
+chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* /etc/init.d/starlink-* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
 rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
@@ -71,8 +70,26 @@ rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 exit 0
 """
 
+PRERM_SCRIPT = """#!/bin/sh
+case "${1:-remove}" in upgrade) exit 0 ;; esac
+for svc in ark-port-ledd ark-rainbowd equipe-traffic-history ark-autowan ark-firewall-guard ark-hardware-tune ark-zerotier-ram ark-safe-shutdown starlink-telemetry; do
+	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" stop >/dev/null 2>&1 || true
+	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" disable >/dev/null 2>&1 || true
+done
+if [ "$(uci -q get luci.main.mediaurlbase 2>/dev/null)" = "/luci-static/ark" ]; then
+	if [ -d /www/luci-static/bootstrap ]; then
+		uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+	else
+		uci -q delete luci.main.mediaurlbase
+	fi
+fi
+uci -q delete luci.themes.ARK 2>/dev/null || true
+uci -q commit luci 2>/dev/null || true
+exit 0
+"""
+
 POSTRM_SCRIPT = """#!/bin/sh
-rm -f /tmp/luci-indexcache 2>/dev/null || true
+rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 exit 0
@@ -266,6 +283,19 @@ Description: {description}
             p_info.gname = "root"
             p_info.pax_headers = {}
             tar.addfile(p_info, io.BytesIO(p_data))
+
+            # File: ./prerm
+            pre_rm_info = tarfile.TarInfo(name="./prerm")
+            pre_rm_data = PRERM_SCRIPT.encode("utf-8")
+            pre_rm_info.size = len(pre_rm_data)
+            pre_rm_info.mode = 0o755
+            pre_rm_info.mtime = now
+            pre_rm_info.uid = 0
+            pre_rm_info.gid = 0
+            pre_rm_info.uname = "root"
+            pre_rm_info.gname = "root"
+            pre_rm_info.pax_headers = {}
+            tar.addfile(pre_rm_info, io.BytesIO(pre_rm_data))
 
             # File: ./postrm
             pr_info = tarfile.TarInfo(name="./postrm")

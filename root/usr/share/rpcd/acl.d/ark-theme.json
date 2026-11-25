@@ -3,7 +3,7 @@
 		"description": "ARK Router Theme global controls",
 		"read": {
 			"file": {
-				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
+				"/usr/libexec/ark-theme-ro": [ "exec" ]
 			}
 		},
 		"write": {

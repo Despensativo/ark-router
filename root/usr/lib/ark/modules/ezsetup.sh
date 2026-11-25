@@ -778,7 +778,14 @@ ark_update_json() {
 	elif version_gt "$latest" "$current"; then available=true
 	elif [ "$profile" = full ] && [ "$actual_profile" != full ]; then available=true
 	fi
-	if [ -n "$asset" ]; then url="https://github.com/$repo/raw/main/dist/sdk/$asset"; else url=""; fi
+	clean_latest="$(normalize_version "$latest")"
+	if [ -n "$asset" ] && [ -n "$clean_latest" ]; then
+		url="https://github.com/$repo/releases/download/v$clean_latest/$asset"
+	elif [ -n "$asset" ]; then
+		url="https://github.com/$repo/releases/latest/download/$asset"
+	else
+		url=""
+	fi
 
 	# Calculo cirurgico de espaco em disco com ponto de corte no limite (650 KB flash / 1.5 MB RAM)
 	need_overlay_kb=650
@@ -997,7 +1004,12 @@ ez_apply_guest_network() {
 	local enabled
 	enabled="$1"
 	if [ "$enabled" = 1 ]; then
+		uci -q set network.br_guest=device
+		uci -q set network.br_guest.name='br-guest'
+		uci -q set network.br_guest.type='bridge'
+		uci -q set network.br_guest.bridge_empty='1'
 		uci -q set network.guest=interface
+		uci -q set network.guest.device='br-guest'
 		uci -q set network.guest.proto=static
 		uci -q set network.guest.ipaddr="${2:-192.168.20.1}"
 		uci -q set network.guest.netmask=255.255.255.0
@@ -1014,7 +1026,7 @@ ez_apply_guest_network() {
 		uci -q set firewall.guest.input=REJECT
 		uci -q set firewall.guest.output=ACCEPT
 		uci -q set firewall.guest.forward=REJECT
-		uci -q set firewall.guest.masq=1
+		uci -q delete firewall.guest.masq 2>/dev/null || true
 		uci -q set firewall.guest_forwarding=forwarding
 		uci -q set firewall.guest_forwarding.src=guest
 		uci -q set firewall.guest_forwarding.dest=wan
@@ -2045,38 +2057,50 @@ handle_ezsetup() {
 			rm -rf "$tmp"; mkdir -p "$tmp"
 			echo '{"state":"running","percent":20,"message":"1/4 Criando backup de segurança do sistema..."}' >"$status"
 			backup="/tmp/ark-router-before-self-update-$(date +%Y%m%d-%H%M%S).tar.gz"
-			if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$backup" 2>/dev/null || true; fi
+			if command -v sysupgrade >/dev/null 2>&1; then ( umask 077 && sysupgrade -b "$backup" 2>/dev/null || true ); chmod 600 "$backup" 2>/dev/null || true; fi
 			echo "Backup: $backup"
-			echo '{"state":"running","percent":45,"message":"2/4 Baixando pacote '"$asset"' do GitHub..."}' >"$status"
+			safe_asset_json="$(json_escape "$asset")"
+			safe_latest_json="$(json_escape "$latest")"
+			echo '{"state":"running","percent":45,"message":"2/4 Baixando pacote '"$safe_asset_json"' do GitHub Releases..."}' >"$status"
 			clean_latest="$(normalize_version "$latest")"
 			download_ok=0
-			echo "Downloading primary: $url"
-			if ark_http_download "$url" "$tmp/$asset" 35; then
-				download_ok=1
+			if [ -n "$clean_latest" ]; then
+				echo "Downloading from GitHub Release v$clean_latest..."
+				if ark_http_download_strict "https://github.com/$repo/releases/download/v$clean_latest/$asset" "$tmp/$asset" 35; then
+					download_ok=1
+				fi
 			fi
-			if [ "$download_ok" -eq 0 ] && [ -n "$clean_latest" ]; then
-				echo "Fallback downloading from releases tag v$clean_latest..."
-				if ark_http_download "https://github.com/$repo/releases/download/v$clean_latest/$asset" "$tmp/$asset" 35; then
+			if [ "$download_ok" -eq 0 ]; then
+				echo "Downloading primary URL: $url"
+				if ark_http_download_strict "$url" "$tmp/$asset" 35; then
 					download_ok=1
 				fi
 			fi
 			if [ "$download_ok" -eq 0 ]; then
 				echo "Fallback downloading from releases/latest..."
-				if ark_http_download "https://github.com/$repo/releases/latest/download/$asset" "$tmp/$asset" 35; then
-					download_ok=1
-				fi
-			fi
-			if [ "$download_ok" -eq 0 ]; then
-				echo "Fallback downloading direct from raw..."
-				if ark_http_download "https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset" "$tmp/$asset" 35; then
+				if ark_http_download_strict "https://github.com/$repo/releases/latest/download/$asset" "$tmp/$asset" 35; then
 					download_ok=1
 				fi
 			fi
 			if [ "$download_ok" -eq 0 ] || [ ! -s "$tmp/$asset" ]; then
-				echo "Erro fatal: Nao foi possivel baixar o arquivo $asset de nenhuma fonte." >&2
+				echo "Erro fatal: Nao foi possivel baixar o arquivo $asset com verificacao TLS valida." >&2
 				exit 3
 			fi
-			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
+			if [ -n "$clean_latest" ] && command -v sha256sum >/dev/null 2>&1; then
+				if ark_http_download_strict "https://github.com/$repo/releases/download/v$clean_latest/sha256sums-v$clean_latest.txt" "$tmp/sha256sums.txt" 15; then
+					exp_sha="$(awk -v f="$asset" '$2 == f || $2 == ("*" f) {print $1; exit}' "$tmp/sha256sums.txt" 2>/dev/null || true)"
+					if [ -n "$exp_sha" ]; then
+						got_sha="$(sha256sum "$tmp/$asset" 2>/dev/null | awk '{print $1}')"
+						if [ "$got_sha" != "$exp_sha" ]; then
+							echo "BLOQUEIO DE SEGURANCA: SHA-256 divergente para $asset (esperado=$exp_sha obtido=$got_sha)." >&2
+							rm -f "$tmp/$asset"
+							exit 6
+						fi
+						echo "SHA-256 verificado com sucesso: $got_sha"
+					fi
+				fi
+			fi
+			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$safe_latest_json"'..."}' >"$status"
 			ark_install_package_file "$tmp/$asset" "$manager" "$asset"
 			installed_after="$(ark_current_version)"
 			echo "Installed version after update: $installed_after"
@@ -2098,7 +2122,7 @@ handle_ezsetup() {
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
-			echo '{"state":"done","percent":100,"message":"Atualização concluída com sucesso! Versão '"$latest"' ativa."}' >"$status"
+			echo '{"state":"done","percent":100,"message":"Atualização concluída com sucesso! Versão '"$safe_latest_json"' ativa."}' >"$status"
 		) >"$log" 2>&1 &
 		echo started
 		;;
@@ -2107,21 +2131,25 @@ handle_ezsetup() {
 		log=/tmp/ark-router-self-update.log
 		grep -qE '("state":"running"|^running)' "$status" 2>/dev/null && { echo running; exit 0; }
 		manager="$(ark_package_manager)"
-		pkg_file="$2"
+		pkg_file="${2:-}"
 		if [ -z "$pkg_file" ]; then
 			case "$manager" in
 				apk) [ -f /tmp/upload.apk ] && pkg_file="/tmp/upload.apk" ;;
 				opkg) [ -f /tmp/upload.ipk ] && pkg_file="/tmp/upload.ipk" ;;
 			esac
 		fi
-		[ -n "$pkg_file" ] && [ -s "$pkg_file" ] || { echo "Arquivo de pacote invalido ou nao encontrado" >&2; exit 3; }
+		case "$pkg_file" in
+			/tmp/upload.apk|/tmp/upload.ipk|/tmp/ark-manual-upload.apk|/tmp/ark-manual-upload.ipk) ;;
+			*) echo "Caminho de upload manual bloqueado por seguranca (permitido apenas /tmp/upload.{apk,ipk})" >&2; exit 3 ;;
+		esac
+		[ -f "$pkg_file" ] && [ ! -L "$pkg_file" ] && [ -s "$pkg_file" ] || { echo "Arquivo de pacote invalido, symlink ou nao encontrado" >&2; exit 3; }
 		echo '{"state":"running","percent":10,"message":"Iniciando instalação manual offline..."}' >"$status"
 		(
 			trap '[ $? -ne 0 ] && echo "{\"state\":\"error\",\"percent\":0,\"message\":\"Falha na instalação manual do pacote.\"}" >"$status"' EXIT
 			set -e
 			echo '{"state":"running","percent":25,"message":"1/4 Criando backup de segurança do sistema..."}' >"$status"
 			backup="/tmp/ark-router-before-self-update-$(date +%Y%m%d-%H%M%S).tar.gz"
-			if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$backup" 2>/dev/null || true; fi
+			if command -v sysupgrade >/dev/null 2>&1; then ( umask 077 && sysupgrade -b "$backup" 2>/dev/null || true ); chmod 600 "$backup" 2>/dev/null || true; fi
 			echo "Backup: $backup"
 			echo '{"state":"running","percent":50,"message":"2/4 Verificando pacote e preparando instalação..."}' >"$status"
 			echo "Arquivo: $pkg_file"
@@ -2389,7 +2417,7 @@ handle_ezsetup() {
 				opkg update >/dev/null 2>&1 || true
 				opkg install "$package" || {
 					if [ "$package" = irqbalance ]; then
-						opkg install http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/packages/irqbalance_1.8.0-1_arm_cortex-a7_neon-vfpv4.ipk || ok=0
+						opkg install https://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/packages/irqbalance_1.8.0-1_arm_cortex-a7_neon-vfpv4.ipk || ok=0
 					else
 						ok=0
 					fi

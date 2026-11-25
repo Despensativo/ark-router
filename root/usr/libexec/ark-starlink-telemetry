@@ -10,7 +10,8 @@ set -u
 DISH_IP="192.168.100.1"
 CLIENT_RAM="/tmp/starlink-dish"
 CLIENT_FLASH="/usr/bin/starlink-dish"
-CLIENT_URL="https://github.com/bigmalloy/starlink-panel/releases/latest/download/starlink-dish"
+CLIENT_URL="${ARK_STARLINK_DISH_URL:-https://raw.githubusercontent.com/Despensativo/ark-router/main/root/usr/bin/starlink-dish}"
+ARK_STARLINK_DISH_SHA256="${ARK_STARLINK_DISH_SHA256:-ed87d999f4b76a43bb10205e0dd73a2730819ce57e37deff76a3fd0bfefcfecd}"
 QUERY_TIMEOUT=7
 CLIENT_PID=""
 WATCHDOG_PID=""
@@ -43,7 +44,10 @@ release_lock() {
 }
 
 cleanup_starlink() {
-	[ -n "$WATCHDOG_PID" ] && kill "$WATCHDOG_PID" 2>/dev/null || true
+	if [ -n "$WATCHDOG_PID" ]; then
+		pkill -P "$WATCHDOG_PID" 2>/dev/null || true
+		kill "$WATCHDOG_PID" 2>/dev/null || true
+	fi
 	[ -n "$CLIENT_PID" ] && kill "$CLIENT_PID" 2>/dev/null || true
 	[ -n "$RESULT_FILE" ] && rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
 	release_lock
@@ -53,10 +57,19 @@ acquire_lock() {
 	lock_target="/tmp/ark-starlink-$1.lock"
 	waited=0
 	while ! mkdir "$lock_target" 2>/dev/null; do
+		if [ -f "$lock_target/pid" ]; then
+			owner_pid="$(cat "$lock_target/pid" 2>/dev/null || true)"
+			case "$owner_pid" in ''|*[!0-9]*) owner_pid="" ;; esac
+			if [ -z "$owner_pid" ] || ! kill -0 "$owner_pid" 2>/dev/null; then
+				rm -f "$lock_target/pid" 2>/dev/null || true
+				rmdir "$lock_target" 2>/dev/null && break
+			fi
+		fi
 		[ "$waited" -lt 8 ] || { echo "A antena $1 está sendo consultada. Tente novamente." >&2; return 1; }
 		sleep 1
 		waited=$((waited + 1))
 	done
+	printf '%s\n' "$$" > "$lock_target/pid" 2>/dev/null || true
 	CURRENT_LOCK="$lock_target"
 	trap cleanup_starlink EXIT INT TERM HUP
 }
@@ -81,12 +94,12 @@ _ark_tls_verify_ready() {
 }
 
 ensure_client() {
-	[ -x "$CLIENT_RAM" ] && { printf '%s' "$CLIENT_RAM"; return 0; }
-	[ -x "$CLIENT_FLASH" ] && { printf '%s' "$CLIENT_FLASH"; return 0; }
 	case "$(uname -m 2>/dev/null)" in
 		aarch64|arm64) ;;
 		*) echo 'Telemetria Starlink automática disponível somente em aarch64 neste momento.' >&2; return 1 ;;
 	esac
+	[ -x "$CLIENT_RAM" ] && { printf '%s' "$CLIENT_RAM"; return 0; }
+	[ -x "$CLIENT_FLASH" ] && { printf '%s' "$CLIENT_FLASH"; return 0; }
 	command -v wget >/dev/null 2>&1 || { echo 'wget não está disponível para preparar a telemetria.' >&2; return 1; }
 	free_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
 	[ "${free_kb:-0}" -ge 4096 ] || { echo 'RAM temporária insuficiente para o cliente Starlink.' >&2; return 1; }
@@ -157,8 +170,11 @@ query_wan() {
 		code=$?
 	fi
 	CLIENT_PID=""
-	kill "$WATCHDOG_PID" 2>/dev/null || true
-	wait "$WATCHDOG_PID" 2>/dev/null || true
+	if [ -n "$WATCHDOG_PID" ]; then
+		pkill -P "$WATCHDOG_PID" 2>/dev/null || true
+		kill "$WATCHDOG_PID" 2>/dev/null || true
+		wait "$WATCHDOG_PID" 2>/dev/null || true
+	fi
 	WATCHDOG_PID=""
 	release_lock
 

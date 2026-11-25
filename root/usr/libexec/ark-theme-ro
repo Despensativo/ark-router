@@ -1,0 +1,16 @@
+#!/bin/sh
+# /usr/libexec/ark-theme-ro - Strictly Read-Only Wrapper for LuCI Theme Telemetry
+# Prevents privilege escalation from rpcd luci-access read block (P0-SEC-02).
+
+case "${1:-}" in
+	system-processes-telemetry|system-hardware-info|get-led-hardware-info)
+		if [ -n "${ARK_ROOT:-}" ] && [ -x "${ARK_ROOT}/usr/sbin/equipe-dashboard-control" ]; then
+			exec "${ARK_ROOT}/usr/sbin/equipe-dashboard-control" "$1"
+		fi
+		exec /usr/sbin/equipe-dashboard-control "$1"
+		;;
+	*)
+		echo "Forbidden: read-only wrapper rejects action '${1:-}'" >&2
+		exit 1
+		;;
+esac

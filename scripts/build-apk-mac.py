@@ -50,10 +50,13 @@ def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False
                     except OSError:
                         pass
 
-        # 5. Handle starlink-dish binary for Lite vs Full
+        # 5. Handle starlink-dish binary for Lite vs Full & strip macOS APFS xattrs
         starlink_bin = os.path.join(payload_dir, "usr", "bin", "starlink-dish")
         if not is_full and os.path.exists(starlink_bin):
             os.remove(starlink_bin)
+        if sys.platform == "darwin" and shutil.which("xattr"):
+            import subprocess as _sp
+            _sp.run(["xattr", "-cr", payload_dir], check=False, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
 
         apk_bin = shutil.which("apk") or "/Users/user/.antigravity-tools-env/bin/apk"
         if not os.path.isfile(apk_bin):
@@ -86,13 +89,13 @@ for apknew in /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplu
 	target="${apknew%.apk-new}"
 	mv -f "$apknew" "$target" 2>/dev/null || true
 done
-chmod 0755 /usr/share/ark-router/VERSION 2>/dev/null || true
-chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* 2>/dev/null || true
+chmod 0644 /usr/share/ark-router/VERSION 2>/dev/null || true
+chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* /usr/sbin/starlink-* 2>/dev/null || true
 chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos 2>/dev/null || true
-chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
+chmod +x /usr/libexec/ark-starlink-telemetry /usr/libexec/ark-theme-ro 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
-chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
-chmod +x /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* 2>/dev/null || true
+chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* /etc/init.d/starlink-* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
 chown -R root:root /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/lib/ark /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod -R a+rX /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/share/luci/menu.d /usr/share/rpcd/acl.d 2>/dev/null || true
 rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
@@ -140,6 +143,36 @@ exit 0
 """)
         os.chmod(post_install, 0o755)
 
+        pre_deinstall = os.path.join(temp_dir, "pre-deinstall")
+        with open(pre_deinstall, "w", encoding="utf-8") as f:
+            f.write("""#!/bin/sh
+for svc in ark-port-ledd ark-rainbowd equipe-traffic-history ark-autowan ark-firewall-guard ark-hardware-tune ark-zerotier-ram ark-safe-shutdown starlink-telemetry; do
+	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" stop >/dev/null 2>&1 || true
+	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" disable >/dev/null 2>&1 || true
+done
+if [ "$(uci -q get luci.main.mediaurlbase 2>/dev/null)" = "/luci-static/ark" ]; then
+	if [ -d /www/luci-static/bootstrap ]; then
+		uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+	else
+		uci -q delete luci.main.mediaurlbase
+	fi
+fi
+uci -q delete luci.themes.ARK 2>/dev/null || true
+uci -q commit luci 2>/dev/null || true
+exit 0
+""")
+        os.chmod(pre_deinstall, 0o755)
+
+        post_deinstall = os.path.join(temp_dir, "post-deinstall")
+        with open(post_deinstall, "w", encoding="utf-8") as f:
+            f.write("""#!/bin/sh
+rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
+rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+exit 0
+""")
+        os.chmod(post_deinstall, 0o755)
+
         # 6. Limpar arquivos temporários do macOS e definir permissões corretas
         for dirpath, dirnames, filenames in os.walk(payload_dir):
             for f in filenames:
@@ -173,7 +206,7 @@ exit 0
             "-I", "arch:noarch",
             "-I", f"description:{description}",
             "-I", "url:https://github.com/Despensativo/ark-router",
-            "-I", "license:GPL-2.0",
+            "-I", "license:MIT",
             "-I", f"depends:{depends}",
             "-I", "provides:luci-app-ark-router-any",
             "-I", "tags:openwrt:section=luci",
@@ -181,6 +214,8 @@ exit 0
             "-s", f"pre-upgrade:{pre_install}",
             "-s", f"post-install:{post_install}",
             "-s", f"post-upgrade:{post_install}",
+            "-s", f"pre-deinstall:{pre_deinstall}",
+            "-s", f"post-deinstall:{post_deinstall}",
             "-F", payload_dir,
             "-o", out_file
         ]
@@ -197,8 +232,8 @@ def main():
         print(f"ERRO: {VERSION_FILE} não encontrado.", file=sys.stderr)
         sys.exit(1)
 
-    # 0. Auto-increment SemVer patch version (ex: 2.2.1 -> 2.2.2 -> 2.2.3) unless --no-bump is passed
-    should_bump = "--no-bump" not in sys.argv and os.environ.get("ARK_NO_BUMP") != "1"
+    # 0. Explicit SemVer bump only when --bump or ARK_BUMP=1 is requested (prevents accidental working-tree mutations)
+    should_bump = ("--bump" in sys.argv or os.environ.get("ARK_BUMP") == "1") and "--no-bump" not in sys.argv and os.environ.get("ARK_NO_BUMP") != "1"
     note = None
     for i, arg in enumerate(sys.argv):
         if arg in ("--note", "-m") and i + 1 < len(sys.argv):

@@ -19,6 +19,15 @@
     };
   }
 
+  function escHtml(val) {
+    return String(val == null ? '' : val)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   // LuCI Core Cache-Buster & URL Self-Cleaning
   try {
     if (window.history && window.history.replaceState && window.location.search) {
@@ -68,7 +77,7 @@
     init: function() {
       try {
         var vp = document.querySelector('meta[name="viewport"]');
-        if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
       } catch (e) {}
       document.body.classList.remove('modal-overlay-active');
       this.initSidebarNavigation();
@@ -212,12 +221,19 @@
     },
 
     initGlobalEscHandler: function() {
+      var self = this;
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' || e.keyCode === 27) {
           // 1. Close ARK Safety Modal
           var safety = document.getElementById('ark-safety-modal');
           if (safety) {
             safety.remove();
+            return;
+          }
+
+          // Block Escape dismissal while an active apply/install progress modal is running
+          var activeModal = document.querySelector('#modal_overlay .modal, .cbi-modal, .modal');
+          if (activeModal && typeof self._isApplyingModal === 'function' && self._isApplyingModal(activeModal)) {
             return;
           }
 
@@ -253,12 +269,17 @@
     },
 
     enhanceModals: function() {
-      // 1. Backdrop click on #modal_overlay outside the modal closes it
+      var self = this;
+      // 1. Backdrop click on #modal_overlay outside the modal closes it (unless applying)
       var overlay = document.getElementById('modal_overlay');
       if (overlay && !overlay._arkBound) {
         overlay._arkBound = true;
         overlay.addEventListener('click', function(ev) {
           if (ev.target === overlay) {
+            var innerModal = overlay.querySelector('.modal, .cbi-modal');
+            if (innerModal && typeof self._isApplyingModal === 'function' && self._isApplyingModal(innerModal)) {
+              return;
+            }
             var luciUi = (window.L && window.L.ui) || window.ui;
             if (luciUi && typeof luciUi.hideModal === 'function') {
               try { luciUi.hideModal(); } catch (e) {}
@@ -270,7 +291,7 @@
       }
 
       // Helper: detect if modal is applying changes, restarting, or showing a non-closable progress state
-      var isApplyingModal = function(m) {
+      var isApplyingModal = this._isApplyingModal = function(m) {
         if (!m) return false;
         if (m.querySelector('.spinning, .cbi-progressbar, [data-indicator="apply"], .btn-spinner, .ark-spinner')) return true;
         var headings = m.querySelectorAll('h3, h4, h5, .modal-title, legend');
@@ -1048,8 +1069,8 @@
         });
       });
 
-      // 2. Preformatted Logs (Syslog & Dmesg)
-      var logEl = document.querySelector('#syslog, #dmesg, textarea[name="syslog"], pre.log, pre');
+      // 2. Preformatted Logs (Syslog & Dmesg — excludes SPA modal pre blocks)
+      var logEl = document.querySelector('#syslog, #dmesg, textarea[name="syslog"], pre.log');
       if (logEl && !logEl.getAttribute('data-ark-enhanced')) {
         var rawContent = logEl.value !== undefined ? logEl.value : logEl.textContent;
         if (rawContent && rawContent.length > 200) {
@@ -1270,9 +1291,9 @@
           var isUhttpdMain = (btn.name && btn.name.indexOf('uhttpd.main') !== -1) ||
                              (location.pathname.indexOf('uhttpd') !== -1 && (secTitle === 'MAIN' || (btn.name && btn.name.indexOf('main') !== -1)));
 
-          var msg = 'Tem certeza de que deseja executar a remoção?<br><br>' + 'Ação: <strong>' + actionName + '</strong>';
+          var msg = 'Tem certeza de que deseja executar a remoção?<br><br>' + 'Ação: <strong>' + escHtml(actionName) + '</strong>';
           if (secTitle) {
-            msg += '<br>Seção afetada: <strong>' + secTitle + '</strong>';
+            msg += '<br>Seção afetada: <strong>' + escHtml(secTitle) + '</strong>';
           }
           if (isUhttpdMain) {
             msg += '<br><br><span style="color:#ef4444;font-weight:700;">⚠️ ALERTA CRÍTICO:</span> ' + 'A instância <strong>main</strong> do uHTTPd é o servidor web ativo que exibe este painel de controle. ' + 'Se você apagá-la e salvar, você perderá o acesso à interface web pelo navegador!';
@@ -1301,9 +1322,9 @@
       var overlay = document.createElement('div');
       overlay.id = 'ark-safety-modal';
       overlay.className = 'ark-modal-backdrop';
-      overlay.innerHTML = '' + '<div class="ark-modal-box ' + (opts.type || 'warning') + '">' + '<div class="ark-modal-header">' + '<span class="ark-modal-icon">' + (opts.icon || '⚠️') + '</span>' + '<h3>' + opts.title + '</h3>' + '</div>' + '<div class="ark-modal-body">' +
+      overlay.innerHTML = '' + '<div class="ark-modal-box ' + escHtml(opts.type || 'warning') + '">' + '<div class="ark-modal-header">' + '<span class="ark-modal-icon">' + escHtml(opts.icon || '⚠️') + '</span>' + '<h3>' + escHtml(opts.title) + '</h3>' + '</div>' + '<div class="ark-modal-body">' +
             opts.message +
-          '</div>' + '<div class="ark-modal-actions">' + '<button type="button" class="cbi-button cbi-button-neutral ark-modal-cancel">Cancelar</button>' + '<button type="button" class="cbi-button cbi-button-negative ark-modal-confirm">' + (opts.confirmText || 'Confirmar') + '</button>' + '</div>' + '</div>';
+          '</div>' + '<div class="ark-modal-actions">' + '<button type="button" class="cbi-button cbi-button-neutral ark-modal-cancel">Cancelar</button>' + '<button type="button" class="cbi-button cbi-button-negative ark-modal-confirm">' + escHtml(opts.confirmText || 'Confirmar') + '</button>' + '</div>' + '</div>';
 
       document.body.appendChild(overlay);
 
@@ -1590,8 +1611,10 @@
 
               var out = '';
               validData.forEach(function(radioData) {
-                var is24 = radioData.radio === 'radio0';
-                var title = radioData.radio.toUpperCase() + ' (' + (is24 ? '2.4 GHz' : '5 GHz') + ' - ' + radioData.ifname + ')';
+                var firstMhz = (radioData.results && radioData.results[0] && Number(radioData.results[0].mhz)) || 0;
+                var is24 = firstMhz > 0 ? (firstMhz < 3000) : (radioData.radio === 'radio0');
+                var bandLabel = (firstMhz >= 5925) ? '6 GHz' : (is24 ? '2.4 GHz' : '5 GHz');
+                var title = escHtml(radioData.radio.toUpperCase() + ' (' + bandLabel + ' - ' + radioData.ifname + ')');
                 out += '<div style="flex:1; min-width:280px; max-width:100%; box-sizing:border-box; background:var(--ark-bg-panel, #1b1e2b); padding:16px; border-radius:8px; border:1px solid var(--ark-border, #2d3142);">';
                 out += '<h4 style="margin-top:0; margin-bottom:14px; color:var(--ark-blue, #38bdf8); font-size:14px; font-weight:600;">' + title + '</h4>';
                 
@@ -1635,11 +1658,11 @@
 
               document.getElementById('ark-survey-bars').innerHTML = out;
             }).catch(function(err) {
-              document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao ler dados de canais: ' + err + '</div>';
+              document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao ler dados de canais: ' + escHtml(err) + '</div>';
             });
           });
         }).catch(function(err) {
-          document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao carregar módulo network: ' + err + '</div>';
+          document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao carregar módulo network: ' + escHtml(err) + '</div>';
         });
       }
     },
@@ -1835,7 +1858,7 @@
       var self = this;
 
       L.require('fs').then(function(fs) {
-        fs.exec('/usr/sbin/equipe-dashboard-control', ['system-processes-telemetry']).then(function(res) {
+        fs.exec('/usr/libexec/ark-theme-ro', ['system-processes-telemetry']).then(function(res) {
           self._injectingMemory = false;
           if (!res || res.code !== 0 || !res.stdout) return;
           try {
@@ -2224,7 +2247,7 @@
 
       var dash = document.createElement('div');
       dash.id = 'ark-overview-dashboard';
-      dash.innerHTML = '' + '<div class="ark-hero-banner">' + '<div class="ark-hero-left">' + '<div class="ark-hero-badge-icon">⚡</div>' + '<div class="ark-hero-details">' + '<h2 id="ark-dash-model">' + model + '</h2>' + '<div class="ark-hero-chips">' + '<span class="ark-chip online">🟢 Online</span>' + '<span class="ark-chip primary">🛡️ ARK Router OS</span>' + '<span class="ark-chip">⏱️ Uptime: ' + uptime + '</span>' + '<span class="ark-chip">🕒 ' + timeStr + '</span>' + '</div>' + '</div>' + '</div>' + '<div class="ark-hero-right" style="display:flex;align-items:center;gap:8px;">' + '<a href="/cgi-bin/luci/admin/equipe-dashboard" class="cbi-button cbi-button-neutral" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);">' + '📊 Painel ARK' + '</a>' + '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' + '🔄 Reiniciar' + '</a>' + '</div>' + '</div>' + '<div class="ark-metrics-grid" id="ark-metrics-grid">' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">📈 Carga da CPU</span>' + '<span class="ark-metric-value" id="ark-dash-cpu-val">' + loadPct + '%</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + loadColor + '" id="ark-dash-cpu-bar" style="width:' + loadPct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>Médias: ' + load + '</span>' + '<span id="ark-dash-cpu-desc">Processador</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🧠 Memória RAM</span>' + '<span class="ark-metric-value" id="ark-dash-mem-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill green" id="ark-dash-mem-bar" style="width:30%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-mem-used">Memória RAM</span>' + '<span id="ark-dash-mem-status" style="color:#34d399;font-weight:600;">Estável</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' + '<span class="ark-metric-value" id="ark-dash-flash-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill blue" id="ark-dash-flash-bar" style="width:20%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-flash-type">Memória Flash</span>' + '<span id="ark-dash-flash-pct" style="color:#60a5fa;font-weight:600;">Disponível</span>' + '</div>' + '</div>' + '</div>';
+      dash.innerHTML = '' + '<div class="ark-hero-banner">' + '<div class="ark-hero-left">' + '<div class="ark-hero-badge-icon">⚡</div>' + '<div class="ark-hero-details">' + '<h2 id="ark-dash-model">' + escHtml(model) + '</h2>' + '<div class="ark-hero-chips">' + '<span class="ark-chip online">🟢 Online</span>' + '<span class="ark-chip primary">🛡️ ARK Router OS</span>' + '<span class="ark-chip">⏱️ Uptime: ' + escHtml(uptime) + '</span>' + '<span class="ark-chip">🕒 ' + escHtml(timeStr) + '</span>' + '</div>' + '</div>' + '</div>' + '<div class="ark-hero-right" style="display:flex;align-items:center;gap:8px;">' + '<a href="/cgi-bin/luci/admin/equipe-dashboard" class="cbi-button cbi-button-neutral" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);">' + '📊 Painel ARK' + '</a>' + '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' + '🔄 Reiniciar' + '</a>' + '</div>' + '</div>' + '<div class="ark-metrics-grid" id="ark-metrics-grid">' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">📈 Carga da CPU</span>' + '<span class="ark-metric-value" id="ark-dash-cpu-val">' + loadPct + '%</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + loadColor + '" id="ark-dash-cpu-bar" style="width:' + loadPct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>Médias: ' + escHtml(load) + '</span>' + '<span id="ark-dash-cpu-desc">Processador</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🧠 Memória RAM</span>' + '<span class="ark-metric-value" id="ark-dash-mem-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill green" id="ark-dash-mem-bar" style="width:30%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-mem-used">Memória RAM</span>' + '<span id="ark-dash-mem-status" style="color:#34d399;font-weight:600;">Estável</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' + '<span class="ark-metric-value" id="ark-dash-flash-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill blue" id="ark-dash-flash-bar" style="width:20%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-flash-type">Memória Flash</span>' + '<span id="ark-dash-flash-pct" style="color:#60a5fa;font-weight:600;">Disponível</span>' + '</div>' + '</div>' + '</div>';
 
       var firstTarget = main.querySelector('.cbi-map, .cbi-section, h2') || main.firstChild;
       if (firstTarget && firstTarget.parentNode) {
@@ -2240,7 +2263,7 @@
       }) : null;
 
       if (callExec) {
-        callExec('/usr/sbin/equipe-dashboard-control', ['system-hardware-info']).then(function(res) {
+        callExec('/usr/libexec/ark-theme-ro', ['system-hardware-info']).then(function(res) {
           try {
             var hw = JSON.parse(res.stdout || '{}');
             if (hw.model) {
@@ -2304,7 +2327,7 @@
                 var tColor = s0.temp_c >= crit0 ? 'red' : (s0.temp_c >= warn0 ? 'amber' : 'green');
                 var valColor = s0.temp_c >= crit0 ? '#ef4444' : (s0.temp_c >= warn0 ? '#f59e0b' : '#34d399');
                 var pct = Math.min(100, Math.round((s0.temp_c / max0) * 100));
-                tTile.innerHTML = '' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🌡️ Temperatura</span>' + '<span class="ark-metric-value" style="color:' + valColor + ';">' + s0.temp_c + ' °C</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + pct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>' + s0.name + '</span>' + '<span style="color:#60a5fa;font-weight:600;">' + (hw.thermal_sensors.length > 1 ? (hw.thermal_sensors.length + ' sensores') : 'CPU') + '</span>' + '</div>';
+                tTile.innerHTML = '' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🌡️ Temperatura</span>' + '<span class="ark-metric-value" style="color:' + valColor + ';">' + escHtml(s0.temp_c) + ' °C</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + pct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>' + escHtml(s0.name) + '</span>' + '<span style="color:#60a5fa;font-weight:600;">' + (hw.thermal_sensors.length > 1 ? (hw.thermal_sensors.length + ' sensores') : 'CPU') + '</span>' + '</div>';
                 grid.appendChild(tTile);
               }
             }
@@ -2888,42 +2911,42 @@
         var desc = r.querySelector('[id$="-ifc-description"]');
         var descHTML = desc ? desc.innerHTML : '';
 
-        // Extract metadata cleanly via HTML tags
-        var protoMatch = descHTML.match(/<strong>Protocolo:\s*<\/strong>\s*([^<]+)/i);
-        var proto = protoMatch ? protoMatch[1].trim() : (sid.indexOf('wan') !== -1 ? 'Cliente DHCP' : 'Endereço Estático');
+        // Extract metadata cleanly via HTML tags (multilingual PT-BR / EN / ES)
+        var protoMatch = descHTML.match(/<strong>(?:Protocolo|Protocol):\s*<\/strong>\s*([^<]+)/i);
+        var proto = protoMatch ? protoMatch[1].trim() : (sid.indexOf('wan') !== -1 ? 'DHCP' : 'Static');
 
         var ipMatch = descHTML.match(/<strong>IPv4:\s*<\/strong>\s*([^<]+)/i);
-        var ip = ipMatch ? ipMatch[1].trim() : 'Automático / DHCP';
+        var ip = ipMatch ? ipMatch[1].trim() : 'DHCP';
 
         var macMatch = descHTML.match(/<strong>MAC:\s*<\/strong>\s*([0-9a-f:]{17})/i);
         var mac = macMatch ? macMatch[1].toUpperCase() : '';
 
         var devBox = r.querySelector('.ifacebox-body small');
-        var device = devBox ? devBox.textContent.trim() : (sid === 'lan' ? 'br-lan' : 'eth0.2');
+        var device = devBox ? devBox.textContent.trim() : (sid === 'lan' ? 'br-lan' : 'wan');
 
         var rxMatch = descHTML.match(/<strong>RX:\s*<\/strong>\s*([^<]+)/i);
         var txMatch = descHTML.match(/<strong>TX:\s*<\/strong>\s*([^<]+)/i);
         var rx = rxMatch ? rxMatch[1].trim().replace(/\([^\)]+\)/, '').trim() : '0 B';
         var tx = txMatch ? txMatch[1].trim().replace(/\([^\)]+\)/, '').trim() : '0 B';
 
-        var upMatch = descHTML.match(/<strong>(?:Tempo de atividade|Uptime):\s*<\/strong>\s*([^<]+)/i);
+        var upMatch = descHTML.match(/<strong>(?:Tempo de atividade|Uptime|Tiempo de actividad):\s*<\/strong>\s*([^<]+)/i);
         var uptime = upMatch ? upMatch[1].trim() : 'Ativo';
 
-        // Extract member devices cleanly from tooltip containers
+        // Extract member devices cleanly from tooltip containers (multilingual PT/EN/ES)
         var ifaceBody = r.querySelector('.ifacebox-body');
         var memberBadgesHTML = '';
         if (ifaceBody) {
           var ttList = ifaceBody.querySelectorAll('.cbi-tooltip-container');
           ttList.forEach(function(tt) {
             var th = tt.innerHTML;
-            var tm = th.match(/<strong>Tipo:\s*<\/strong>\s*([^<]+)/i);
-            var dm = th.match(/<strong>Dispositivo:\s*<\/strong>\s*([^<]+)/i);
-            var cm = th.match(/<strong>Conectado:\s*<\/strong>\s*([^<]+)/i);
+            var tm = th.match(/<strong>(?:Tipo|Type):\s*<\/strong>\s*([^<]+)/i);
+            var dm = th.match(/<strong>(?:Dispositivo|Device):\s*<\/strong>\s*([^<]+)/i);
+            var cm = th.match(/<strong>(?:Conectado|Connected):\s*<\/strong>\s*([^<]+)/i);
             var mm = th.match(/<strong>MAC:\s*<\/strong>\s*([0-9a-f:]{17})/i);
 
             var devName = dm ? dm[1].trim() : '';
             var devType = tm ? tm[1].trim() : '';
-            var isConnected = cm ? (cm[1].trim().toLowerCase() === 'sim') : false;
+            var isConnected = cm ? /^(sim|yes|s[íi])$/i.test(cm[1].trim()) : false;
             var subMac = mm ? mm[1].trim() : '';
 
             if (devName) {
@@ -2941,7 +2964,7 @@
               } else if (devName.indexOf('eth0.2') !== -1) {
                 devIcon = '🌐';
                 friendlyName = 'Porta WAN (Internet)';
-              } else if (devType.toLowerCase().indexOf('ponte') !== -1) {
+              } else if (/ponte|bridge|puente/i.test(devType)) {
                 devIcon = '🌉';
                 friendlyName = 'Ponte de Rede (' + devName + ')';
               }
@@ -2950,21 +2973,21 @@
               var dotText = isConnected ? '● Conectado' : '○ Standby';
               var badgeActive = isConnected ? 'active' : '';
 
-              memberBadgesHTML += '' + '<span class="ark-member-badge ' + badgeActive + '" title="' + devName + ' (' + devType + ')' + (subMac ? ' - MAC: ' + subMac : '') + '">' + '<span class="icon">' + devIcon + '</span>' + '<span class="name"><strong>' + friendlyName + '</strong></span>' + '<span class="dot ' + dotClass + '">' + dotText + '</span>' + '</span>';
+              memberBadgesHTML += '' + '<span class="ark-member-badge ' + badgeActive + '" title="' + escHtml(devName + ' (' + devType + ')' + (subMac ? ' - MAC: ' + subMac : '')) + '">' + '<span class="icon">' + devIcon + '</span>' + '<span class="name"><strong>' + escHtml(friendlyName) + '</strong></span>' + '<span class="dot ' + dotClass + '">' + dotText + '</span>' + '</span>';
             }
           });
         }
 
-        // If no subdevices extracted, provide default chip
+        // If no subdevices extracted, provide default chip using actual device name
         if (!memberBadgesHTML) {
           var defIcon = (sid.indexOf('wan') !== -1) ? '🌐' : '🔌';
-          var defLabel = (sid.indexOf('wan') !== -1) ? 'Porta WAN Física (eth0.2)' : 'Porta LAN Física (eth0.1)';
-          memberBadgesHTML = '' + '<span class="ark-member-badge active">' + '<span class="icon">' + defIcon + '</span>' + '<span class="name"><strong>' + defLabel + '</strong></span>' + '<span class="dot online">● Conectado</span>' + '</span>';
+          var defLabel = (sid.indexOf('wan') !== -1) ? ('Porta WAN (' + device + ')') : ('Porta LAN (' + device + ')');
+          memberBadgesHTML = '' + '<span class="ark-member-badge active">' + '<span class="icon">' + defIcon + '</span>' + '<span class="name"><strong>' + escHtml(defLabel) + '</strong></span>' + '<span class="dot online">● Conectado</span>' + '</span>';
         }
 
         var card = document.createElement('div');
-        card.className = 'ark-iface-card ' + cardClass;
-        card.innerHTML = '' + '<div class="ark-iface-head">' + '<div class="ark-iface-name"><span>' + icon + '</span> ' + name + '</div>' + '<div class="ark-iface-chips">' + '<span class="ark-chip online" style="font-size:11px;">🟢 ' + uptime + '</span>' + '<span class="ark-chip proto">🏷️ ' + proto + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-stats">' + '<div class="ark-iface-stat-tile">' + '<span class="label">Endereço IPv4:</span>' + '<span class="val" style="color:#60a5fa;font-size:14px;">' + ip + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Dispositivo Principal / MAC:</span>' + '<span class="val">' + device + (mac ? ' <span style="font-size:10px;color:var(--ark-text-dim);">(' + mac + ')</span>' : '') + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Download Total (RX):</span>' + '<span class="val" style="color:#34d399;">⬇️ ' + rx + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Upload Total (TX):</span>' + '<span class="val" style="color:#a78bfa;">⬆️ ' + tx + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-members">' + '<div class="ark-iface-members-title">Portas e Dispositivos Físicos Vinculados:</div>' + '<div class="ark-iface-member-list">' + memberBadgesHTML + '</div>' + '</div>' + '<div class="ark-iface-actions"></div>';
+        card.className = 'ark-iface-card ' + escHtml(cardClass);
+        card.innerHTML = '' + '<div class="ark-iface-head">' + '<div class="ark-iface-name"><span>' + icon + '</span> ' + escHtml(name) + '</div>' + '<div class="ark-iface-chips">' + '<span class="ark-chip online" style="font-size:11px;">🟢 ' + escHtml(uptime) + '</span>' + '<span class="ark-chip proto">🏷️ ' + escHtml(proto) + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-stats">' + '<div class="ark-iface-stat-tile">' + '<span class="label">Endereço IPv4:</span>' + '<span class="val" style="color:#60a5fa;font-size:14px;">' + escHtml(ip) + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Dispositivo Principal / MAC:</span>' + '<span class="val">' + escHtml(device) + (mac ? ' <span style="font-size:10px;color:var(--ark-text-dim);">(' + escHtml(mac) + ')</span>' : '') + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Download Total (RX):</span>' + '<span class="val" style="color:#34d399;">⬇️ ' + escHtml(rx) + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Upload Total (TX):</span>' + '<span class="val" style="color:#a78bfa;">⬆️ ' + escHtml(tx) + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-members">' + '<div class="ark-iface-members-title">Portas e Dispositivos Físicos Vinculados:</div>' + '<div class="ark-iface-member-list">' + memberBadgesHTML + '</div>' + '</div>' + '<div class="ark-iface-actions"></div>';
 
         var actWrap = card.querySelector('.ark-iface-actions');
         var actions = r.querySelector('.cbi-section-actions');
@@ -3326,7 +3349,7 @@
             indClass += ' breathing speed-' + activeSpeed;
           }
 
-          card.innerHTML = '' + '<div class="ark-led-header">' + '<span class="' + indClass + '" id="ind-' + domId + '"></span>' + '<div>' + '<div class="ark-led-title">' + l.name + '</div>' + '<div class="ark-led-sub">' + l.sub + '</div>' + '</div>' + '</div>' + '<div style="font-size:12px;color:var(--ark-text-muted);">' + 'Gatilho ativo: <code style="color:var(--ark-text);">' + (activeEffect === 'rainbow' ? 'arco-íris' : (l.trigger || 'padrão')) + '</code>' + '</div>';
+          card.innerHTML = '' + '<div class="ark-led-header">' + '<span class="' + escHtml(indClass) + '" id="ind-' + domId + '"></span>' + '<div>' + '<div class="ark-led-title">' + escHtml(l.name) + '</div>' + '<div class="ark-led-sub">' + escHtml(l.sub) + '</div>' + '</div>' + '</div>' + '<div style="font-size:12px;color:var(--ark-text-muted);">' + 'Gatilho ativo: <code style="color:var(--ark-text);">' + escHtml(activeEffect === 'rainbow' ? 'arco-íris' : (l.trigger || 'padrão')) + '</code>' + '</div>';
 
           grid.appendChild(card);
 
@@ -3406,7 +3429,7 @@
             }
             updateIndicators(presetName);
             if (callExec) {
-              callExec('/usr/sbin/equipe-dashboard-control', ['get-led-hardware-info']).then(function(res) {
+              callExec('/usr/libexec/ark-theme-ro', ['get-led-hardware-info']).then(function(res) {
                 try {
                   var data = JSON.parse(res.stdout || '{}');
                   if (data && data.leds) renderHardwareCards(data);
@@ -3431,7 +3454,7 @@
       });
 
       if (callExec) {
-        callExec('/usr/sbin/equipe-dashboard-control', ['get-led-hardware-info']).then(function(res) {
+        callExec('/usr/libexec/ark-theme-ro', ['get-led-hardware-info']).then(function(res) {
           try {
             var data = JSON.parse(res.stdout || '{}');
             if (data && data.leds) {
@@ -3501,18 +3524,23 @@
         timeout = setTimeout(function() {
           isMutatingSelf = true;
           try {
-            self.cleanupButtons();
-            self.enhancePasswordFields();
-            self.enhanceTablesAndLogs();
-            self.enhanceTabs();
-            self.enhanceSafetyModals();
-            self.enhanceModals();
-            self.enhanceInterfaceBadges();
-            self.enhanceNetlinkCharts();
-            self.injectFeatureGuides();
-            self.translateRemainingUI();
-            self.hideRedundantOverviewSections();
-            self.applyPageTransforms();
+            if (window.location && window.location.pathname.indexOf('/equipe-dashboard') !== -1) {
+              self.enhanceModals();
+              self.enhancePasswordFields();
+            } else {
+              self.cleanupButtons();
+              self.enhancePasswordFields();
+              self.enhanceTablesAndLogs();
+              self.enhanceTabs();
+              self.enhanceSafetyModals();
+              self.enhanceModals();
+              self.enhanceInterfaceBadges();
+              self.enhanceNetlinkCharts();
+              self.injectFeatureGuides();
+              self.translateRemainingUI();
+              self.hideRedundantOverviewSections();
+              self.applyPageTransforms();
+            }
           } finally {
             setTimeout(function() { isMutatingSelf = false; }, 50);
           }

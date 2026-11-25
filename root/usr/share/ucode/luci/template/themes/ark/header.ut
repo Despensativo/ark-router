@@ -7,7 +7,7 @@
 	import { getuid, getspnam } from 'luci.core';
 	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
-	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '2.2.16');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '2.2.17');
 	const ov_mt = fs.stat('/www/luci-static/resources/view/equipe-dashboard/overview.js')?.mtime ?? 0;
 	const th_mt = fs.stat('/www/luci-static/ark/ark-theme.js')?.mtime ?? 0;
 	const ark_rev = `${ark_v}-${ov_mt}-${th_mt}`;
@@ -19,7 +19,7 @@
 	<head>
 		<meta charset="utf-8">
 		<title>{{ striptags(`${boardinfo.hostname ?? 'ARK Router'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`) }}</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 		<meta name="theme-color" content="#0f172a">
 		<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 		<meta http-equiv="Pragma" content="no-cache">

@@ -19,8 +19,8 @@ jobs:
   pr_agent_job:
     if: >-
       ${{ github.event.sender.type != 'Bot' && (
-        github.event_name == 'pull_request' ||
-        (github.event.issue.pull_request && (
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event.issue.pull_request && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) && (
           startsWith(github.event.comment.body, '/review') ||
           startsWith(github.event.comment.body, '/describe') ||
           startsWith(github.event.comment.body, '/improve') ||
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Run PR-Agent with Gemini
         if: ${{ secrets.GEMINI_API_KEY != '' }}
-        uses: qodo-ai/pr-agent@main
+        uses: qodo-ai/pr-agent@eb4cdbb115dfb711375a24eccc75e3ef73ec03bc # v0.30
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Run PR-Agent with OpenAI
         if: ${{ secrets.GEMINI_API_KEY == '' && secrets.OPENAI_API_KEY != '' }}
-        uses: qodo-ai/pr-agent@main
+        uses: qodo-ai/pr-agent@eb4cdbb115dfb711375a24eccc75e3ef73ec03bc # v0.30
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI.KEY: ${{ secrets.OPENAI_API_KEY }}

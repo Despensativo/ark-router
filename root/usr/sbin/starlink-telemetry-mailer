@@ -43,8 +43,19 @@ ensure_msmtprc() {
 		tls_trust="tls_trust_file /etc/ssl/certs/ca-certificates.crt"
 	fi
 
+	case "$server$port$from$user$pass" in
+		*"$(printf '\r')"*|*'
+'*)
+			log "Erro de seguranca: quebra de linha detectada nos parametros SMTP."
+			return 1
+			;;
+	esac
+
 	mkdir -p /etc
-	cat > /etc/msmtprc <<EOF
+	rm -f /etc/msmtprc 2>/dev/null || true
+	(
+		umask 077
+		cat > /etc/msmtprc <<EOF
 defaults
 auth on
 tls $([ "$tls" = "1" ] && echo "on" || echo "off")
@@ -59,6 +70,7 @@ from $from
 user $user
 password $pass
 EOF
+	)
 	chmod 600 /etc/msmtprc
 	return 0
 }
@@ -458,8 +470,10 @@ EOF
 --$boundary--
 EOF
 
+	case "$email_to" in -*|*[[:space:]]*|*'
+'*) log "Destino email_to invalido bloqueado."; rm -f "$TMP_REPORT" "$TMP_HTML" "$TMP_ATTACH"; return 1 ;; esac
 	log "Disparando e-mail via SMTP para $email_to..."
-	if msmtp --timeout=20 -a default "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
+	if msmtp --timeout=20 -a default -- "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
 		log "Relatório executivo enviado com sucesso para $email_to!"
 		date +%s > "$LAST_EPOCH_FILE"
 		rm -f "$TMP_REPORT" "$TMP_HTML" "$TMP_ATTACH" /tmp/msmtp_err

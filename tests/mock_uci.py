@@ -94,6 +94,11 @@ class UciFile:
         _UCI_FILE_CACHE[self.filepath] = (st.st_mtime_ns, st.st_size, _clone_sections(self.sections))
 
     def save(self):
+        anon_counts = {}
+        for s in self.sections:
+            idx = anon_counts.get(s.stype, 0)
+            anon_counts[s.stype] = idx + 1
+            s.anonymous_idx = idx
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
         with open(self.filepath, "w", encoding="utf-8") as f:
             for s in self.sections:

@@ -92,8 +92,15 @@ starlink_wan_table() {
 starlink_setup_policy_routing() {
 	local nft_file tmp_nft prerouting_rules mangle_pre_rules output_nat_rules mangle_out_rules network_section status_json device gateway port table
 	local mark rule_prio
-	sysctl -w net.ipv4.conf.all.route_localnet=1 >/dev/null 2>&1 || true
-	sysctl -w net.ipv4.conf.default.route_localnet=1 >/dev/null 2>&1 || true
+	# P2-NET-05: Never enable route_localnet globally on WANs (CVE-2020-8558); scope strictly to LAN bridge and loopback.
+	sysctl -w net.ipv4.conf.all.route_localnet=0 >/dev/null 2>&1 || true
+	sysctl -w net.ipv4.conf.default.route_localnet=0 >/dev/null 2>&1 || true
+	sysctl -w net.ipv4.conf.lo.route_localnet=1 >/dev/null 2>&1 || true
+	sysctl -w net.ipv4.conf.br-lan.route_localnet=1 >/dev/null 2>&1 || true
+
+	if ! is_fw4; then
+		return 0
+	fi
 
 	mkdir -p /etc/ark
 	nft_file="/etc/ark/ark_starlink.nft"
@@ -130,8 +137,8 @@ starlink_setup_policy_routing() {
 			ip rule add fwmark "$mark" lookup "$table" priority "$rule_prio" 2>/dev/null || true
 		fi
 
-		prerouting_rules="${prerouting_rules}\t\tiifname { \"lo\", \"br-*\", \"lan*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter dnat ip to 192.168.100.1:9200\n"
-		mangle_pre_rules="${mangle_pre_rules}\t\tiifname { \"lo\", \"br-*\", \"lan*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter meta mark set $mark\n"
+		prerouting_rules="${prerouting_rules}\t\tiifname { \"lo\", \"br-*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter dnat ip to 192.168.100.1:9200\n"
+		mangle_pre_rules="${mangle_pre_rules}\t\tiifname { \"lo\", \"br-*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter meta mark set $mark\n"
 		output_nat_rules="${output_nat_rules}\t\tip daddr 127.0.0.1 tcp dport $port counter dnat ip to 192.168.100.1:9200\n"
 		mangle_out_rules="${mangle_out_rules}\t\tip daddr 127.0.0.1 tcp dport $port counter meta mark set $mark\n"
 	done
@@ -299,33 +306,68 @@ handle_starlink() {
 		;;
 	starlink-telemetry-config-set)
 		shift
-		touch /etc/config/starlink_telemetry 2>/dev/null || true
+		( umask 077; touch /etc/config/starlink_telemetry 2>/dev/null || true )
+		chmod 600 /etc/config/starlink_telemetry 2>/dev/null || true
 		uci -q set starlink_telemetry.global=starlink_telemetry
 		uci -q set starlink_telemetry.email=email
 		old_enabled="$(uci -q get starlink_telemetry.global.enabled || printf 0)"
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
+			valid_plain "$value" 256 || { echo "Valor invalido (caracteres de controle bloqueados) para $key" >&2; exit 2; }
 			case "$key" in
-				always_show) uci -q set "starlink_telemetry.global.always_show=$value" ;;
-				enabled) uci -q set "starlink_telemetry.global.enabled=$value" ;;
-				sample_mode) uci -q set "starlink_telemetry.global.sample_mode=$value" ;;
-				max_history_hours) uci -q set "starlink_telemetry.global.max_history_hours=$value" ;;
-				purge_boot_email) uci -q set "starlink_telemetry.global.purge_boot_email=$value" ;;
-				email_enabled) uci -q set "starlink_telemetry.email.enabled=$value" ;;
-				provider) uci -q set "starlink_telemetry.email.provider=$value" ;;
-				resend_api_key) uci -q set "starlink_telemetry.email.resend_api_key=$value" ;;
-				email_to) uci -q set "starlink_telemetry.email.email_to=$value" ;;
-				email_from) uci -q set "starlink_telemetry.email.email_from=$value" ;;
-				attach_csv) uci -q set "starlink_telemetry.email.attach_csv=$value" ;;
-				smtp_server) uci -q set "starlink_telemetry.email.smtp_server=$value" ;;
-				smtp_port) uci -q set "starlink_telemetry.email.smtp_port=$value" ;;
-				smtp_tls) uci -q set "starlink_telemetry.email.smtp_tls=$value" ;;
-				smtp_user) uci -q set "starlink_telemetry.email.smtp_user=$value" ;;
-				smtp_pass) uci -q set "starlink_telemetry.email.smtp_pass=$value" ;;
-				email_interval) uci -q set "starlink_telemetry.email.email_interval=$value" ;;
+				always_show)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.global.always_show=$value" ;; esac ;;
+				enabled)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.global.enabled=$value" ;; esac ;;
+				sample_mode)
+					printf '%s' "$value" | grep -Eq '^[a-zA-Z0-9_-]{1,24}$' && uci -q set "starlink_telemetry.global.sample_mode=$value" ;;
+				max_history_hours)
+					valid_uint_range "$value" 1 720 && uci -q set "starlink_telemetry.global.max_history_hours=$value" ;;
+				purge_boot_email)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.global.purge_boot_email=$value" ;; esac ;;
+				email_enabled)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.email.enabled=$value" ;; esac ;;
+				provider)
+					case "$value" in smtp|resend) uci -q set "starlink_telemetry.email.provider=$value" ;; esac ;;
+				resend_api_key)
+					case "$value" in *[[:space:]]*) exit 2 ;; esac
+					uci -q set "starlink_telemetry.email.resend_api_key=$value" ;;
+				email_to)
+					if [ -n "$value" ]; then
+						case "$value" in -*|*[[:space:]]*) echo "email_to invalido" >&2; exit 2 ;; esac
+						printf '%s' "$value" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' || { echo "Formato de email_to invalido" >&2; exit 2; }
+					fi
+					uci -q set "starlink_telemetry.email.email_to=$value" ;;
+				email_from)
+					if [ -n "$value" ]; then
+						case "$value" in -*) echo "email_from invalido" >&2; exit 2 ;; esac
+					fi
+					uci -q set "starlink_telemetry.email.email_from=$value" ;;
+				attach_csv)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.email.attach_csv=$value" ;; esac ;;
+				smtp_server)
+					if [ -n "$value" ]; then
+						printf '%s' "$value" | grep -Eq '^[A-Za-z0-9.-]{1,253}$' || { echo "Servidor SMTP invalido" >&2; exit 2; }
+					fi
+					uci -q set "starlink_telemetry.email.smtp_server=$value" ;;
+				smtp_port)
+					if [ -n "$value" ]; then
+						valid_uint_range "$value" 1 65535 || { echo "Porta SMTP invalida" >&2; exit 2; }
+					fi
+					uci -q set "starlink_telemetry.email.smtp_port=$value" ;;
+				smtp_tls)
+					case "$value" in 0|1) uci -q set "starlink_telemetry.email.smtp_tls=$value" ;; esac ;;
+				smtp_user)
+					case "$value" in *[[:space:]]*) echo "smtp_user nao pode conter espacos" >&2; exit 2 ;; esac
+					uci -q set "starlink_telemetry.email.smtp_user=$value" ;;
+				smtp_pass)
+					uci -q set "starlink_telemetry.email.smtp_pass=$value" ;;
+				email_interval)
+					valid_uint_range "$value" 1 10080 && uci -q set "starlink_telemetry.email.email_interval=$value" ;;
 			esac
 		done
 		uci commit starlink_telemetry
+		chmod 600 /etc/config/starlink_telemetry 2>/dev/null || true
 		rm -f /tmp/ark-features.cache 2>/dev/null || true
 		new_enabled="$(uci -q get starlink_telemetry.global.enabled || printf 0)"
 		if [ "$new_enabled" = "1" ]; then

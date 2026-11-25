@@ -152,9 +152,10 @@ class TestSuperManualP0Fixes(unittest.TestCase):
 
     def test_08_device_limits_offload_snapshot_restore_and_doctor_guard(self):
         self.spy("nft", "exit 0")
-        # Desativa SQM padrao do sandbox para validar restauracao de Flow Offloading
+        # Desativa SQM e 2a WAN (mwan3) padrao do sandbox para validar restauracao Single-WAN de Flow Offloading
         self.sb.uci_set("sqm.wan1.enabled=0")
         self.sb.uci_set("sqm.wan2.enabled=0")
+        self.sb.uci_set("mwan3.wan2.enabled=0")
         self.sb.uci_set("firewall.@defaults[0].flow_offloading=1")
         self.sb.uci_set("firewall.@defaults[0].flow_offloading_hw=1")
         self.sb.uci_set("equipe_devices.dev1=device")

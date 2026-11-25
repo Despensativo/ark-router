@@ -795,9 +795,11 @@ _ark_dns_probe_single() {
 	# and uses -type=a to skip slow PTR reverse lookups (e.g. IPv6 2001:4860:4860::8888).
 	if [ -z "${ARK_ROOT:-}" ] && command -v ucode >/dev/null 2>&1; then
 		ucode -e '
-			import { popen } from "fs";
+			import { popen, access } from "fs";
 			let dom = ARGV[0], ip = ARGV[1];
-			let cmd = "timeout 2 nslookup -type=a " + dom + " " + ip + " 2>/dev/null";
+			if (!match(dom, /^[A-Za-z0-9.-]+$/) || !match(ip, /^[0-9a-fA-F:.]+$/)) exit(1);
+			let has_to = access("/usr/bin/timeout", "x") || access("/bin/timeout", "x");
+			let cmd = (has_to ? "timeout 2 nslookup -type=a " : "nslookup -type=a -timeout=2 ") + dom + " " + ip + " 2>/dev/null";
 			let t0 = clock(true);
 			let p = popen(cmd, "r");
 			let out = p ? (p.read("all") || "") : "";
@@ -1165,7 +1167,7 @@ system_perf_save() {
 
 	if [ "$speedify_log_cap" = 1 ]; then
 		for logf in /tmp/speedify*.log /var/log/speedify*.log /usr/share/speedify/logs/*.log; do
-			[ -f "$logf" ] && [ "$(stat -c%s "$logf" 2>/dev/null || echo 0)" -gt 2097152 ] && : > "$logf"
+			[ -f "$logf" ] && [ "$(wc -c < "$logf" 2>/dev/null | tr -d ' ' || echo 0)" -gt 2097152 ] && : > "$logf"
 		done
 	fi
 

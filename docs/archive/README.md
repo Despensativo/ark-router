@@ -22,10 +22,12 @@
 | [`REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md`](REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md) | Consolidação de testes de sessão Wi-Fi e multicore pós-`T-083`. | `T-084` |
 | [`OTIMIZACAO_MULTICORE_T083.md`](OTIMIZACAO_MULTICORE_T083.md) | Registro da serialização de jobs (`serialized-job.sh`) e cache quente. | `T-083` |
 | [`DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md`](DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md) | Telemetria óptica GPON da ONT Huawei EG8145X6-10. | `T-075` / `T-076` |
+| [`MANUAL_ACESSO_ONT_HUAWEI_EG8145X6_10.md`](MANUAL_ACESSO_ONT_HUAWEI_EG8145X6_10.md) | Manual de acesso Web (`Epadmin`), Telnet (`Eproot`), Keychain e comandos `WAP>` da ONT Huawei EG8145X6-10 (`192.168.18.1`). | Acesso & Diagnóstico |
 | [`DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md`](DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md) | Correlação de amostras de CPU/CAKE, ICMP e UDP sob carga. | `T-072` |
 | [`DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md`](DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md) | Captura ICMP WAN e análise de eventos ociosos. | `T-073` / `T-074` |
 | [`MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md`](MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md) | Notas de preparação para ponte óptica TP-Link XZ005-G6 2.5GbE. | `T-077` |
 | [`MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md`](MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md) | Manual técnico de acesso Telnet, CLI e Data Model HTTP (/cgi?9) da ONT TP-Link XZ005-G6. | `T-077` |
+| [`MANUAL_ACESSO_E_CONFIGURACAO_ZTE_F6600P.md`](MANUAL_ACESSO_E_CONFIGURACAO_ZTE_F6600P.md) | Manual de acesso web, credenciais e configuração AP Bridge L2 da ONT ZTE ZXHN F6600P (`192.168.73.4`). | Ponto de Acesso L2 |
 | [`TESTE_WAVEFORM_CABO_2026_10_29.md`](TESTE_WAVEFORM_CABO_2026_10_29.md) | Medições comparativas de Bufferbloat Waveform via cabo Ethernet. | `T-071` |
 | [`ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md`](ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md) | Fundamentação RFC/Kernel de TCP BBR, TFO, `tcp_notsent_lowat` e DNS Stale Cache. | `T-066` |
 | [`ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md`](ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md) | Recorte de latência e WED no Filogic 830 / OpenWrt 25.12.5. | `T-064` |

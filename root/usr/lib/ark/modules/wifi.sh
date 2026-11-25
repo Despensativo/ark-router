@@ -1824,10 +1824,28 @@ EOF
 			echo 'disabled'
 		fi
 		;;
+	wifi-mesh-pair-open)
+		pair_tok="$(tr -dc 'A-HJ-NP-Za-km-z2-9' < /dev/urandom 2>/dev/null | head -c 12)"
+		[ "${#pair_tok}" -ge 8 ] || pair_tok="$(hexdump -n 8 -e '8/1 "%02x"' /dev/urandom 2>/dev/null || date +%s)"
+		exp_ts=$(( $(date +%s) + 180 ))
+		rm -f "${ARK_ROOT}/tmp/ark-mesh-pair.token" 2>/dev/null || true
+		( umask 077; printf '%s %s\n' "$pair_tok" "$exp_ts" > "${ARK_ROOT}/tmp/ark-mesh-pair.token" )
+		printf '{"ok":true,"token":"%s","expires_in":180}\n' "$(json_escape "$pair_tok")"
+		;;
 	wifi-mesh-set)
-		state="${2:-0}"; mesh_id="${3:-ark-mesh}"; mesh_key="${4:-arkmeshkey123}"
+		state="${2:-0}"; mesh_id="${3:-ark-mesh}"; mesh_key="${4:-}"
 		radio5="$(wifi_radio_5g)"; [ -n "$radio5" ] || radio5="$(wifi_radio_2g)"; [ -n "$radio5" ] || radio5="radio0"
 		if [ "$state" = "1" ] || [ "$state" = "enable" ]; then
+			valid_ssid "$mesh_id" || { echo 'Mesh ID invalido (1 a 32 caracteres sem controle)' >&2; exit 2; }
+			if [ -z "$mesh_key" ]; then
+				mesh_key="$(uci -q get wireless.extra_mesh_r1.key 2>/dev/null || true)"
+			fi
+			case "$mesh_key" in
+				''|arkmeshkey'123')
+					mesh_key="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
+					;;
+			esac
+			valid_wifi_password "$mesh_key" || { echo 'Chave Mesh WPA3 invalida (8 a 63 caracteres)' >&2; exit 2; }
 			uci -q set wireless.extra_mesh_r1=wifi-iface
 			uci -q set wireless.extra_mesh_r1.device="$radio5"
 			uci -q set wireless.extra_mesh_r1.network='lan'
@@ -1895,7 +1913,7 @@ EOF
 
 		mesh_disabled="$(uci -q get wireless.extra_mesh_r1.disabled || echo '1')"
 		cur_mesh_id="$(uci -q get wireless.extra_mesh_r1.mesh_id || echo 'ark-mesh')"
-		cur_mesh_key="$(uci -q get wireless.extra_mesh_r1.key || echo 'arkmeshkey123')"
+		cur_mesh_key="$(uci -q get wireless.extra_mesh_r1.key 2>/dev/null || true)"
 		cur_chan_5g="$(uci -q get wireless.$r5.channel || echo '')"
 		cur_chan_2g="$(uci -q get wireless.$r2.channel || echo '')"
 		cur_proto="$(uci -q get network.lan.proto || echo 'static')"
@@ -1940,22 +1958,43 @@ EOF
 		;;
 	wifi-mesh-satellite-pull-master)
 		master_ip="${2:-}"
+		pair_token="${3:-}"
 		[ -n "$master_ip" ] || master_ip="$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="via") print $(i+1)}' | head -n 1)"
 		[ -n "$master_ip" ] || master_ip="192.168.1.1"
+		if ! valid_ipv4 "$master_ip" || printf '%s' "$master_ip" | grep -Eq '^127\.'; then
+			printf '{"ok":false,"error":"Endereço IPv4 do Roteador Mestre inválido: %s"}\n' "$(json_escape "$master_ip")"
+			exit 2
+		fi
+		pair_token="$(printf '%s' "$pair_token" | tr -cd 'A-Za-z0-9_-')"
+		[ -n "$pair_token" ] || pair_token="$(uci -q get equipe_dashboard.mesh.cluster_token 2>/dev/null | tr -cd 'A-Za-z0-9_-' || true)"
 
 		res=""
 		if command -v uclient-fetch >/dev/null 2>&1; then
-			res="$(uclient-fetch -q -T 2 -O - "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			if [ -n "$pair_token" ]; then
+				res="$(uclient-fetch -q -T 2 -H "X-Ark-Mesh-Token: ${pair_token}" -O - "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			else
+				res="$(uclient-fetch -q -T 2 -O - "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			fi
 		elif command -v wget >/dev/null 2>&1; then
-			res="$(wget -qO- -T 2 "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			if [ -n "$pair_token" ]; then
+				res="$(wget -qO- -T 2 --header="X-Ark-Mesh-Token: ${pair_token}" "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			else
+				res="$(wget -qO- -T 2 "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			fi
 		elif command -v curl >/dev/null 2>&1; then
-			res="$(curl -s -m 2 "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			if [ -n "$pair_token" ]; then
+				res="$(curl -s -m 2 -H "X-Ark-Mesh-Token: ${pair_token}" "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			else
+				res="$(curl -s -m 2 "http://${master_ip}/cgi-bin/ark-mesh-export" 2>/dev/null || true)"
+			fi
 		fi
 
-		if echo "$res" | grep -q '"ok":true'; then
+		if printf '%s' "$res" | grep -q '"ok":true'; then
+			printf '%s\n' "$res"
+		elif printf '%s' "$res" | grep -q '"Pareamento bloqueado'; then
 			printf '%s\n' "$res"
 		else
-			printf '{"ok":false,"error":"Roteador Mestre em %s não respondeu ao pedido de sincronização"}\n' "$master_ip"
+			printf '{"ok":false,"error":"Roteador Mestre em %s não respondeu ou recusou o código de pareamento"}\n' "$(json_escape "$master_ip")"
 		fi
 		;;
 	wifi-mesh-satellite-apply)
@@ -1964,7 +2003,7 @@ EOF
 		sat_ip="${4:-192.168.1.2}"
 		enable_wireless_mesh="${5:-0}"
 		mesh_id="${6:-ark-mesh}"
-		mesh_key="${7:-arkmeshkey123}"
+		mesh_key="${7:-}"
 		ssid_2g="${8:-}"
 		key_2g="${9:-}"
 		ssid_5g="${10:-}"

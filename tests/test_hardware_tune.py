@@ -34,6 +34,7 @@ class TestHardwareTune(unittest.TestCase):
         """Verifica se system-hardware-auto-tune executa com sucesso e aplica regras no firewall e sysctl"""
         self.sb.uci_set("sqm.wan1.enabled=0")
         self.sb.uci_set("sqm.wan2.enabled=0")
+        self.sb.uci_set("mwan3.wan2.enabled=0")
         res = self.sb.run_control("system-hardware-auto-tune")
         self.assertEqual(res.returncode, 0, f"Falha ao executar system-hardware-auto-tune: {res.stderr}")
         data = json.loads(res.stdout)

@@ -104,7 +104,69 @@ is_authorized() {
 	client_is_lan_subnet
 }
 
-if ! is_authorized; then
+is_valid_host_header() {
+	local h="${HTTP_HOST:-}"
+	[ -z "$h" ] && return 0
+	case "$h" in
+		\[*\]:*) h="${h#\[}"; h="${h%\]:*}" ;;
+		\[*\])   h="${h#\[}"; h="${h%\]}" ;;
+		*:*)
+			case "$h" in
+				*:*:*) ;;
+				*) h="${h%:*}" ;;
+			esac
+			;;
+	esac
+	case "$h" in
+		127.0.0.1|::1) return 0 ;;
+		*[!0-9a-fA-F:.-]*) return 1 ;;
+	esac
+	printf '%s\n' "$h" | awk -F. 'NF == 4 { for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i < 0 || $i > 255) exit 1; exit 0 } { exit 1 }' && return 0
+	printf '%s' "$h" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$' && return 0
+	return 1
+}
+
+extract_pair_token() {
+	local tok="${HTTP_X_ARK_MESH_TOKEN:-}" kv
+	if [ -z "$tok" ] && [ -n "${HTTP_AUTHORIZATION:-}" ]; then
+		case "$HTTP_AUTHORIZATION" in
+			Bearer\ *) tok="${HTTP_AUTHORIZATION#Bearer }" ;;
+		esac
+	fi
+	if [ -z "$tok" ] && [ -n "${QUERY_STRING:-}" ]; then
+		for kv in $(printf '%s' "$QUERY_STRING" | tr '&' ' '); do
+			case "$kv" in
+				token=*) tok="${kv#token=}"; break ;;
+			esac
+		done
+	fi
+	printf '%s' "$tok" | tr -cd 'A-Za-z0-9_-'
+}
+
+has_valid_pair_token() {
+	local client_tok pair_file saved_tok saved_exp now cluster_tok
+	client_tok="$(extract_pair_token)"
+	[ -n "$client_tok" ] && [ "${#client_tok}" -ge 8 ] || return 1
+
+	pair_file="${ARK_MESH_PAIR_FILE:-/tmp/ark-mesh-pair.token}"
+	if [ -f "$pair_file" ] && [ ! -L "$pair_file" ]; then
+		saved_tok="$(awk 'NR==1 {print $1}' "$pair_file" 2>/dev/null || true)"
+		saved_exp="$(awk 'NR==1 {print $2}' "$pair_file" 2>/dev/null || echo 0)"
+		now="$(date +%s 2>/dev/null || echo 0)"
+		case "$saved_exp" in ''|*[!0-9]*) saved_exp=0 ;; esac
+		if [ -n "$saved_tok" ] && [ "$now" -le "$saved_exp" ] && [ "$client_tok" = "$saved_tok" ]; then
+			return 0
+		fi
+	fi
+
+	cluster_tok="$(uci -q get equipe_dashboard.mesh.cluster_token 2>/dev/null || true)"
+	if [ -n "$cluster_tok" ] && [ "${#cluster_tok}" -ge 12 ] && [ "$client_tok" = "$cluster_tok" ]; then
+		return 0
+	fi
+	return 1
+}
+
+if ! is_valid_host_header || ! is_authorized; then
 	printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"ok":false,"error":"Access restricted to local LAN/Mesh peers"}\n'
 	exit 0
 fi
@@ -115,8 +177,22 @@ if [ "${QUERY_STRING:-}" = "leases" ] || [ "${QUERY_STRING:-}" = "action=leases"
 	exit 0
 fi
 
+if ! has_valid_pair_token; then
+	printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"ok":false,"error":"Pareamento bloqueado: gere um codigo de pareamento temporario no Roteador Mestre antes de importar credenciais Wi-Fi/Mesh."}\n'
+	exit 0
+fi
+
 json_escape() {
-	printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g'
+	printf '%s' "$1" | awk '
+		BEGIN { ORS="" }
+		{
+			gsub(/\\/, "\\\\")
+			gsub(/"/, "\\\"")
+			gsub(/\r/, "\\r")
+			gsub(/\t/, "\\t")
+			if (NR > 1) printf "\\n"
+			printf "%s", $0
+		}'
 }
 
 # Identify radios

@@ -801,7 +801,7 @@ const systemMethods = {
 			percentLabel.style.color = '#34d399';
 			progressBar.style.width = '100%';
 			progressBar.className = 'ex-install-progress-fill done';
-			actionText.innerHTML = '<span>✅</span> <span>' + (msg || successMsg) + '</span>';
+			actionText.replaceChildren(E('span', {}, ['✅']), ' ', E('span', {}, [msg || successMsg]));
 			updateTerminalLog();
 
 			let countdown = 3;
@@ -830,7 +830,7 @@ const systemMethods = {
 			stepBadge.textContent = 'Erro';
 			stepBadge.className = 'ex-install-step-badge error';
 			progressBar.className = 'ex-install-progress-fill error';
-			actionText.innerHTML = '<span>❌</span> <span style="color:#f87171;">' + (errMsg || 'Falha na instalação dos pacotes.') + '</span>';
+			actionText.replaceChildren(E('span', {}, ['❌']), ' ', E('span', { style: 'color:#f87171;' }, [errMsg || 'Falha na instalação dos pacotes.']));
 			updateTerminalLog();
 
 			actionBtn.disabled = false;

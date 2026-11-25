@@ -448,8 +448,6 @@ wireguard_firewall_setup() {
 		uci -q set "firewall.$zg.masq6=1"
 		uci -q set "firewall.$zg.mtu_fix=1"
 		uci -q add_list "firewall.$zg.network=wg0"
-		uci -q add_list "firewall.$zg.network=wgclient"
-		uci -q set "firewall.$zg.device=wg+"
 		changed=1
 	else
 		nets="$(uci -q get "firewall.$zg.network" || true)"
@@ -461,14 +459,13 @@ wireguard_firewall_setup() {
 				;;
 		esac
 		case " $nets " in
-			*" wgclient "*) ;;
-			*)
-				uci -q add_list "firewall.$zg.network=wgclient"
+			*" wgclient "*)
+				uci -q del_list "firewall.$zg.network=wgclient" 2>/dev/null || true
 				changed=1
 				;;
 		esac
-		if [ "$(uci -q get "firewall.$zg.device")" != "wg+" ]; then
-			uci -q set "firewall.$zg.device=wg+"
+		if [ -n "$(uci -q get "firewall.$zg.device" 2>/dev/null || true)" ]; then
+			uci -q delete "firewall.$zg.device" 2>/dev/null || true
 			changed=1
 		fi
 		if [ "$(uci -q get "firewall.$zg.masq")" != "1" ]; then
@@ -598,20 +595,171 @@ wireguard_firewall_setup() {
 	fi
 }
 
+wireguard_client_detect_admin_ports() {
+	local ports="" ssh_p tok p seen=""
+	ssh_p="$(uci -q get dropbear.@dropbear[0].Port 2>/dev/null | awk '{print $1}')"
+	case "$ssh_p" in ''|*[!0-9]*) ssh_p="22" ;; esac
+	ports="$ssh_p"
+	for tok in $(uci -q get uhttpd.main.listen_http 2>/dev/null || echo '0.0.0.0:80') $(uci -q get uhttpd.main.listen_https 2>/dev/null || echo '0.0.0.0:443'); do
+		p="${tok##*:}"
+		case "$p" in ''|*[!0-9]*) continue ;; esac
+		ports="$ports $p"
+	done
+	for p in $ports 22 80 443; do
+		case "$p" in ''|*[!0-9]*) continue ;; esac
+		case " $seen " in
+			*" $p "*) ;;
+			*) seen="${seen:+$seen }$p" ;;
+		esac
+	done
+	printf '%s' "$seen"
+}
+
+wireguard_client_firewall_setup() {
+	local no_reload="${1:-0}"
+	local mode ranges zc sec f r item idx fam admin_ports want_in want_fwd nets
+	mode="$(uci -q get equipe_dashboard.vpn.wgclient_access_mode 2>/dev/null || printf 'admin')"
+	case "$mode" in
+		isolated|admin|ranges|full_lan) ;;
+		*) mode="admin" ;;
+	esac
+	ranges="$(uci -q get equipe_dashboard.vpn.wgclient_allowed_ranges 2>/dev/null || true)"
+	admin_ports="$(wireguard_client_detect_admin_ports)"
+
+	# Remove wgclient de zonas alheias (wireguard server / wan)
+	for sec in $(uci -q show firewall 2>/dev/null | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
+		local zname="$(uci -q get "firewall.$sec.name" 2>/dev/null || true)"
+		if [ "$zname" = "wireguard" ] || [ "$zname" = "wan" ]; then
+			uci -q del_list "firewall.$sec.network=wgclient" 2>/dev/null || true
+			if [ "$zname" = "wireguard" ] && [ -n "$(uci -q get "firewall.$sec.device" 2>/dev/null || true)" ]; then
+				uci -q delete "firewall.$sec.device" 2>/dev/null || true
+			fi
+		fi
+	done
+
+	# Limpa regras e forwardings anteriores de wgclient_vpn (nomeados e legados anonimos) de forma deterministica
+	uci -q delete firewall.wgclient_fwd_out 2>/dev/null || true
+	uci -q delete firewall.wgclient_fwd_lan 2>/dev/null || true
+	uci -q delete firewall.wgclient_admin_tcp 2>/dev/null || true
+	uci -q delete firewall.wgclient_admin_icmp 2>/dev/null || true
+	for r in $(uci -q show firewall 2>/dev/null | grep -E '^firewall\.wgclient_range_[0-9]+=rule$' | cut -d. -f2 | cut -d= -f1); do
+		uci -q delete "firewall.$r" 2>/dev/null || true
+	done
+	while true; do
+		r="$(uci -q show firewall 2>/dev/null | grep -E '\.name=.Allow-WGClient-' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+		[ -n "$r" ] || break
+		uci -q delete "firewall.$r" 2>/dev/null || break
+	done
+	while true; do
+		f=""
+		for sec in $(uci -q show firewall 2>/dev/null | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+			local fsrc="$(uci -q get "firewall.$sec.src" 2>/dev/null || true)"
+			local fdst="$(uci -q get "firewall.$sec.dest" 2>/dev/null || true)"
+			if [ "$fsrc" = "wgclient_vpn" ] || [ "$fdst" = "wgclient_vpn" ]; then
+				f="$sec"
+				break
+			fi
+		done
+		[ -n "$f" ] || break
+		uci -q delete "firewall.$f" 2>/dev/null || break
+	done
+
+	want_in="REJECT"
+	want_fwd="REJECT"
+	if [ "$mode" = "full_lan" ]; then
+		want_in="ACCEPT"
+		want_fwd="ACCEPT"
+	fi
+
+	zc="$(uci -q show firewall 2>/dev/null | grep -E "\\.name='wgclient_vpn'" | head -n1 | cut -d. -f2)"
+	if [ -z "$zc" ]; then
+		zc="wgclient_zone"
+		uci -q set "firewall.$zc=zone"
+	fi
+	uci -q set "firewall.$zc.name=wgclient_vpn"
+	uci -q set "firewall.$zc.input=$want_in"
+	uci -q set "firewall.$zc.output=ACCEPT"
+	uci -q set "firewall.$zc.forward=$want_fwd"
+	uci -q set "firewall.$zc.masq=1"
+	uci -q set "firewall.$zc.masq6=1"
+	uci -q set "firewall.$zc.mtu_fix=1"
+	nets="$(uci -q get "firewall.$zc.network" 2>/dev/null || true)"
+	case " $nets " in
+		*" wgclient "*) ;;
+		*) uci -q add_list "firewall.$zc.network=wgclient" ;;
+	esac
+
+	# Saida da LAN/Roteador pelo tunel wgclient sempre habilitada
+	uci -q set firewall.wgclient_fwd_out=forwarding
+	uci -q set firewall.wgclient_fwd_out.src='lan'
+	uci -q set firewall.wgclient_fwd_out.dest='wgclient_vpn'
+
+	if [ "$mode" = "full_lan" ]; then
+		uci -q set firewall.wgclient_fwd_lan=forwarding
+		uci -q set firewall.wgclient_fwd_lan.src='wgclient_vpn'
+		uci -q set firewall.wgclient_fwd_lan.dest='lan'
+	fi
+
+	if [ "$mode" = "admin" ] || [ "$mode" = "ranges" ] || [ "$mode" = "full_lan" ]; then
+		uci -q set firewall.wgclient_admin_tcp=rule
+		uci -q set firewall.wgclient_admin_tcp.name='Allow-WGClient-Admin-TCP'
+		uci -q set firewall.wgclient_admin_tcp.src='wgclient_vpn'
+		uci -q set firewall.wgclient_admin_tcp.proto='tcp'
+		uci -q set "firewall.wgclient_admin_tcp.dest_port=$admin_ports"
+		uci -q set firewall.wgclient_admin_tcp.target='ACCEPT'
+
+		uci -q set firewall.wgclient_admin_icmp=rule
+		uci -q set firewall.wgclient_admin_icmp.name='Allow-WGClient-Ping'
+		uci -q set firewall.wgclient_admin_icmp.src='wgclient_vpn'
+		uci -q set firewall.wgclient_admin_icmp.proto='icmp'
+		uci -q set firewall.wgclient_admin_icmp.target='ACCEPT'
+	fi
+
+	if [ "$mode" = "ranges" ] && [ -n "$ranges" ]; then
+		idx=0
+		for item in $(printf '%s' "$ranges" | tr ',;' '  '); do
+			[ -n "$item" ] || continue
+			fam=""
+			if valid_cidr4_or_ipv4 "$item"; then
+				fam="ipv4"
+			elif valid_cidr6_or_ipv6 "$item"; then
+				fam="ipv6"
+			else
+				continue
+			fi
+			idx=$((idx + 1))
+			r="wgclient_range_${idx}"
+			uci -q set "firewall.$r=rule"
+			uci -q set "firewall.$r.name=Allow-WGClient-Range-${idx}"
+			uci -q set "firewall.$r.src=wgclient_vpn"
+			uci -q set "firewall.$r.dest=lan"
+			uci -q set "firewall.$r.family=$fam"
+			uci -q set "firewall.$r.proto=all"
+			uci -q set "firewall.$r.dest_ip=$item"
+			uci -q set "firewall.$r.target=ACCEPT"
+		done
+	fi
+
+	uci commit firewall
+	if [ "$no_reload" != "1" ]; then
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	fi
+}
+
 wireguard_firewall_cleanup() {
 	local sec
 	local wg0_enabled=0
 	local wgclient_enabled=0
+	local changed=0
 
 	[ "$(uci -q get network.wg0.disabled)" != "1" ] && [ "$(uci -q get network.wg0.auto)" != "0" ] && [ -n "$(uci -q get network.wg0.proto)" ] && wg0_enabled=1
 	[ "$(uci -q get network.wgclient.disabled)" != "1" ] && [ "$(uci -q get network.wgclient.auto)" != "0" ] && [ -n "$(uci -q get network.wgclient.proto)" ] && wgclient_enabled=1
 
-	if [ "$wg0_enabled" -eq 0 ] && [ "$wgclient_enabled" -eq 0 ]; then
-		local changed=0
+	if [ "$wg0_enabled" -eq 0 ]; then
 		while true; do
 			local r="$(uci -q show firewall 2>/dev/null | grep -E '\.name=.Allow-WireGuard-' | head -n1 | cut -d. -f2 | cut -d= -f1)"
 			[ -n "$r" ] || break
-			uci -q delete "firewall.$r"
+			uci -q delete "firewall.$r" 2>/dev/null || break
 			changed=1
 		done
 		while true; do
@@ -625,7 +773,7 @@ wireguard_firewall_cleanup() {
 				fi
 			done
 			[ -n "$fw_match" ] || break
-			uci -q delete "firewall.$fw_match"
+			uci -q delete "firewall.$fw_match" 2>/dev/null || break
 			changed=1
 		done
 		while true; do
@@ -636,18 +784,66 @@ wireguard_firewall_cleanup() {
 				fi
 			done)"
 			[ -n "$z" ] || break
-			uci -q delete "firewall.$z"
+			uci -q delete "firewall.$z" 2>/dev/null || break
 			changed=1
 		done
+	fi
+
+	if [ "$wgclient_enabled" -eq 0 ]; then
+		for sec in wgclient_fwd_out wgclient_fwd_lan wgclient_admin_tcp wgclient_admin_icmp wgclient_zone; do
+			if uci -q get "firewall.$sec" >/dev/null 2>&1; then
+				uci -q delete "firewall.$sec" 2>/dev/null || true
+				changed=1
+			fi
+		done
+		for sec in $(uci -q show firewall 2>/dev/null | grep -E '^firewall\.wgclient_range_[0-9]+=rule$' | cut -d. -f2 | cut -d= -f1); do
+			uci -q delete "firewall.$sec" 2>/dev/null || true
+			changed=1
+		done
+		while true; do
+			local rc="$(uci -q show firewall 2>/dev/null | grep -E '\.name=.Allow-WGClient-' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+			[ -n "$rc" ] || break
+			uci -q delete "firewall.$rc" 2>/dev/null || break
+			changed=1
+		done
+		while true; do
+			local fwc=""
+			for sec in $(uci -q show firewall 2>/dev/null | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+				local sc="$(uci -q get "firewall.$sec.src")"
+				local dc="$(uci -q get "firewall.$sec.dest")"
+				if [ "$sc" = "wgclient_vpn" ] || [ "$dc" = "wgclient_vpn" ]; then
+					fwc="$sec"
+					break
+				fi
+			done
+			[ -n "$fwc" ] || break
+			uci -q delete "firewall.$fwc" 2>/dev/null || break
+			changed=1
+		done
+		while true; do
+			local zc="$(uci -q show firewall 2>/dev/null | grep -E '=zone$' | cut -d. -f2 | cut -d= -f1 | while read -r zsec; do
+				if [ "$(uci -q get "firewall.$zsec.name")" = "wgclient_vpn" ]; then
+					echo "$zsec"
+					break
+				fi
+			done)"
+			[ -n "$zc" ] || break
+			uci -q delete "firewall.$zc" 2>/dev/null || break
+			changed=1
+		done
+	fi
+
+	if [ "$wg0_enabled" -eq 0 ] && [ "$wgclient_enabled" -eq 0 ]; then
 		if uci -q get mwan3.wireguard_udp >/dev/null 2>&1; then
 			uci -q delete mwan3.wireguard_udp
 			uci commit mwan3 2>/dev/null || true
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 		fi
-		if [ "$changed" -eq 1 ]; then
-			uci commit firewall
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-		fi
+	fi
+
+	if [ "$changed" -eq 1 ]; then
+		uci commit firewall
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	fi
 }
 
@@ -861,7 +1057,8 @@ EOF
 	if [ -d /sys/class/net/wg0 ] && command -v wg >/dev/null 2>&1; then
 		if [ -n "$client_psk" ]; then
 			psk_tmp="/tmp/ark-wg-psk.$$"
-			printf '%s' "$client_psk" > "$psk_tmp"
+			rm -f "$psk_tmp" 2>/dev/null || true
+			( umask 077 && printf '%s' "$client_psk" > "$psk_tmp" )
 			wg set wg0 peer "$client_pub" preshared-key "$psk_tmp" allowed-ips "$client_ip/32" 2>/dev/null || true
 			rm -f "$psk_tmp" 2>/dev/null || true
 		else
@@ -884,6 +1081,9 @@ wireguard_peer_delete() {
 	local target deleted_pk sec pk nm
 	target="$1"
 	[ -n "$target" ] || { echo 'Chave ou nome do peer obrigatorio' >&2; exit 2; }
+	case "$target" in
+		*/*|*..*|*[!A-Za-z0-9_=+.-]*) echo 'Identificador de peer invalido' >&2; exit 2 ;;
+	esac
 
 	deleted_pk=""
 	for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
@@ -892,7 +1092,10 @@ wireguard_peer_delete() {
 		if [ "$pk" = "$target" ] || [ "$nm" = "$target" ] || [ "$sec" = "$target" ]; then
 			deleted_pk="$pk"
 			uci -q delete "network.$sec"
-			[ -n "$nm" ] && rm -f "/etc/wireguard/clients/$nm.conf" 2>/dev/null || true
+			case "$nm" in
+				''|*/*|*..*|*[!A-Za-z0-9_.-]*) ;;
+				*) rm -f "/etc/wireguard/clients/$nm.conf" 2>/dev/null || true ;;
+			esac
 		fi
 	done
 	uci commit network
@@ -909,18 +1112,29 @@ wireguard_peer_qr() {
 	local target cfg_file peer_name sec pk nm conf_txt qr_svg
 	target="$1"
 	[ -n "$target" ] || { echo 'Nome ou chave do peer obrigatorio' >&2; exit 2; }
+	case "$target" in
+		*/*|*..*|*[!A-Za-z0-9_=+.-]*)
+			printf '{"ok":false,"error":"Identificador de peer invalido"}\n'
+			exit 2
+			;;
+	esac
 
 	cfg_file=""
 	peer_name="$target"
-	if [ -f "/etc/wireguard/clients/$target.conf" ]; then
+	if [ -f "/etc/wireguard/clients/$target.conf" ] && [ ! -L "/etc/wireguard/clients/$target.conf" ]; then
 		cfg_file="/etc/wireguard/clients/$target.conf"
 	else
 		for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
 			pk="$(uci -q get "network.$sec.public_key" || true)"
 			nm="$(uci -q get "network.$sec.description" || true)"
 			if [ "$pk" = "$target" ] || [ "$nm" = "$target" ]; then
-				peer_name="$nm"
-				[ -f "/etc/wireguard/clients/$nm.conf" ] && cfg_file="/etc/wireguard/clients/$nm.conf"
+				case "$nm" in
+					''|*/*|*..*|*[!A-Za-z0-9_.-]*) ;;
+					*)
+						peer_name="$nm"
+						[ -f "/etc/wireguard/clients/$nm.conf" ] && [ ! -L "/etc/wireguard/clients/$nm.conf" ] && cfg_file="/etc/wireguard/clients/$nm.conf"
+						;;
+				esac
 				break
 			fi
 		done
@@ -990,17 +1204,76 @@ b64_encode_file() {
 	fi
 }
 
+wireguard_client_validate_ranges() {
+	local raw="$1" item clean=""
+	for item in $(printf '%s' "$raw" | tr ',;' '  '); do
+		[ -n "$item" ] || continue
+		if valid_cidr4_or_ipv4 "$item" || valid_cidr6_or_ipv6 "$item"; then
+			clean="${clean:+$clean, }$item"
+		else
+			echo "IP ou faixa CIDR invalida: $item" >&2
+			return 1
+		fi
+	done
+	printf '%s' "$clean"
+	return 0
+}
+
+wireguard_client_access_set() {
+	local mode="${1:-admin}" raw_ranges="${2:-}" clean_ranges=""
+	case "$mode" in
+		isolated|admin|ranges|full_lan) ;;
+		*) echo "Modo de acesso VPN invalido: $mode" >&2; exit 2 ;;
+	esac
+	if [ "$mode" = "ranges" ]; then
+		clean_ranges="$(wireguard_client_validate_ranges "$raw_ranges")" || exit 2
+		[ -n "$clean_ranges" ] || { echo "Informe pelo menos um IP ou faixa CIDR valida (ex: 192.168.73.10 ou 192.168.73.0/24)" >&2; exit 2; }
+	elif [ -n "$raw_ranges" ]; then
+		clean_ranges="$(wireguard_client_validate_ranges "$raw_ranges")" || exit 2
+	fi
+
+	local cfg_dir="${UCI_CONFIG_DIR:-${ARK_ROOT:-}/etc/config}"
+	mkdir -p "$cfg_dir" 2>/dev/null || true
+	[ -f "$cfg_dir/equipe_dashboard" ] || touch "$cfg_dir/equipe_dashboard" 2>/dev/null || true
+	uci -q set equipe_dashboard.vpn=vpn
+	uci -q set "equipe_dashboard.vpn.wgclient_access_mode=$mode"
+	uci -q set "equipe_dashboard.vpn.wgclient_allowed_ranges=$clean_ranges"
+	uci commit equipe_dashboard
+
+	if [ -n "$(uci -q get network.wgclient.proto 2>/dev/null || true)" ]; then
+		wireguard_client_firewall_setup "0"
+	fi
+	printf '{"ok":true,"access_mode":"%s","allowed_ranges":"%s","admin_ports":"%s"}\n' \
+		"$(json_escape "$mode")" "$(json_escape "$clean_ranges")" "$(json_escape "$(wireguard_client_detect_admin_ports)")"
+}
+
 wireguard_client_import() {
 	local b64 tmp_conf privkey pubkey preshared_key endpoint keepalive mtu opt_mtu ep_host ep_port s a
-	local d sec allowed_count aip z
+	local d sec allowed_count aip z in_mode in_ranges clean_ranges
 	local awg_jc awg_jmin awg_jmax awg_s1 awg_s2 awg_h1 awg_h2 awg_h3 awg_h4 is_awg proto_client
 	b64="$1"
+	in_mode="${2:-}"
+	in_ranges="${3:-}"
 	[ -n "$b64" ] || b64="$(cat)"
 	[ -n "$b64" ] || { echo 'Conteudo da configuracao vazio' >&2; exit 2; }
 
+	if [ -n "$in_mode" ]; then
+		case "$in_mode" in
+			isolated|admin|ranges|full_lan) ;;
+			*) echo "Modo de acesso VPN invalido: $in_mode" >&2; exit 2 ;;
+		esac
+		if [ "$in_mode" = "ranges" ]; then
+			clean_ranges="$(wireguard_client_validate_ranges "$in_ranges")" || exit 2
+			[ -n "$clean_ranges" ] || { echo "Informe pelo menos um IP ou faixa CIDR valida para o modo de faixas especificas" >&2; exit 2; }
+		elif [ -n "$in_ranges" ]; then
+			clean_ranges="$(wireguard_client_validate_ranges "$in_ranges")" || exit 2
+		fi
+	fi
+
 	tmp_conf="/tmp/ark_wg_client.$$.conf"
-	b64_decode_str "$b64" > "$tmp_conf" 2>/dev/null
-	[ -s "$tmp_conf" ] || { echo 'Falha ao decodificar arquivo .conf' >&2; exit 2; }
+	rm -f "$tmp_conf" 2>/dev/null || true
+	( umask 077 && b64_decode_str "$b64" > "$tmp_conf" 2>/dev/null )
+	[ -s "$tmp_conf" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Falha ao decodificar arquivo .conf' >&2; exit 2; }
 
 	clean_lines() {
 		sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$tmp_conf" | grep -v '^[#;]' | tr -d '\r'
@@ -1124,16 +1397,25 @@ wireguard_client_import() {
 		uci -q add_list "network.$sec.allowed_ips=0.0.0.0/0"
 	fi
 
-	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
-		if [ "$(uci -q get "firewall.$z.name")" = "wan" ]; then
-			uci -q del_list "firewall.$z.network=wgclient" 2>/dev/null || true
-		fi
-	done
-	wireguard_firewall_setup "" "1"
+	local cfg_dir="${UCI_CONFIG_DIR:-${ARK_ROOT:-}/etc/config}"
+	mkdir -p "$cfg_dir" 2>/dev/null || true
+	[ -f "$cfg_dir/equipe_dashboard" ] || touch "$cfg_dir/equipe_dashboard" 2>/dev/null || true
+	uci -q set equipe_dashboard.vpn=vpn
+	if [ -n "$in_mode" ]; then
+		uci -q set "equipe_dashboard.vpn.wgclient_access_mode=$in_mode"
+		uci -q set "equipe_dashboard.vpn.wgclient_allowed_ranges=$clean_ranges"
+	elif [ -z "$(uci -q get equipe_dashboard.vpn.wgclient_access_mode 2>/dev/null || true)" ]; then
+		uci -q set equipe_dashboard.vpn.wgclient_access_mode='admin'
+	fi
+	uci commit equipe_dashboard
 
-	mkdir -p /etc/wireguard
-	cp -f "$tmp_conf" /etc/wireguard/wgclient.conf 2>/dev/null
-	chmod 600 /etc/wireguard/wgclient.conf 2>/dev/null
+	wireguard_client_firewall_setup "1"
+
+	local wg_dir="${ARK_ROOT:-}/etc/wireguard"
+	mkdir -p "$wg_dir" 2>/dev/null || true
+	chmod 700 "$wg_dir" 2>/dev/null || true
+	( umask 077 && cp -f "$tmp_conf" "$wg_dir/wgclient.conf" 2>/dev/null )
+	chmod 600 "$wg_dir/wgclient.conf" 2>/dev/null || true
 	rm -f "$tmp_conf" 2>/dev/null
 
 	uci commit network
@@ -1149,9 +1431,17 @@ wireguard_client_import() {
 	) </dev/null >/dev/null 2>&1 &
 }
 
+wireguard_client_conf_get_json() {
+	local conf_b64="" wg_conf="${ARK_ROOT:-}/etc/wireguard/wgclient.conf"
+	if [ -f "$wg_conf" ] && [ ! -L "$wg_conf" ]; then
+		conf_b64="$(b64_encode_file "$wg_conf")"
+	fi
+	printf '{"ok":true,"conf_b64":"%s"}\n' "$conf_b64"
+}
+
 wireguard_client_status_json() {
 	local installed_wg configured active autostart client_ip ep_host ep_port pubkey endpoint hs rx tx
-	local live_ep dump online now diff conf_b64 cur_proto is_awg wg_tool
+	local live_ep dump online now diff has_conf cur_proto is_awg wg_tool access_mode allowed_ranges admin_ports
 	local awg_jc awg_jmin awg_jmax awg_s1 awg_s2 awg_h1 awg_h2 awg_h3 awg_h4
 	installed_wg=false; ([ -x /usr/bin/wg ] || [ -x /usr/bin/awg ] || [ -f /lib/netifd/proto/wireguard.sh ] || [ -f /lib/netifd/proto/amneziawg.sh ]) && installed_wg=true
 	cur_proto="$(uci -q get network.wgclient.proto 2>/dev/null || true)"
@@ -1204,13 +1494,16 @@ wireguard_client_status_json() {
 		[ "$diff" -le 180 ] && online=true
 	fi
 
-	conf_b64=""
-	if [ -f /etc/wireguard/wgclient.conf ]; then
-		conf_b64="$(b64_encode_file /etc/wireguard/wgclient.conf)"
-	fi
+	has_conf=false
+	[ -f "${ARK_ROOT:-}/etc/wireguard/wgclient.conf" ] && has_conf=true
+	access_mode="$(uci -q get equipe_dashboard.vpn.wgclient_access_mode 2>/dev/null || printf 'admin')"
+	case "$access_mode" in isolated|admin|ranges|full_lan) ;; *) access_mode="admin" ;; esac
+	allowed_ranges="$(uci -q get equipe_dashboard.vpn.wgclient_allowed_ranges 2>/dev/null || true)"
+	admin_ports="$(wireguard_client_detect_admin_ports)"
 
-	printf '{"installed":%s,"configured":%s,"active":%s,"autostart":%s,"online":%s,"endpoint":"%s","public_key":"%s","client_ip":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"conf_b64":"%s","proto":"%s","is_amneziawg":%s,"awg_jc":"%s","awg_jmin":"%s","awg_jmax":"%s","awg_s1":"%s","awg_s2":"%s","awg_h1":"%s","awg_h2":"%s","awg_h3":"%s","awg_h4":"%s"}\n' \
-		"$installed_wg" "$configured" "$active" "$autostart" "$online" "$(json_escape "$endpoint")" "$(json_escape "$pubkey")" "$(json_escape "$client_ip")" "$hs" "$rx" "$tx" "$conf_b64" \
+	printf '{"installed":%s,"configured":%s,"active":%s,"autostart":%s,"online":%s,"endpoint":"%s","public_key":"%s","client_ip":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"has_conf":%s,"access_mode":"%s","allowed_ranges":"%s","admin_ports":"%s","proto":"%s","is_amneziawg":%s,"awg_jc":"%s","awg_jmin":"%s","awg_jmax":"%s","awg_s1":"%s","awg_s2":"%s","awg_h1":"%s","awg_h2":"%s","awg_h3":"%s","awg_h4":"%s"}\n' \
+		"$installed_wg" "$configured" "$active" "$autostart" "$online" "$(json_escape "$endpoint")" "$(json_escape "$pubkey")" "$(json_escape "$client_ip")" "$hs" "$rx" "$tx" "$has_conf" \
+		"$(json_escape "$access_mode")" "$(json_escape "$allowed_ranges")" "$(json_escape "$admin_ports")" \
 		"$cur_proto" "$is_awg" "$(json_escape "$awg_jc")" "$(json_escape "$awg_jmin")" "$(json_escape "$awg_jmax")" "$(json_escape "$awg_s1")" "$(json_escape "$awg_s2")" "$(json_escape "$awg_h1")" "$(json_escape "$awg_h2")" "$(json_escape "$awg_h3")" "$(json_escape "$awg_h4")"
 }
 
@@ -1222,7 +1515,7 @@ wireguard_client_toggle() {
 		uci -q set network.wgclient.disabled='0'
 		uci -q set network.wgclient.auto='1'
 		uci commit network
-		wireguard_firewall_setup "" "1"
+		wireguard_client_firewall_setup "1"
 		echo 'ok'
 		(
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
@@ -1255,7 +1548,7 @@ wireguard_client_delete() {
 			uci -q del_list "firewall.$z.network=wgclient" 2>/dev/null || true
 		fi
 	done
-	rm -f /etc/wireguard/wgclient.conf 2>/dev/null
+	rm -f "${ARK_ROOT:-}/etc/wireguard/wgclient.conf" 2>/dev/null
 	uci commit network
 	echo 'ok'
 	(
@@ -1323,7 +1616,13 @@ handle_vpn() {
 		wireguard_peer_qr "$2"
 		;;
 	wireguard-client-import)
-		wireguard_client_import "$2"
+		wireguard_client_import "$2" "$3" "$4"
+		;;
+	wireguard-client-access-set)
+		wireguard_client_access_set "$2" "$3"
+		;;
+	wireguard-client-conf-get)
+		wireguard_client_conf_get_json
 		;;
 	wireguard-client-status)
 		wireguard_client_status_json

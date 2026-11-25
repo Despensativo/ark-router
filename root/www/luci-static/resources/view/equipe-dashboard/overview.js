@@ -27,7 +27,7 @@ if (typeof dom !== 'undefined' && dom) {
 	}
 }
 
-const ARK_BUILD_VERSION = '2.2.16';
+const ARK_BUILD_VERSION = '2.2.17';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -51,29 +51,32 @@ if (typeof document !== 'undefined') {
 			var _vpEl = document.querySelector ? document.querySelector('meta[name="viewport"]') : null;
 			if (!_vpEl) {
 				if (typeof E === 'function') {
-					_vpEl = E('meta', { 'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' });
+					_vpEl = E('meta', { 'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0, viewport-fit=cover' });
 				} else if (typeof document.createElement === 'function') {
 					_vpEl = document.createElement('meta');
 					_vpEl.name = 'viewport';
-					_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+					_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
 				}
 				if (_vpEl && _head.appendChild) _head.appendChild(_vpEl);
 			} else if (_vpEl.setAttribute) {
-				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
 			}
 
 			var _assetRev = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : ARK_BUILD_VERSION;
 			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + _assetRev;
-			var _linkEl = null;
-			if (typeof E === 'function') {
-				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
-			} else if (typeof document.createElement === 'function') {
-				_linkEl = document.createElement('link');
-				_linkEl.rel = 'stylesheet';
-				_linkEl.type = 'text/css';
-				_linkEl.href = _cssHref;
+			var _existingCss = document.querySelector ? document.querySelector('link[href*="equipe-dashboard/overview.css"]') : null;
+			if (!_existingCss) {
+				var _linkEl = null;
+				if (typeof E === 'function') {
+					_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
+				} else if (typeof document.createElement === 'function') {
+					_linkEl = document.createElement('link');
+					_linkEl.rel = 'stylesheet';
+					_linkEl.type = 'text/css';
+					_linkEl.href = _cssHref;
+				}
+				if (_linkEl && _head.appendChild) _head.appendChild(_linkEl);
 			}
-			if (_linkEl && _head.appendChild) _head.appendChild(_linkEl);
 		}
 	} catch(e) {}
 }
@@ -123,7 +126,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.2.16'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.2.17'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -199,6 +202,14 @@ function installDashboardNotifications(){
 }
 installDashboardNotifications();
 
+function arkEscapeHtml(val){
+	return String(val == null ? '' : val)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
 function translateText(value){
 	let s=String(value==null?'':value);
 	if (dashboardLanguage === 'pt-br' || !s) return s;
@@ -2105,10 +2116,13 @@ const lifecycleMethods = {
 		if (hideModal !== false) {
 			try { ui.hideModal(); } catch(e){}
 		}
+		const reqEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
 		return this.fetchCapabilities(true).then(L.bind(function(caps) {
 			this.capabilities = caps;
 			return this.fetchData(false).then(function(data) { return { caps: caps, data: data }; });
 		}, this)).then(L.bind(function(res) {
+			const curEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
+			if (curEpoch !== reqEpoch) return true;
 			const caps = res.caps, data = res.data;
 			this.capabilities = caps;
 			if (typeof window !== 'undefined') window._arkCapabilities = caps;
@@ -2346,8 +2360,10 @@ const lifecycleMethods = {
 					}
 				});
 				if (bgPingPromises.length > 0) {
+					const bgEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
 					Promise.all(bgPingPromises).then(function(){
-						if (self.currentData) {
+						const nowEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
+						if (self.currentData && nowEpoch === bgEpoch && (typeof isPollingSuppressed !== 'function' || !isPollingSuppressed())) {
 							self.currentData._initialLoad = false;
 							self.update(self.currentData);
 						}
@@ -2358,11 +2374,15 @@ const lifecycleMethods = {
 		});
 	},
 	fetchDataTimed: function(timeoutMs) {
-		return new Promise(L.bind(function(resolve,reject){
+		if (this._inflightFetch) return this._inflightFetch;
+		const self = this;
+		const p = new Promise(L.bind(function(resolve,reject){
 			let done=false;
-			const timer=window.setTimeout(function(){if(done)return;done=true;reject(new Error('Tempo esgotado ao atualizar o painel'));},timeoutMs||9000);
-			this.fetchData().then(function(data){if(done)return;done=true;window.clearTimeout(timer);resolve(data);}).catch(function(err){if(done)return;done=true;window.clearTimeout(timer);reject(err);});
+			const timer=window.setTimeout(function(){if(done)return;done=true;self._inflightFetch=null;reject(new Error('Tempo esgotado ao atualizar o painel'));},timeoutMs||9000);
+			this.fetchData().then(function(data){if(done)return;done=true;self._inflightFetch=null;window.clearTimeout(timer);resolve(data);}).catch(function(err){if(done)return;done=true;self._inflightFetch=null;window.clearTimeout(timer);reject(err);});
 		},this));
+		this._inflightFetch = p;
+		return p;
 	},
 	calculateRates: function(data) {
 		const activeWans = getActiveWanList(data);
@@ -11153,6 +11173,39 @@ const wifiMethods = {
 				E('small', { class: 'ex-muted' }, ['Chave secreta compartilhada para proteger o tráfego entre os roteadores.'])
 			]),
 			E('label', { class: 'ex-show-password' }, [ showKey, E('span', {}, ['Mostrar chave digitada']) ]),
+			E('div', { style: 'margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;' }, [
+					E('div', {}, [
+						E('strong', { style: 'font-size: 12.5px; color: #38bdf8; display: block;' }, ['🔑 Pareamento Seguro com Roteador Secundário (Satélite)']),
+						E('small', { class: 'ex-muted' }, ['Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre.'])
+					]),
+					E('button', {
+						class: 'btn cbi-button cbi-button-action',
+						type: 'button',
+						style: 'font-size: 12px; font-weight: 700;',
+						click: function(ev) {
+							const b = ev.currentTarget;
+							b.disabled = true;
+							b.textContent = 'Gerando código…';
+							fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-pair-open']).then(function(r) {
+								b.disabled = false;
+								const j = JSON.parse((r && r.stdout) || '{}');
+								if (!j.ok || !j.token) throw new Error('Falha ao gerar código de pareamento');
+								b.textContent = '🔑 Código ativo: ' + j.token + ' (copiar)';
+								b.onclick = function() {
+									if (navigator.clipboard) navigator.clipboard.writeText(j.token);
+									ui.addNotification(null, E('p', {}, ['Código de pareamento copiado: ' + j.token]), 'info');
+								};
+								ui.addNotification(null, E('p', {}, ['Janela de pareamento aberta por 3 minutos! Código: ' + j.token]), 'info');
+							}).catch(function(err) {
+								b.disabled = false;
+								b.textContent = '🔑 Gerar Código (3 min)';
+								ui.addNotification(null, E('p', {}, [String(err && err.message || err)]), 'danger');
+							});
+						}
+					}, ['🔑 Gerar Código (3 min)'])
+				])
+			]),
 			E('div', { class: 'right', style: 'margin-top: 16px;' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']),
 				' ',
@@ -11558,7 +11611,8 @@ const wifiMethods = {
 
 			// Wireless Mesh backhaul options (only shown when backhaulSelect is 'air')
 			const meshIdInput = E('input', { class: 'cbi-input-text', type: 'text', value: d.mesh_id || 'ark-mesh', placeholder: 'ark-mesh', maxlength: 32, style: 'width: 100%;' });
-			const meshKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: d.mesh_key || 'arkmeshkey123', placeholder: 'Senha Mesh WPA3 (mínimo 8 caracteres)', maxlength: 63, style: 'width: 100%;' });
+			const meshKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: d.mesh_key || '', placeholder: 'Senha Mesh WPA3 (mínimo 8 caracteres)', maxlength: 63, style: 'width: 100%;' });
+			const pairTokenInput = E('input', { class: 'cbi-input-text', type: 'text', value: '', placeholder: 'Código de pareamento gerado no Mestre (3 min)', maxlength: 32, style: 'width: 100%; max-width: 260px; font-family: monospace; font-weight: 700;' });
 
 			const channelStatusNote = E('div', { id: 'ex-sat-channel-status-note', style: 'display: none; margin-top: 8px; padding: 8px 12px; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 6px; font-size: 12px;' });
 			const scanResultContainer = E('div', { id: 'ex-sat-scan-results', style: 'margin-top: 8px; display: grid; gap: 6px;' });
@@ -11577,22 +11631,35 @@ const wifiMethods = {
 
 			const importSyncCard = E('div', {
 				id: 'ex-sat-import-sync-card',
-				style: 'display: none; margin-bottom: 12px; padding: 12px; border-radius: 8px;'
-			});
+				style: 'display: block; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.22);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+					E('span', { style: 'font-size: 11.5px; font-weight: 600;' }, ['🔑 Código do Mestre:']),
+					pairTokenInput
+				])
+			]);
 
 			const triggerImportMaster = function() {
 				const targetIp = masterIpInput.value.trim() || '192.168.1.1';
+				const pairTok = pairTokenInput.value.trim();
 				importMasterBtn.disabled = true;
 				importMasterBtn.textContent = '⏳ Buscando no Mestre…';
 				importSyncCard.style.display = 'block';
 				importSyncCard.style.background = 'rgba(56, 189, 248, 0.08)';
 				importSyncCard.style.border = '1px solid rgba(56, 189, 248, 0.3)';
-				importSyncCard.innerHTML = '';
-				importSyncCard.appendChild(E('p', { class: 'spinning', style: 'margin: 0; font-size: 12px; color: #38bdf8;' }, [
-					'Consultando configurações Wi-Fi e Mesh no Roteador Mestre (' + targetIp + ')…'
-				]));
+				importSyncCard.replaceChildren(
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;' }, [
+						E('span', { style: 'font-size: 11.5px; font-weight: 600;' }, ['🔑 Código do Mestre:']),
+						pairTokenInput
+					]),
+					E('p', { class: 'spinning', style: 'margin: 0; font-size: 12px; color: #38bdf8;' }, [
+						'Consultando configurações Wi-Fi e Mesh no Roteador Mestre (' + targetIp + ')…'
+					])
+				);
 
-				return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-satellite-pull-master', targetIp]).then(function(res) {
+				const pullArgs = ['wifi-mesh-satellite-pull-master', targetIp];
+				if (pairTok) pullArgs.push(pairTok);
+				return fs.exec('/usr/sbin/equipe-dashboard-control', pullArgs).then(function(res) {
 					importMasterBtn.disabled = false;
 					importMasterBtn.textContent = '📥 Importar Dados do Mestre';
 					let data = null;
@@ -12734,7 +12801,14 @@ const vpnMethods = {
 		const self = this;
 		ui.showModal('Cliente WireGuard', [E('p', {}, ['Obtendo status da conexão VPN…'])]);
 
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-status']).then(function(r){
+		const statusPromise = fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-status']);
+		const confPromise = isEditing
+			? fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-conf-get']).catch(function(){ return null; })
+			: Promise.resolve(null);
+
+		return Promise.all([statusPromise, confPromise]).then(function(results){
+			const r = results[0];
+			const confRes = results[1];
 			if(r.code) throw new Error(r.stderr || 'Falha ao obter status do cliente WireGuard');
 			let status = {};
 			try { status = JSON.parse(r.stdout); } catch(e){ throw new Error('Resposta JSON inválida do backend'); }
@@ -12742,12 +12816,110 @@ const vpnMethods = {
 
 			const configured = !!status.configured;
 			let existingConf = '';
-			if(status.conf_b64){
+			let rawConfB64 = status.conf_b64 || '';
+			if(!rawConfB64 && confRes && !confRes.code && confRes.stdout){
+				try { rawConfB64 = (JSON.parse(confRes.stdout) || {}).conf_b64 || ''; } catch(e){}
+			}
+			if(rawConfB64){
 				try {
-					existingConf = decodeURIComponent(escape(window.atob(status.conf_b64)));
+					existingConf = decodeURIComponent(escape(window.atob(rawConfB64)));
 				} catch(e){
-					try { existingConf = window.atob(status.conf_b64); } catch(e2){}
+					try { existingConf = window.atob(rawConfB64); } catch(e2){}
 				}
+			}
+
+			const curAccessMode = status.access_mode || 'admin';
+			const curAllowedRanges = status.allowed_ranges || '';
+			const curAdminPorts = status.admin_ports || '22 80 443';
+
+			function buildWgClientAccessControls(initialMode, initialRanges, showInstantSaveBtn){
+				const modeSelect = E('select', {
+					class:'cbi-input-select',
+					style:'width:100%; font-weight:600;'
+				}, [
+					E('option', {value:'admin'}, ['🛠️ Apenas Acesso Admin ao Roteador (SSH + Painel Web: portas ' + curAdminPorts + ')']),
+					E('option', {value:'isolated'}, ['🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)']),
+					E('option', {value:'ranges'}, ['🎯 Acesso Admin + IPs ou Faixas Específicas da LAN']),
+					E('option', {value:'full_lan'}, ['🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)'])
+				]);
+				modeSelect.value = (initialMode === 'isolated' || initialMode === 'ranges' || initialMode === 'full_lan') ? initialMode : 'admin';
+
+				const rangesInput = E('input', {
+					type:'text',
+					class:'cbi-input-text',
+					value: initialRanges || '',
+					placeholder:'Ex: 192.168.73.10, 192.168.73.50/32, 192.168.73.0/25',
+					style:'width:100%; font-family:monospace; margin-top:6px;'
+				});
+
+				const rangesWrap = E('div', {
+					style:'margin-top:8px; display:' + (modeSelect.value === 'ranges' ? 'block' : 'none') + ';'
+				}, [
+					E('span', {style:'font-size:0.78rem; font-weight:600; display:block;'}, ['IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):']),
+					rangesInput,
+					E('small', {class:'ex-muted', style:'display:block; margin-top:4px;'}, [
+						'O acesso SSH/Web ao roteador permanece liberado; na LAN, somente os IPs/CIDRs acima serão alcançáveis pelo túnel.'
+					])
+				]);
+
+				const modeHint = E('small', {class:'ex-muted', style:'display:block; margin-top:6px; line-height:1.4;'}, []);
+				function syncHint(){
+					rangesWrap.style.display = (modeSelect.value === 'ranges') ? 'block' : 'none';
+					if(modeSelect.value === 'isolated'){
+						modeHint.textContent = 'Ideal para VPNs comerciais (ProtonVPN, Mullvad, NordVPN, WARP): o roteador sai pela VPN, mas ninguém de fora entra no painel nem na LAN.';
+					} else if(modeSelect.value === 'admin'){
+						modeHint.textContent = 'Ideal para conectar no seu servidor remoto (VPS) atrás de CGNAT: libera apenas SSH e Painel Web do roteador, mantendo os aparelhos da LAN isolados.';
+					} else if(modeSelect.value === 'ranges'){
+						modeHint.textContent = 'Libera SSH/Painel do roteador e encaminhamento apenas para os IPs ou sub-redes da LAN especificados.';
+					} else {
+						modeHint.textContent = 'Site-to-Site completo: quem vier pelo seu servidor VPN pode administrar o roteador e acessar qualquer dispositivo da LAN.';
+					}
+				}
+				modeSelect.addEventListener('change', syncHint);
+				syncHint();
+
+				const children = [
+					E('div', {style:'display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;'}, [
+						E('strong', {style:'font-size:0.84rem; color:#38bdf8;'}, ['🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)'])
+					]),
+					modeSelect,
+					modeHint,
+					rangesWrap
+				];
+
+				if(showInstantSaveBtn){
+					const applyAccessBtn = E('button', {
+						class:'btn cbi-button cbi-button-action',
+						style:'margin-top:10px; min-height:36px; padding:0 14px; font-size:0.8rem; font-weight:600;',
+						click: function(){
+							const selMode = modeSelect.value;
+							const selRanges = (rangesInput.value || '').trim();
+							if(selMode === 'ranges' && !selRanges){
+								ui.addNotification(null, E('p', {}, ['Informe pelo menos um IP ou faixa CIDR da LAN (ex: 192.168.73.10).']), 'warning');
+								return;
+							}
+							applyAccessBtn.disabled = true;
+							applyAccessBtn.textContent = 'Aplicando firewall…';
+							fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-access-set', selMode, selRanges]).then(function(res){
+								applyAccessBtn.disabled = false;
+								applyAccessBtn.textContent = '💾 Salvar Permissão de Entrada';
+								if(res.code) throw new Error(res.stderr || 'Falha ao atualizar regras de firewall da VPN');
+								ui.addNotification(null, E('p', {}, ['Política de acesso de entrada da VPN atualizada com sucesso!']), 'info');
+							}).catch(function(err){
+								applyAccessBtn.disabled = false;
+								applyAccessBtn.textContent = '💾 Salvar Permissão de Entrada';
+								ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+							});
+						}
+					}, ['💾 Salvar Permissão de Entrada']);
+					children.push(E('div', {style:'display:flex; justify-content:flex-end;'}, [applyAccessBtn]));
+				}
+
+				const box = E('div', {
+					style:'padding:12px 14px; border-radius:10px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.22); margin-bottom:14px;'
+				}, children);
+
+				return { box: box, getMode: function(){ return modeSelect.value; }, getRanges: function(){ return (rangesInput.value || '').trim(); } };
 			}
 
 			// Mode 1: Configured and NOT in edit mode -> Show status / control dashboard
@@ -12914,9 +13086,12 @@ const vpnMethods = {
 					}
 				}, ['🗑 Excluir']);
 
+				const statusAccessCtrl = buildWgClientAccessControls(curAccessMode, curAllowedRanges, true);
+
 				ui.showModal('Cliente WireGuard (Conexão VPN)', [
 					statusBox,
 					metricsGrid,
+					statusAccessCtrl.box,
 					pubKeySection,
 					E('div', {class:'right', style:'margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;'}, [
 						toggleBtn,
@@ -12929,6 +13104,7 @@ const vpnMethods = {
 			}
 
 			// Mode 2: NOT configured OR in edit mode -> File upload / paste form
+			const importAccessCtrl = buildWgClientAccessControls(curAccessMode, curAllowedRanges, false);
 			const confTextarea = E('textarea', {
 				class:'cbi-input-textarea',
 				rows: 9,
@@ -13095,8 +13271,15 @@ const vpnMethods = {
 						return;
 					}
 
+					const chosenMode = importAccessCtrl.getMode();
+					const chosenRanges = importAccessCtrl.getRanges();
+					if(chosenMode === 'ranges' && !chosenRanges){
+						ui.addNotification(null, E('p', {}, ['Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN']), 'warning');
+						return;
+					}
+
 					ui.showModal('Salvando Cliente VPN', [E('p', {}, ['Configurando interface wgclient, chaves e firewall…'])]);
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-import', b64]).then(function(saveRes){
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-import', b64, chosenMode, chosenRanges]).then(function(saveRes){
 						if(saveRes.code) throw new Error(saveRes.stderr || 'Falha ao importar cliente WireGuard');
 						ui.hideModal();
 						ui.addNotification(null, E('p', {}, ['Cliente WireGuard importado e conectado com sucesso!']), 'info');
@@ -13142,6 +13325,7 @@ const vpnMethods = {
 				]),
 				confTextarea,
 				previewContainer,
+				E('div', {style:'margin-top:12px;'}, [importAccessCtrl.box]),
 				E('div', {class:'right', style:'margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;'}, modalButtons)
 			]);
 
@@ -15494,7 +15678,7 @@ const starlinkMethods = {
 			if(r.code)throw new Error(r.stderr||'A antena não respondeu');
 			let d={};try{if(r&&r.stdout)d=JSON.parse(r.stdout);else d=(r&&r.telemetry)||r||{};}catch(e){throw new Error('Resposta de telemetria inválida');}
 			const azTolerance=10, elTolerance=8, pct=(Number(d.fraction_obstructed||0)*100).toFixed(1), down=(Number(d.downlink_bps||0)/1000000).toFixed(1), up=(Number(d.uplink_bps||0)/1000000).toFixed(1), azValue=Number(d.bore_azimuth_deg||0), azTargetValue=Number(d.desired_azimuth_deg||0), elValue=Number(d.elevation_deg||0), elTargetValue=Number(d.desired_elevation_deg||0), az=(((azValue%360)+360)%360).toFixed(1), azTarget=(((azTargetValue%360)+360)%360).toFixed(1), el=elValue.toFixed(1), elTarget=elTargetValue.toFixed(1), tilt=Number(d.tilt_angle_deg||0).toFixed(1), attitude=String(d.attitude||'—').replace(/_/g,' '), azDiff=Math.abs(((azValue-azTargetValue+540)%360)-180), elDiff=Math.abs(elValue-elTargetValue), alignmentHint=(azDiff<=azTolerance&&elDiff<=elTolerance)?'ALINHADA • dentro da margem':'AJUSTE RECOMENDADO';
-			if(box)box.innerHTML='Obstrução <strong>'+pct+'%</strong>  •  Latência <strong>'+Number(d.latency_ms||0).toFixed(0)+' ms</strong>  •  ↓ '+down+' Mbps  •  ↑ '+up+' Mbps  •  GPS '+(d.gps_sats||0)+' satélites  •  Atitude <strong>'+attitude+'</strong>  •  <strong>'+alignmentHint+'</strong>  •  Azimute '+az+'° (alvo '+azTarget+'°)  •  Elevação '+el+'° (alvo '+elTarget+'°)  •  Inclinação '+tilt+'°  •  Firmware '+(d.software||'—');
+			if(box)box.innerHTML='Obstrução <strong>'+arkEscapeHtml(pct)+'%</strong>  •  Latência <strong>'+arkEscapeHtml(Number(d.latency_ms||0).toFixed(0))+' ms</strong>  •  ↓ '+arkEscapeHtml(down)+' Mbps  •  ↑ '+arkEscapeHtml(up)+' Mbps  •  GPS '+arkEscapeHtml(Number(d.gps_sats||0))+' satélites  •  Atitude <strong>'+arkEscapeHtml(attitude)+'</strong>  •  <strong>'+arkEscapeHtml(alignmentHint)+'</strong>  •  Azimute '+arkEscapeHtml(az)+'° (alvo '+arkEscapeHtml(azTarget)+'°)  •  Elevação '+arkEscapeHtml(el)+'° (alvo '+arkEscapeHtml(elTarget)+'°)  •  Inclinação '+arkEscapeHtml(tilt)+'°  •  Firmware '+arkEscapeHtml(d.software||'—');
 			const orientation=document.getElementById('ex-starlink-orientation-'+wanId);
 			if(orientation){
 				const norm=function(v){return ((v%360)+360)%360;}, current=norm(azValue), target=norm(azTargetValue), turn=((target-current+540)%360)-180, turnDeg=Math.round(Math.abs(turn)), verticalDeg=Math.round(elDiff), horizontalOk=azDiff<=azTolerance, verticalOk=elDiff<=elTolerance, allOk=horizontalOk&&verticalOk;
@@ -15737,9 +15921,18 @@ const speedtestMethods = {
 					}
 				}, 120);
 				
-				await new Promise(function(r){ setTimeout(r, 7000); });
+				const waitAbortable = function(ms, sig) {
+					return new Promise(function(resolve) {
+						if (sig && sig.aborted) { resolve(); return; }
+						const t = setTimeout(resolve, ms);
+						if (sig) sig.addEventListener('abort', function() { clearTimeout(t); resolve(); }, { once: true });
+					});
+				};
+
+				await waitAbortable(7000, abortCtrl.signal);
 				downRunning = false;
 				clearInterval(downInterval);
+				if (abortCtrl.signal.aborted) return;
 				
 				const finalDownEl = (performance.now() - tStartDown) / 1000;
 				const finalDownMbps = Math.round((bytesDown * 8) / (finalDownEl * 1000000));
@@ -15786,9 +15979,10 @@ const speedtestMethods = {
 					}
 				}, 120);
 				
-				await new Promise(function(r){ setTimeout(r, 7000); });
+				await waitAbortable(7000, abortCtrl.signal);
 				upRunning = false;
 				clearInterval(upInterval);
+				if (abortCtrl.signal.aborted) return;
 				
 				const finalUpEl = (performance.now() - tStartUp) / 1000;
 				const finalUpMbps = Math.round((bytesUp * 8) / (finalUpEl * 1000000));
@@ -15867,6 +16061,24 @@ const speedtestMethods = {
 				}}, ['Fechar'])
 			])
 		]);
+
+		const onAnyModalClose = function() {
+			if (!document.body.classList.contains('modal-overlay-active')) {
+				if (activeAbort) activeAbort.abort();
+				if (modalObs) modalObs.disconnect();
+				document.removeEventListener('keydown', escAbortListener, true);
+			}
+		};
+		const escAbortListener = function(ev) {
+			if (ev.key === 'Escape' || ev.keyCode === 27) {
+				if (activeAbort) activeAbort.abort();
+				if (modalObs) modalObs.disconnect();
+				document.removeEventListener('keydown', escAbortListener, true);
+			}
+		};
+		const modalObs = (typeof MutationObserver !== 'undefined') ? new MutationObserver(onAnyModalClose) : null;
+		if (modalObs) modalObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+		document.addEventListener('keydown', escAbortListener, true);
 
 		setTimeout(runEngine, 200);
 	},
@@ -16733,7 +16945,7 @@ const systemMethods = {
 			percentLabel.style.color = '#34d399';
 			progressBar.style.width = '100%';
 			progressBar.className = 'ex-install-progress-fill done';
-			actionText.innerHTML = '<span>✅</span> <span>' + (msg || successMsg) + '</span>';
+			actionText.replaceChildren(E('span', {}, ['✅']), ' ', E('span', {}, [msg || successMsg]));
 			updateTerminalLog();
 
 			let countdown = 3;
@@ -16762,7 +16974,7 @@ const systemMethods = {
 			stepBadge.textContent = 'Erro';
 			stepBadge.className = 'ex-install-step-badge error';
 			progressBar.className = 'ex-install-progress-fill error';
-			actionText.innerHTML = '<span>❌</span> <span style="color:#f87171;">' + (errMsg || 'Falha na instalação dos pacotes.') + '</span>';
+			actionText.replaceChildren(E('span', {}, ['❌']), ' ', E('span', { style: 'color:#f87171;' }, [errMsg || 'Falha na instalação dos pacotes.']));
 			updateTerminalLog();
 
 			actionBtn.disabled = false;
@@ -22277,6 +22489,14 @@ const storageWolMethods = {
 			style: 'border-color: rgba(239,68,68,0.5); font-weight:700;'
 		});
 
+		let formatToken = '';
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-disk-action', 'format-prepare', disk.device]).then(function(r) {
+			try {
+				const parsed = JSON.parse(r.stdout || '{}');
+				if (parsed && parsed.token) formatToken = parsed.token;
+			} catch (e) {}
+		}).catch(function() {});
+
 		const formatBtn = E('button', {
 			class: 'btn cbi-button cbi-button-negative',
 			disabled: true,
@@ -22284,7 +22504,9 @@ const storageWolMethods = {
 				if (confirmInput.value.trim() !== 'SIM') return;
 				formatBtn.disabled = true;
 				formatBtn.textContent = 'Formatando unidade…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-disk-action', 'format', disk.device, fsSelect.value, labelInput.value.trim() || 'ARK_USB']).then(function(r) {
+				const args = ['ksmbd-disk-action', 'format', disk.device, fsSelect.value, labelInput.value.trim() || 'ARK_USB'];
+				if (formatToken) args.push(formatToken);
+				fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao formatar unidade');
 					ui.addNotification(null, E('p', {}, ['Unidade ' + disk.device + ' formatada com sucesso em ' + fsSelect.value.toUpperCase() + '!']));
 					self.openKsmbdModal();
@@ -23286,25 +23508,6 @@ const renderMethods = {
 	render: function(loaded) {
 		const self = this;
 		if (typeof window !== 'undefined') window._arkViewInstance = this;
-		if (!window._arkEscModalAttached) {
-			window._arkEscModalAttached = true;
-			document.addEventListener('keydown', function(ev) {
-				if (ev.key === 'Escape' || ev.keyCode === 27) {
-					var modal = document.querySelector('.modal, .cbi-modal, #modal_overlay, div[class*="modal"]');
-					if (modal) {
-						ev.preventDefault();
-						if (typeof ui !== 'undefined' && typeof ui.hideModal === 'function') {
-							ui.hideModal();
-						} else if (window.L && L.ui && typeof L.ui.hideModal === 'function') {
-							L.ui.hideModal();
-						} else {
-							var btn = modal.querySelector('button.cbi-button-neutral, button.btn-neutral, .close');
-							if (btn) btn.click();
-						}
-					}
-				}
-			});
-		}
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';if(typeof window!=='undefined'){window.dashboardLanguage=dashboardLanguage;}this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		try {
 			if (typeof window !== 'undefined' && window.history && window.history.replaceState && window.location.search) {

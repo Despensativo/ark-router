@@ -647,7 +647,12 @@ svg .dots{fill:#475569}
       renderLayout();
       queryAll(false);
     } catch (e) {
-      alert('Erro ao ativar rota da Starlink: ' + e.message);
+      const errBanner = q('#global-error') || document.createElement('div');
+      errBanner.id = 'global-error';
+      errBanner.style.cssText = 'margin:10px 0;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:13px;';
+      errBanner.textContent = 'Erro ao ativar rota da Starlink: ' + e.message;
+      const host = q('.container') || document.body;
+      if (!errBanner.parentNode) host.insertBefore(errBanner, host.firstChild);
     }
   };
 

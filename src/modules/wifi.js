@@ -2141,6 +2141,39 @@ const wifiMethods = {
 				E('small', { class: 'ex-muted' }, ['Chave secreta compartilhada para proteger o tráfego entre os roteadores.'])
 			]),
 			E('label', { class: 'ex-show-password' }, [ showKey, E('span', {}, ['Mostrar chave digitada']) ]),
+			E('div', { style: 'margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;' }, [
+					E('div', {}, [
+						E('strong', { style: 'font-size: 12.5px; color: #38bdf8; display: block;' }, ['🔑 Pareamento Seguro com Roteador Secundário (Satélite)']),
+						E('small', { class: 'ex-muted' }, ['Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre.'])
+					]),
+					E('button', {
+						class: 'btn cbi-button cbi-button-action',
+						type: 'button',
+						style: 'font-size: 12px; font-weight: 700;',
+						click: function(ev) {
+							const b = ev.currentTarget;
+							b.disabled = true;
+							b.textContent = 'Gerando código…';
+							fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-pair-open']).then(function(r) {
+								b.disabled = false;
+								const j = JSON.parse((r && r.stdout) || '{}');
+								if (!j.ok || !j.token) throw new Error('Falha ao gerar código de pareamento');
+								b.textContent = '🔑 Código ativo: ' + j.token + ' (copiar)';
+								b.onclick = function() {
+									if (navigator.clipboard) navigator.clipboard.writeText(j.token);
+									ui.addNotification(null, E('p', {}, ['Código de pareamento copiado: ' + j.token]), 'info');
+								};
+								ui.addNotification(null, E('p', {}, ['Janela de pareamento aberta por 3 minutos! Código: ' + j.token]), 'info');
+							}).catch(function(err) {
+								b.disabled = false;
+								b.textContent = '🔑 Gerar Código (3 min)';
+								ui.addNotification(null, E('p', {}, [String(err && err.message || err)]), 'danger');
+							});
+						}
+					}, ['🔑 Gerar Código (3 min)'])
+				])
+			]),
 			E('div', { class: 'right', style: 'margin-top: 16px;' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']),
 				' ',
@@ -2546,7 +2579,8 @@ const wifiMethods = {
 
 			// Wireless Mesh backhaul options (only shown when backhaulSelect is 'air')
 			const meshIdInput = E('input', { class: 'cbi-input-text', type: 'text', value: d.mesh_id || 'ark-mesh', placeholder: 'ark-mesh', maxlength: 32, style: 'width: 100%;' });
-			const meshKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: d.mesh_key || 'arkmeshkey123', placeholder: 'Senha Mesh WPA3 (mínimo 8 caracteres)', maxlength: 63, style: 'width: 100%;' });
+			const meshKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: d.mesh_key || '', placeholder: 'Senha Mesh WPA3 (mínimo 8 caracteres)', maxlength: 63, style: 'width: 100%;' });
+			const pairTokenInput = E('input', { class: 'cbi-input-text', type: 'text', value: '', placeholder: 'Código de pareamento gerado no Mestre (3 min)', maxlength: 32, style: 'width: 100%; max-width: 260px; font-family: monospace; font-weight: 700;' });
 
 			const channelStatusNote = E('div', { id: 'ex-sat-channel-status-note', style: 'display: none; margin-top: 8px; padding: 8px 12px; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 6px; font-size: 12px;' });
 			const scanResultContainer = E('div', { id: 'ex-sat-scan-results', style: 'margin-top: 8px; display: grid; gap: 6px;' });
@@ -2565,22 +2599,35 @@ const wifiMethods = {
 
 			const importSyncCard = E('div', {
 				id: 'ex-sat-import-sync-card',
-				style: 'display: none; margin-bottom: 12px; padding: 12px; border-radius: 8px;'
-			});
+				style: 'display: block; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.22);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+					E('span', { style: 'font-size: 11.5px; font-weight: 600;' }, ['🔑 Código do Mestre:']),
+					pairTokenInput
+				])
+			]);
 
 			const triggerImportMaster = function() {
 				const targetIp = masterIpInput.value.trim() || '192.168.1.1';
+				const pairTok = pairTokenInput.value.trim();
 				importMasterBtn.disabled = true;
 				importMasterBtn.textContent = '⏳ Buscando no Mestre…';
 				importSyncCard.style.display = 'block';
 				importSyncCard.style.background = 'rgba(56, 189, 248, 0.08)';
 				importSyncCard.style.border = '1px solid rgba(56, 189, 248, 0.3)';
-				importSyncCard.innerHTML = '';
-				importSyncCard.appendChild(E('p', { class: 'spinning', style: 'margin: 0; font-size: 12px; color: #38bdf8;' }, [
-					'Consultando configurações Wi-Fi e Mesh no Roteador Mestre (' + targetIp + ')…'
-				]));
+				importSyncCard.replaceChildren(
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;' }, [
+						E('span', { style: 'font-size: 11.5px; font-weight: 600;' }, ['🔑 Código do Mestre:']),
+						pairTokenInput
+					]),
+					E('p', { class: 'spinning', style: 'margin: 0; font-size: 12px; color: #38bdf8;' }, [
+						'Consultando configurações Wi-Fi e Mesh no Roteador Mestre (' + targetIp + ')…'
+					])
+				);
 
-				return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mesh-satellite-pull-master', targetIp]).then(function(res) {
+				const pullArgs = ['wifi-mesh-satellite-pull-master', targetIp];
+				if (pairTok) pullArgs.push(pairTok);
+				return fs.exec('/usr/sbin/equipe-dashboard-control', pullArgs).then(function(res) {
 					importMasterBtn.disabled = false;
 					importMasterBtn.textContent = '📥 Importar Dados do Mestre';
 					let data = null;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.17
+
+- **Atualização Incremental v2.2.17 (25/11/2026)**:
+  - Auditoria Sênior/Principal (Ondas 1–4): permissão granular de entrada na VPN Cliente wgclient (Admin SSH+Web, Bloqueado, Faixas CIDR da LAN e Rede Toda), pareamento seguro Mesh com token efêmero de 3 min e proteção anti-DNS-Rebinding, wrapper RPCD somente-leitura (/usr/libexec/ark-theme-ro), TLS estrito + sha256sums no OTA, proteção DSA lan4 como wan2, guarda unificada de Flow Offload/PPE com mwan3, validação /proc/pid/cmdline nos daemons, prerm/postrm restaurando tema Bootstrap na remoção, limpeza de 350 MB de binários rastreados no Git, blindagem XSS e 100% i18n PT/EN/ES.
+
 ## 2.2.16
 
 - **Atualização Incremental v2.2.16 (25/11/2026)**:

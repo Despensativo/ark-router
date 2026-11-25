@@ -7,8 +7,9 @@ STOP=10
 USE_PROCD=1
 
 start_service() {
+	local pwr="$(uci -q get system.led_status.enabled || echo 1)"
 	local eff="$(uci -q get system.led_status.effect || echo rainbow)"
-	[ "$eff" = "rainbow" ] || return 0
+	[ "$pwr" != "0" ] && [ "$eff" = "rainbow" ] || return 0
 
 	procd_open_instance
 	procd_set_param command /bin/sh /usr/sbin/ark-rainbowd

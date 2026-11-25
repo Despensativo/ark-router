@@ -1,3 +1,11 @@
+function arkEscapeHtml(val){
+	return String(val == null ? '' : val)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
 function translateText(value){
 	let s=String(value==null?'':value);
 	if (dashboardLanguage === 'pt-br' || !s) return s;

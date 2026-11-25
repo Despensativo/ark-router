@@ -909,7 +909,7 @@ sync_sqm_flow_offload() {
 
 	for opt in flow_offloading flow_offloading_hw; do
 		target=0
-		if [ "$sqm_active" = "0" ] && [ "$user_disabled" = "0" ]; then
+		if [ "$sqm_active" = "0" ] && [ "$user_disabled" = "0" ] && ! uci -q show equipe_devices 2>/dev/null | grep -Eq "\.(dl_kbps|ul_kbps)='[1-9]"; then
 			target="$(uci -q get "sqm.ark_offload_snapshot.saved_$opt")"
 		fi
 		case "$target" in 0|1|__unset__) ;; *) echo 'Snapshot de offload invalido' >&2; return 1 ;; esac
@@ -962,6 +962,13 @@ ark_sync_lan_selective_offload() {
 	for br_dev in /sys/class/net/br-* /sys/class/net/lan* /sys/class/net/phy*; do
 		[ -d "$br_dev" ] || continue
 		br_name="${br_dev##*/}"
+		case "$br_name" in
+			lan*)
+				# P0-NET-02: Never overwrite SQM CAKE or WAN qdiscs when a DSA port (e.g. lan4) is unbridged as wan2!
+				[ -e "$br_dev/master" ] || continue
+				command -v ark_sqm_owns_device >/dev/null 2>&1 && ark_sqm_owns_device "$br_name" && continue
+				;;
+		esac
 		command -v ethtool >/dev/null 2>&1 && ethtool -K "$br_name" gro on gso on tso on 2>/dev/null || true
 		ip link set dev "$br_name" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
 		case "$br_name" in

@@ -878,21 +878,28 @@ EOF
 			fi
 			uci -q set firewall.@defaults[0].flow_offloading='0'
 			uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1 || true
 			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
+		else
+			uci commit firewall
 		fi
-		uci commit firewall
 	else
 		rm -f "$tmp_nft" "$nft_file" "$apply_sh" 2>/dev/null || true
 		"$nft_bin" delete table inet ark_device_limits 2>/dev/null || true
 		uci -q delete firewall.ark_limits 2>/dev/null || true
-		local saved_fo saved_fo_hw fo_user_dis sqm_any_on
+		local saved_fo saved_fo_hw fo_user_dis sqm_any_on mwan_cnt mif
 		saved_fo="$(uci -q get equipe_devices.ark_offload_snapshot.saved_flow_offloading 2>/dev/null || true)"
 		saved_fo_hw="$(uci -q get equipe_devices.ark_offload_snapshot.saved_flow_offloading_hw 2>/dev/null || true)"
 		if [ -n "$saved_fo" ]; then
 			fo_user_dis="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
 			sqm_any_on=0
 			uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" && sqm_any_on=1
-			if [ "$fo_user_dis" != "1" ] && [ "$sqm_any_on" = "0" ] && ! ark_is_satellite_or_ap && ! ark_is_hub_mode; then
+			mwan_cnt=0
+			for mif in $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+				[ "$(uci -q get "mwan3.$mif.enabled" 2>/dev/null)" = "1" ] && mwan_cnt=$((mwan_cnt + 1))
+			done
+			if [ "$fo_user_dis" != "1" ] && [ "$sqm_any_on" = "0" ] && [ "$mwan_cnt" -lt 2 ] && ! ark_is_satellite_or_ap && ! ark_is_hub_mode; then
 				uci -q set "firewall.@defaults[0].flow_offloading=$saved_fo"
 				[ -n "$saved_fo_hw" ] && uci -q set "firewall.@defaults[0].flow_offloading_hw=$saved_fo_hw"
 			fi
@@ -900,6 +907,7 @@ EOF
 			uci -q commit equipe_devices 2>/dev/null || true
 		fi
 		uci commit firewall
+		[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1 || true
 	fi
 }
 

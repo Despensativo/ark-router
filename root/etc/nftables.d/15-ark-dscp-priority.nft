@@ -9,12 +9,13 @@ chain ark_dscp_prerouting {
 	# Upstream Linux sch_cake.c short-circuits cake_handle_diffserv(wash) when tin_mode is
 	# 'besteffort', allowing ISP-marked bulk download packets (AF21/CS3/CS4) to reach Wi-Fi
 	# hostapd qos_map_set and jump into WMM AC_VI (TID 4/5) ahead of latency probes.
-	iifname != { "lo", "br-*", "lan*" } ip dscp != cs0 ip dscp set cs0 comment "ARK: Wash untrusted WAN IPv4 DSCP"
-	iifname != { "lo", "br-*", "lan*" } ip6 dscp != cs0 ip6 dscp set cs0 comment "ARK: Wash untrusted WAN IPv6 DSCP"
+	# Note: Bridged DSA LAN ports enter L3 as "br-*"; unbridged DSA ports (e.g. lan4 promoted to wan2) enter as "lan4" and MUST be washed as WAN!
+	iifname != { "lo", "br-*" } ip dscp != cs0 ip dscp set cs0 comment "ARK: Wash untrusted WAN IPv4 DSCP"
+	iifname != { "lo", "br-*" } ip6 dscp != cs0 ip6 dscp set cs0 comment "ARK: Wash untrusted WAN IPv6 DSCP"
 
 	# Fast-path exit for normal WAN TCP download data packets (> 256B, ct mark bit 0x80 not set, not SYN/RST/FIN).
 	# Avoids evaluating 30+ LAN classification rules at 65,000+ pps during Gigabit downloads.
-	iifname != { "lo", "br-*", "lan*" } ct mark & 0x00000080 == 0 meta l4proto tcp tcp flags & (syn | rst | fin) == 0 meta length > 256 return comment "ARK: Fast-path WAN TCP download"
+	iifname != { "lo", "br-*" } ct mark & 0x00000080 == 0 meta l4proto tcp tcp flags & (syn | rst | fin) == 0 meta length > 256 return comment "ARK: Fast-path WAN TCP download"
 
 	# Restore verified bidirectional flow DSCP from Conntrack (ct mark lower byte: 0x80 valid bit | 6-bit DSCP).
 	# Never split UDP game flows by packet length (<= 512B), because teamfight snapshots (520B-960B) on the same UDP socket would be demoted to CS0 and overtaken by 45B-200B ticks!
@@ -28,8 +29,8 @@ chain ark_dscp_prerouting {
 
 	# L4S (Low Latency, Low Loss, Scalable Throughput - RFC 9332):
 	# Promote interactive ECT(1) UDP packets (<= 512B: Apple FaceTime/Cloud Gaming/WebRTC L4S) -> CS4 (Voice/Gaming Tin)
-	iifname { "br-*", "lan*" } meta l4proto udp ip ecn == ect1 meta length <= 512 ip dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv4 priority"
-	iifname { "br-*", "lan*" } meta l4proto udp ip6 ecn == ect1 meta length <= 512 ip6 dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv6 priority"
+	iifname "br-*" meta l4proto udp ip ecn == ect1 meta length <= 512 ip dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv4 priority"
+	iifname "br-*" meta l4proto udp ip6 ecn == ect1 meta length <= 512 ip6 dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv6 priority"
 
 	# ICMP & ICMPv6 Ping Echo Requests -> CS6 (Network Control / Ultra-Low Latency)
 	ip protocol icmp ip dscp set cs6 comment "ARK: ICMP Echo priority"
@@ -64,10 +65,10 @@ chain ark_dscp_prerouting {
 	udp sport { 5060, 5061, 50000-50100 } meta length <= 256 ip6 dscp set cs4 comment "ARK: Discord/VoIP Incoming IPv6 Voice priority"
 
 	# Competitive Gaming Ports & Multipath Relays -> CS4 (Voice/Gaming Tin), limitado a pacotes <= 512B para evitar que downloads UDP/QUIC/P2P saturem a fila de voz/jogos.
-	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming Ports IPv4 priority"
-	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming Ports IPv6 priority"
-	iifname { "br-*", "lan*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv4 priority"
-	iifname { "br-*", "lan*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv6 priority"
+	iifname "br-*" udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming Ports IPv4 priority"
+	iifname "br-*" udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming Ports IPv6 priority"
+	iifname "br-*" tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv4 priority"
+	iifname "br-*" tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv6 priority"
 
 	# P2P / BitTorrent Default Ports -> CS1 (CAKE diffserv4 Bulk / Scavenger Tin)
 	tcp dport { 2710, 6881-6889, 6969, 8999, 16881, 51413 } ip dscp set cs1 comment "ARK: P2P Bulk TCP IPv4 demotion"
@@ -76,12 +77,12 @@ chain ark_dscp_prerouting {
 	udp dport { 2710, 6881-6889, 6969, 8999, 16881, 51413 } ip6 dscp set cs1 comment "ARK: P2P Bulk UDP IPv6 demotion"
 
 	# Persist verified explicit VoIP/Gaming/Bulk LAN flow DSCP into Conntrack mark lower byte (0x80 | DSCP)
-	iifname { "br-*", "lan*" } meta l4proto { tcp, udp } ip dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv4"
-	iifname { "br-*", "lan*" } meta l4proto { tcp, udp } ip6 dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv6"
-	iifname { "br-*", "lan*" } meta l4proto udp ip dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv4"
-	iifname { "br-*", "lan*" } meta l4proto udp ip6 dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv6"
-	iifname { "br-*", "lan*" } ip dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv4"
-	iifname { "br-*", "lan*" } ip6 dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv6"
+	iifname "br-*" meta l4proto { tcp, udp } ip dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv4"
+	iifname "br-*" meta l4proto { tcp, udp } ip6 dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save AF41/CS4 Voice/Gaming to ct mark IPv6"
+	iifname "br-*" meta l4proto udp ip dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv4"
+	iifname "br-*" meta l4proto udp ip6 dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv6"
+	iifname "br-*" ip dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv4"
+	iifname "br-*" ip6 dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv6"
 }
 
 chain ark_dscp_output {
@@ -115,7 +116,7 @@ chain ark_dscp_output {
 chain ark_cone_nat {
 	type nat hook postrouting priority srcnat - 5; policy accept;
 
-	# Endpoint-Independent Mapping (Full Cone NAT) for UDP on WAN egress only (excludes LAN and VPN/overlay tunnels).
-	oifname != { "lo", "br-*", "lan*", "wg*", "zt*", "tailscale*", "tun*", "tap*", "connectify*", "docker*" } meta nfproto ipv4 meta l4proto udp masquerade persistent comment "ARK: Endpoint-Independent Mapping (Cone NAT) for UDP Gaming"
+	# Endpoint-Independent Mapping (Full Cone NAT) for UDP on WAN egress only (excludes LAN bridges, local Wi-Fi APs, and VPN/overlay tunnels; supports lan4 promoted to wan2).
+	oifname != { "lo", "br-*", "wlan*", "phy*", "ap*", "wg*", "zt*", "tailscale*", "tun*", "tap*", "connectify*", "docker*" } meta nfproto ipv4 meta l4proto udp masquerade persistent comment "ARK: Endpoint-Independent Mapping (Cone NAT) for UDP Gaming"
 }
 

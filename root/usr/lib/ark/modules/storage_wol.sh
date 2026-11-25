@@ -61,7 +61,7 @@ config globals
 	option workgroup 'WORKGROUP'
 	option description 'ARK Router SMB Server'
 	option interface 'lan'
-	option guest_ok '1'
+	option guest_ok '0'
 	option smbv1_legacy '0'
 EOF
 	fi
@@ -70,7 +70,7 @@ EOF
 		uci -q set ksmbd.@globals[0].workgroup='WORKGROUP'
 		uci -q set ksmbd.@globals[0].description='ARK Router SMB Server'
 		uci -q set ksmbd.@globals[0].interface='lan'
-		uci -q set ksmbd.@globals[0].guest_ok='1'
+		uci -q set ksmbd.@globals[0].guest_ok='0'
 		uci -q set ksmbd.@globals[0].smbv1_legacy='0'
 		uci -q commit ksmbd 2>/dev/null || true
 	fi
@@ -476,7 +476,7 @@ handle_storage_wol() {
 					mkdir -p "${ARK_ROOT}/etc/crontabs" 2>/dev/null || true
 					touch "${ARK_ROOT}/etc/crontabs/root" 2>/dev/null || true
 					sed -i '/ark-ksmbd-keepalive/d' "${ARK_ROOT}/etc/crontabs/root" 2>/dev/null || true
-					echo '* * * * * for d in /mnt/*; do [ -d "$d" ] && touch "$d/.ark_keepalive" 2>/dev/null; done # ark-ksmbd-keepalive' >> "${ARK_ROOT}/etc/crontabs/root"
+					echo '* * * * * for d in /mnt/*; do [ -d "$d" ] && awk -v mp="$d" '\''$2==mp {f=1} END{exit !f}'\'' /proc/mounts && touch "$d/.ark_keepalive" 2>/dev/null; done # ark-ksmbd-keepalive' >> "${ARK_ROOT}/etc/crontabs/root"
 					[ -z "$ARK_ROOT" ] && [ -x /etc/init.d/cron ] && /etc/init.d/cron reload >/dev/null 2>&1 || true
 					;;
 				keepalive_off)
@@ -566,8 +566,10 @@ handle_storage_wol() {
 			local arg4="$4"
 			printf '%s' "$uname" | grep -Eq '^[a-zA-Z0-9_.-]{1,32}$' || { echo "Nome de usuario SMB invalido" >&2; return 2; }
 			mkdir -p "${ARK_ROOT}/etc/ksmbd" "${ARK_ROOT}/tmp" 2>/dev/null || true
+			chmod 700 "${ARK_ROOT}/etc/ksmbd" 2>/dev/null || true
 			local db="${ARK_ROOT}/etc/ksmbd/ksmbdpwd.db"
-			touch "$db" 2>/dev/null || true
+			( umask 077; touch "$db" 2>/dev/null || true )
+			chmod 600 "$db" 2>/dev/null || true
 			case "$uact" in
 				add|setuser)
 					local upass="$arg3"
@@ -576,11 +578,16 @@ handle_storage_wol() {
 					case "$uperm" in ro|rw) ;; *) uperm="rw" ;; esac
 					if [ -z "$ARK_ROOT" ] && command -v ksmbd.adduser >/dev/null 2>&1; then
 						ksmbd.adduser -a "$uname" -p "$upass" >/dev/null 2>&1 || ksmbd.adduser -u "$uname" -p "$upass" >/dev/null 2>&1 || true
+						chmod 600 "$db" 2>/dev/null || true
 					else
 						local tmp_db="${ARK_ROOT}/tmp/ksmbdpwd.$$"
-						grep -v "^${uname}:" "$db" > "$tmp_db" 2>/dev/null || true
-						printf '%s:configured\n' "$uname" >> "$tmp_db"
-						mv "$tmp_db" "$db" 2>/dev/null || true
+						(
+							umask 077
+							grep -v "^${uname}:" "$db" > "$tmp_db" 2>/dev/null || true
+							printf '%s:configured\n' "$uname" >> "$tmp_db"
+							mv "$tmp_db" "$db" 2>/dev/null || true
+						)
+						chmod 600 "$db" 2>/dev/null || true
 					fi
 					ksmbd_set_user_perm "$uname" "$uperm"
 					;;
@@ -589,8 +596,12 @@ handle_storage_wol() {
 						ksmbd.adduser -d "$uname" >/dev/null 2>&1 || true
 					fi
 					local tmp_db="${ARK_ROOT}/tmp/ksmbdpwd.$$"
-					grep -v "^${uname}:" "$db" > "$tmp_db" 2>/dev/null || true
-					mv "$tmp_db" "$db" 2>/dev/null || true
+					(
+						umask 077
+						grep -v "^${uname}:" "$db" > "$tmp_db" 2>/dev/null || true
+						mv "$tmp_db" "$db" 2>/dev/null || true
+					)
+					chmod 600 "$db" 2>/dev/null || true
 					;;
 				permission)
 					local uperm="$arg3"
@@ -722,9 +733,33 @@ handle_storage_wol() {
 					ksmbd_sync_shares
 					printf '{"status":"ok","device":"%s","output":"%s"}\n' "$(json_escape "$dev")" "$(json_escape "$out")"
 					;;
+				format-prepare)
+					local fmt_tok fmt_exp fmt_file
+					fmt_tok="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24)"
+					[ "${#fmt_tok}" -ge 16 ] || fmt_tok="$(hexdump -n 12 -e '12/1 "%02x"' /dev/urandom 2>/dev/null || date +%s)"
+					fmt_exp=$(( $(date +%s) + 180 ))
+					fmt_file="${ARK_ROOT}/tmp/ark-ksmbd-format.token"
+					rm -f "$fmt_file" 2>/dev/null || true
+					( umask 077; printf '%s %s %s\n' "$fmt_tok" "$dev" "$fmt_exp" > "$fmt_file" )
+					printf '{"status":"ok","device":"%s","token":"%s","expires_in":180}\n' "$(json_escape "$dev")" "$(json_escape "$fmt_tok")"
+					;;
 				format)
+					local fmt_client_tok="${5:-}" fmt_file="${ARK_ROOT}/tmp/ark-ksmbd-format.token"
 					case "$fstype" in ext4|exfat|vfat) ;; *) echo "Sistema de arquivos invalido: $fstype" >&2; return 2 ;; esac
 					printf '%s' "$label" | grep -Eq '^[a-zA-Z0-9_-]{1,16}$' || label="ARK_USB"
+					if [ -z "$ARK_ROOT" ]; then
+						local saved_tok="" saved_dev="" saved_exp=0 now_ts=0
+						if [ -f "$fmt_file" ] && [ ! -L "$fmt_file" ]; then
+							read -r saved_tok saved_dev saved_exp < "$fmt_file" 2>/dev/null || true
+						fi
+						rm -f "$fmt_file" 2>/dev/null || true
+						now_ts="$(date +%s)"
+						case "$saved_exp" in ''|*[!0-9]*) saved_exp=0 ;; esac
+						if [ -z "$fmt_client_tok" ] || [ "$fmt_client_tok" != "$saved_tok" ] || [ "$dev" != "$saved_dev" ] || [ "$now_ts" -gt "$saved_exp" ]; then
+							echo "Confirmacao de formatacao expirada ou ausente. Reabra o assistente de formatacao." >&2
+							return 2
+						fi
+					fi
 					if [ -n "$ARK_ROOT" ]; then
 						mkdir -p "${ARK_ROOT}/mnt/$bname" 2>/dev/null || true
 						ksmbd_sync_shares

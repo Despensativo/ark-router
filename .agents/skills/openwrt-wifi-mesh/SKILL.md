@@ -63,9 +63,11 @@ Somente quando a criptografia for **estritamente WPA2-PSK (`psk2+ccmp`)**, `ft_p
 
 ---
 
-## 2. Band Steering Leve com `usteer`
+## 2. Band Steering Leve com `usteer` vs Silício Qualcomm QSDK (`qcawificfg80211`)
 
-> **⚠️ Exceção Crítica para QSDK / Vendor BSP (ex: Acer Predator Connect T7)**: NUNCA instale ou ative `usteer` em firmwares baseados em QSDK da Qualcomm que carregam `hyfi-bridging.ko` e `hyd`, pois gera conflito direto de desconexões em loop com o daemon SON nativo.
+> **⛔ Exceção Crítica para QSDK / Vendor BSP (`qcawificfg80211` — ex: Acer Predator Connect T7)**:
+> - **NUNCA troque o pacote `wpad` por `wpad-mbedtls`**: O T7 já vem de fábrica com o `qca-hostapd-11be` completo da Qualcomm (compilado com OpenSSL e extensões `QCA_NL80211_VENDOR` para Wi-Fi 7, 320 MHz, Puncturing e MLO). Instalar `wpad-mbedtls` genérico apaga o binário da Qualcomm e impede os 3 rádios Wi-Fi 7 de subirem.
+> - **NUNCA instale ou ative `usteer`**: O `qca-hostapd` não cria objetos no `ubus` (`hostapd.*`), operando via sockets UNIX em `/var/run/hostapd-wifiX` + `cfg80211tool` (além de conflitar caso `hyd`/`hyfi-bridging.ko` estejam presentes). No QSDK, o steering em < 30 ms é feito direto no silício via `rrm='1'`, `bss_transition='1'`, `cfg80211tool wifi2 rnr_6ghz_colocated 1 7` e `cfg80211tool ath2 enable_fils 1 20`.
 
 O **`usteer`** coordena a transição entre bandas (2.4 GHz vs 5/6 GHz) sem derrubar conexões ativas:
 - Estimular clientes 5/6 GHz a subirem de banda quando o RSSI for forte.

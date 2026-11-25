@@ -15397,3 +15397,48 @@ msgstr "Soporte nativo de 464XLAT/CLAT en iOS, iPadOS, macOS, Android y Windows 
 msgid "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
 msgstr "También puede activarse individualmente dispositivo por dispositivo (sin afectar equipos Dual-Stack) en la tarjeta DISPOSITIVOS."
 
+msgid "Código de pareamento copiado:"
+msgstr "Código de emparejamiento copiado:"
+
+msgid "Código de pareamento gerado no Mestre (3 min)"
+msgstr "Código de emparejamiento generado en el Maestro (3 min)"
+
+msgid "Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre."
+msgstr "Genera un código temporal (3 min) para autorizar a un Router Secundario a importar las credenciales Wi‑Fi y Mesh de este Maestro."
+
+msgid "IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):"
+msgstr "IPs o Subredes de la LAN permitidas de entrada por la VPN (separadas por comas):"
+
+msgid "Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN"
+msgstr "Ingrese al menos una IP o rango CIDR de la LAN para permitir en la VPN"
+
+msgid "Janela de pareamento aberta por 3 minutos! Código:"
+msgstr "¡Ventana de emparejamiento abierta por 3 minutos! Código:"
+
+msgid "Política de acesso de entrada da VPN atualizada com sucesso!"
+msgstr "¡Política de acceso de entrada de la VPN actualizada con éxito!"
+
+msgid "🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)"
+msgstr "🌐 Red Completa: Acceso Admin + Toda la Red LAN (Sitio a Sitio)"
+
+msgid "🎯 Acesso Admin + IPs ou Faixas Específicas da LAN"
+msgstr "🎯 Acceso Admin + IPs o Rangos Específicos de la LAN"
+
+msgid "💾 Salvar Permissão de Entrada"
+msgstr "💾 Guardar Permiso de Entrada"
+
+msgid "🔑 Código do Mestre:"
+msgstr "🔑 Código del Maestro:"
+
+msgid "🔑 Gerar Código (3 min)"
+msgstr "🔑 Generar Código (3 min)"
+
+msgid "🔑 Pareamento Seguro com Roteador Secundário (Satélite)"
+msgstr "🔑 Emparejamiento Seguro con Router Secundario (Satélite)"
+
+msgid "🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)"
+msgstr "🔒 Bloqueado / VPN Comercial (Solo Salida — bloquea cualquier entrada por el túnel)"
+
+msgid "🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)"
+msgstr "🛡️ Permiso de Entrada por el Túnel VPN (¿Qué permitir?)"
+

@@ -9,8 +9,9 @@ build/
 docs/screenshots/_test-*.png
 docs/screenshots/visual_audit/
 .tmp_*
-!dist/sdk/*.apk
-!dist/sdk/*.ipk
+dist/sdk/*.apk
+dist/sdk/*.ipk
+dist/sdk/*.txt
 backups_cudy/
 cudy_installed_pkgs.txt
 __pycache__/

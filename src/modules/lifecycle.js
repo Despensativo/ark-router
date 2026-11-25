@@ -121,10 +121,13 @@ const lifecycleMethods = {
 		if (hideModal !== false) {
 			try { ui.hideModal(); } catch(e){}
 		}
+		const reqEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
 		return this.fetchCapabilities(true).then(L.bind(function(caps) {
 			this.capabilities = caps;
 			return this.fetchData(false).then(function(data) { return { caps: caps, data: data }; });
 		}, this)).then(L.bind(function(res) {
+			const curEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
+			if (curEpoch !== reqEpoch) return true;
 			const caps = res.caps, data = res.data;
 			this.capabilities = caps;
 			if (typeof window !== 'undefined') window._arkCapabilities = caps;
@@ -362,8 +365,10 @@ const lifecycleMethods = {
 					}
 				});
 				if (bgPingPromises.length > 0) {
+					const bgEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
 					Promise.all(bgPingPromises).then(function(){
-						if (self.currentData) {
+						const nowEpoch = (typeof window !== 'undefined' && window._arkTxState) ? window._arkTxState.epoch : 0;
+						if (self.currentData && nowEpoch === bgEpoch && (typeof isPollingSuppressed !== 'function' || !isPollingSuppressed())) {
 							self.currentData._initialLoad = false;
 							self.update(self.currentData);
 						}
@@ -374,11 +379,15 @@ const lifecycleMethods = {
 		});
 	},
 	fetchDataTimed: function(timeoutMs) {
-		return new Promise(L.bind(function(resolve,reject){
+		if (this._inflightFetch) return this._inflightFetch;
+		const self = this;
+		const p = new Promise(L.bind(function(resolve,reject){
 			let done=false;
-			const timer=window.setTimeout(function(){if(done)return;done=true;reject(new Error('Tempo esgotado ao atualizar o painel'));},timeoutMs||9000);
-			this.fetchData().then(function(data){if(done)return;done=true;window.clearTimeout(timer);resolve(data);}).catch(function(err){if(done)return;done=true;window.clearTimeout(timer);reject(err);});
+			const timer=window.setTimeout(function(){if(done)return;done=true;self._inflightFetch=null;reject(new Error('Tempo esgotado ao atualizar o painel'));},timeoutMs||9000);
+			this.fetchData().then(function(data){if(done)return;done=true;self._inflightFetch=null;window.clearTimeout(timer);resolve(data);}).catch(function(err){if(done)return;done=true;self._inflightFetch=null;window.clearTimeout(timer);reject(err);});
 		},this));
+		this._inflightFetch = p;
+		return p;
 	},
 	calculateRates: function(data) {
 		const activeWans = getActiveWanList(data);

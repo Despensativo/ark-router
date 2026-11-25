@@ -15397,3 +15397,48 @@ msgstr "Suporte nativo a 464XLAT/CLAT em iOS, iPadOS, macOS, Android e Windows 1
 msgid "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
 msgstr "Também pode ser ativado individualmente aparelho por aparelho (sem afetar dispositivos Pilha Dupla) no card DISPOSITIVOS."
 
+msgid "Código de pareamento copiado:"
+msgstr "Código de pareamento copiado:"
+
+msgid "Código de pareamento gerado no Mestre (3 min)"
+msgstr "Código de pareamento gerado no Mestre (3 min)"
+
+msgid "Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre."
+msgstr "Gera um código temporário (3 min) para autorizar um Roteador Secundário a importar as credenciais Wi‑Fi e Mesh deste Mestre."
+
+msgid "IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):"
+msgstr "IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):"
+
+msgid "Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN"
+msgstr "Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN"
+
+msgid "Janela de pareamento aberta por 3 minutos! Código:"
+msgstr "Janela de pareamento aberta por 3 minutos! Código:"
+
+msgid "Política de acesso de entrada da VPN atualizada com sucesso!"
+msgstr "Política de acesso de entrada da VPN atualizada com sucesso!"
+
+msgid "🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)"
+msgstr "🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)"
+
+msgid "🎯 Acesso Admin + IPs ou Faixas Específicas da LAN"
+msgstr "🎯 Acesso Admin + IPs ou Faixas Específicas da LAN"
+
+msgid "💾 Salvar Permissão de Entrada"
+msgstr "💾 Salvar Permissão de Entrada"
+
+msgid "🔑 Código do Mestre:"
+msgstr "🔑 Código do Mestre:"
+
+msgid "🔑 Gerar Código (3 min)"
+msgstr "🔑 Gerar Código (3 min)"
+
+msgid "🔑 Pareamento Seguro com Roteador Secundário (Satélite)"
+msgstr "🔑 Pareamento Seguro com Roteador Secundário (Satélite)"
+
+msgid "🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)"
+msgstr "🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)"
+
+msgid "🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)"
+msgstr "🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)"
+

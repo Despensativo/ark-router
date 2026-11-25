@@ -105,15 +105,19 @@ adblock_status_json() {
 	if $local_active; then
 		stat_running=true
 		stats_raw=""
-		agh_auth_arg=""
 		stored_pass="$(uci -q get equipe_perf.settings.adguard_pass || true)"
-		if [ -n "$stored_pass" ]; then
-			agh_auth_arg="--user=admin --password=$stored_pass"
-		fi
 		if command -v uclient-fetch >/dev/null 2>&1; then
-			stats_raw="$(uclient-fetch -q -O - --timeout=2 $agh_auth_arg "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			if [ -n "$stored_pass" ]; then
+				stats_raw="$(uclient-fetch -q -O - --timeout=2 --user=admin "--password=$stored_pass" "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			else
+				stats_raw="$(uclient-fetch -q -O - --timeout=2 "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			fi
 		elif command -v wget >/dev/null 2>&1; then
-			stats_raw="$(wget -q -O - -T 2 $agh_auth_arg "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			if [ -n "$stored_pass" ]; then
+				stats_raw="$(wget -q -O - -T 2 --user=admin "--password=$stored_pass" "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			else
+				stats_raw="$(wget -q -O - -T 2 "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+			fi
 		fi
 		if [ -n "$stats_raw" ]; then
 			stat_queries="$(printf '%s' "$stats_raw" | awk -F'"num_dns_queries":' '{print $2}' | awk -F'[,}]' '{print $1}' | tr -d ' ')"
@@ -825,7 +829,7 @@ adblock_configure() {
 	provider="${6:-adguard_dns}"
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
-	zt_access="${9:-1}"
+	zt_access="${9:-0}"
 	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
 	custom_whitelist="${12:-__KEEP_EXISTING__}"
@@ -876,14 +880,14 @@ adblock_configure() {
 			{ print }
 			' "$yaml" > "${yaml}.tmp" && mv -f "${yaml}.tmp" "$yaml"
 			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-			chmod 644 "$yaml" 2>/dev/null || true
+			chmod 600 "$yaml" 2>/dev/null || true
 
 			if [ -x /usr/bin/AdGuardHome ]; then
 				if ! (/usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1 || /usr/bin/AdGuardHome --check-config -c "$yaml" >/dev/null 2>&1); then
 					logger -t ark-adguard "Configuracao YAML do AdGuard Home corrompida. Revertendo backup de seguranca."
 					cp -f "${yaml}.bak" "$yaml" 2>/dev/null || true
 					chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-					chmod 644 "$yaml" 2>/dev/null || true
+					chmod 600 "$yaml" 2>/dev/null || true
 				fi
 			fi
 			sync_adguard_ipv6
@@ -1024,7 +1028,7 @@ adblock_enable() {
 	safesearch="${6:-0}"
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
-	zt_access="${9:-1}"
+	zt_access="${9:-0}"
 	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
 	custom_whitelist="${12:-__KEEP_EXISTING__}"
@@ -1156,11 +1160,11 @@ http:
 users: []
 EOF
 			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+			chmod 600 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 		elif ! grep -q '^users:' /etc/adguardhome/adguardhome.yaml 2>/dev/null; then
 			printf '\nusers: []\n' >> /etc/adguardhome/adguardhome.yaml
 			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+			chmod 600 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 		fi
 
 		if [ -f /etc/init.d/adguardhome ] && ! grep -q -- '--logfile' /etc/init.d/adguardhome; then
@@ -1169,7 +1173,7 @@ EOF
 		if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 			sed -i -E 's/^[[:space:]]*(upstream_dns_file|ipset_file|dnscrypt_config_file):.*/  \1: ""/' /etc/adguardhome/adguardhome.yaml
 			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+			chmod 600 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 		fi
 		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable >/dev/null 2>&1 || true
 		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome restart >/dev/null 2>&1 || true

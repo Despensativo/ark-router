@@ -73,11 +73,48 @@ validate_dns_list() {
 	return 0
 }
 
+_ARK_VAL_LF='
+'
+_ARK_VAL_CR="$(printf '\r')"
+
 valid_plain() {
 	local value max
 	value="$1"; max="$2"
 	[ "${#value}" -le "$max" ] || return 1
+	case "$value" in
+		*"$_ARK_VAL_LF"*|*"$_ARK_VAL_CR"*) return 1 ;;
+	esac
 	! printf '%s' "$value" | grep -q '[[:cntrl:]]'
+}
+
+valid_cidr4_or_ipv4() {
+	local val ip mask
+	val="$1"
+	case "$val" in
+		*/*)
+			ip="${val%/*}"
+			mask="${val#*/}"
+			valid_ipv4 "$ip" && valid_uint_range "$mask" 1 32
+			;;
+		*)
+			valid_ipv4 "$val"
+			;;
+	esac
+}
+
+valid_cidr6_or_ipv6() {
+	local val ip mask
+	val="$1"
+	case "$val" in
+		*/*)
+			ip="${val%/*}"
+			mask="${val#*/}"
+			valid_ipv6 "$ip" && valid_uint_range "$mask" 1 128
+			;;
+		*)
+			valid_ipv6 "$val"
+			;;
+	esac
 }
 
 valid_wifi_password() {

@@ -1,6 +1,6 @@
-# ARK Router Panel (`v2.2.15`) — Super Manual Técnico, Estudo de Fontes Primárias & Auditoria de Ordem de Execução
+# ARK Router Panel (`v2.2.16`) — Super Manual Técnico, Estudo de Fontes Primárias & Auditoria de Ordem de Execução
 
-> **Versão Auditada**: `2.2.15` (`HEAD 12339921`, branch `main`) | **Data do Estudo**: `2026-11-25`  
+> **Versão Auditada**: `2.2.16` (`branch main`) | **Data do Estudo**: `2026-11-25`  
 > **Natureza**: Estudo técnico estático completo (somente leitura do código-fonte + pesquisa em fontes primárias oficiais de OpenWrt `19.07`–`25.12`, Linux Kernel `v6.12`, RFCs IETF e projetos upstream). **Nenhuma mutação** foi aplicada em código, VM ou hardware durante este levantamento.  
 > **Objetivo**: Servir como **enciclopédia viva de consulta e revisão** para responder, com evidência exata (`arquivo:linha` + fonte primária), a cinco perguntas sobre cada um dos **74 contratos funcionais (`ARK-*`)**:
 > 1. **O que o recurso faz hoje no código real** (UCI, `sysctl`, `nft`/`iptables`, `tc`, pacotes e daemons)?

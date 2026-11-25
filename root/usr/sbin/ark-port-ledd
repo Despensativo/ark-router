@@ -30,8 +30,12 @@ LED_NODE="$LED_BASE/aw21018_led/led"
 PIDFILE="/var/run/ark-port-ledd.pid"
 if [ -f "$PIDFILE" ]; then
 	oldpid="$(cat "$PIDFILE" 2>/dev/null)"
+	case "$oldpid" in ''|*[!0-9]*) oldpid="" ;; esac
 	if [ -n "$oldpid" ] && [ -d "/proc/$oldpid" ] && [ "$oldpid" != "$$" ]; then
-		kill -9 "$oldpid" 2>/dev/null || true
+		oldcmd="$(tr '\0' ' ' < "/proc/$oldpid/cmdline" 2>/dev/null || true)"
+		case "$oldcmd" in
+			*ark-port-ledd*) kill "$oldpid" 2>/dev/null || true ;;
+		esac
 	fi
 fi
 echo "$$" > "$PIDFILE" 2>/dev/null || true

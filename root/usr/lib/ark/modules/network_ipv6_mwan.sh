@@ -1546,6 +1546,17 @@ set_ipv6_mode() {
 			echo ok
 			;;
 		ipv6_only)
+			if [ -z "${ARK_ROOT:-}" ] && ! command -v jool >/dev/null 2>&1; then
+				if command -v apk >/dev/null 2>&1; then
+					apk add kmod-jool-netfilter jool-tools-netfilter >/dev/null 2>&1 || true
+				elif command -v opkg >/dev/null 2>&1; then
+					opkg install kmod-jool-netfilter jool-tools-netfilter >/dev/null 2>&1 || true
+				fi
+				if ! command -v jool >/dev/null 2>&1; then
+					echo "Modo IPv6-Only bloqueado: pacote Jool NAT64 (jool-tools-netfilter) indisponivel neste roteador. DHCPv4 da LAN preservado para evitar perda de conectividade." >&2
+					exit 3
+				fi
+			fi
 			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall

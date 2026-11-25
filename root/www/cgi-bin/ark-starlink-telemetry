@@ -30,10 +30,27 @@ client_is_authorized() {
 			;;
 	esac
 
+	local wan_devs="" sec="" d=""
+	for sec in $(uci -q show network 2>/dev/null | grep -E '=interface$' | cut -d. -f2 | cut -d= -f1); do
+		case "$sec" in
+			wan|wan[0-9]*|wwan*)
+				for d in $(uci -q get "network.$sec.device" 2>/dev/null || true) $(uci -q get "network.$sec.ifname" 2>/dev/null || true); do
+					[ -n "$d" ] && wan_devs="$wan_devs $d"
+				done
+				;;
+		esac
+	done
+	if [ -n "$dev" ]; then
+		case "$dev" in pppoe-*|wwan*) return 1 ;; esac
+		for d in $wan_devs; do
+			[ "$dev" = "$d" ] && return 1
+		done
+	fi
+
 	case "$dev" in
-		br-lan*|lan*|eth0|lo) return 0 ;; # Local LAN (IPv4 / IPv6)
-		wg*|wireguard*)       return 0 ;; # WireGuard VPN
-		zt*|zerotier*)        return 0 ;; # ZeroTier VPN
+		br-lan*|lan*|lo) return 0 ;; # Local LAN (IPv4 / IPv6)
+		wg*|wireguard*)  return 0 ;; # WireGuard VPN
+		zt*|zerotier*)   return 0 ;; # ZeroTier VPN
 	esac
 
 	# Fallback checks

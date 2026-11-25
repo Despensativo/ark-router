@@ -194,6 +194,14 @@ const storageWolMethods = {
 			style: 'border-color: rgba(239,68,68,0.5); font-weight:700;'
 		});
 
+		let formatToken = '';
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-disk-action', 'format-prepare', disk.device]).then(function(r) {
+			try {
+				const parsed = JSON.parse(r.stdout || '{}');
+				if (parsed && parsed.token) formatToken = parsed.token;
+			} catch (e) {}
+		}).catch(function() {});
+
 		const formatBtn = E('button', {
 			class: 'btn cbi-button cbi-button-negative',
 			disabled: true,
@@ -201,7 +209,9 @@ const storageWolMethods = {
 				if (confirmInput.value.trim() !== 'SIM') return;
 				formatBtn.disabled = true;
 				formatBtn.textContent = 'Formatando unidade…';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['ksmbd-disk-action', 'format', disk.device, fsSelect.value, labelInput.value.trim() || 'ARK_USB']).then(function(r) {
+				const args = ['ksmbd-disk-action', 'format', disk.device, fsSelect.value, labelInput.value.trim() || 'ARK_USB'];
+				if (formatToken) args.push(formatToken);
+				fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao formatar unidade');
 					ui.addNotification(null, E('p', {}, ['Unidade ' + disk.device + ' formatada com sucesso em ' + fsSelect.value.toUpperCase() + '!']));
 					self.openKsmbdModal();

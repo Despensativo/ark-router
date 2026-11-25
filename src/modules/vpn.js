@@ -450,7 +450,14 @@ const vpnMethods = {
 		const self = this;
 		ui.showModal('Cliente WireGuard', [E('p', {}, ['Obtendo status da conexão VPN…'])]);
 
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-status']).then(function(r){
+		const statusPromise = fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-status']);
+		const confPromise = isEditing
+			? fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-conf-get']).catch(function(){ return null; })
+			: Promise.resolve(null);
+
+		return Promise.all([statusPromise, confPromise]).then(function(results){
+			const r = results[0];
+			const confRes = results[1];
 			if(r.code) throw new Error(r.stderr || 'Falha ao obter status do cliente WireGuard');
 			let status = {};
 			try { status = JSON.parse(r.stdout); } catch(e){ throw new Error('Resposta JSON inválida do backend'); }
@@ -458,12 +465,110 @@ const vpnMethods = {
 
 			const configured = !!status.configured;
 			let existingConf = '';
-			if(status.conf_b64){
+			let rawConfB64 = status.conf_b64 || '';
+			if(!rawConfB64 && confRes && !confRes.code && confRes.stdout){
+				try { rawConfB64 = (JSON.parse(confRes.stdout) || {}).conf_b64 || ''; } catch(e){}
+			}
+			if(rawConfB64){
 				try {
-					existingConf = decodeURIComponent(escape(window.atob(status.conf_b64)));
+					existingConf = decodeURIComponent(escape(window.atob(rawConfB64)));
 				} catch(e){
-					try { existingConf = window.atob(status.conf_b64); } catch(e2){}
+					try { existingConf = window.atob(rawConfB64); } catch(e2){}
 				}
+			}
+
+			const curAccessMode = status.access_mode || 'admin';
+			const curAllowedRanges = status.allowed_ranges || '';
+			const curAdminPorts = status.admin_ports || '22 80 443';
+
+			function buildWgClientAccessControls(initialMode, initialRanges, showInstantSaveBtn){
+				const modeSelect = E('select', {
+					class:'cbi-input-select',
+					style:'width:100%; font-weight:600;'
+				}, [
+					E('option', {value:'admin'}, ['🛠️ Apenas Acesso Admin ao Roteador (SSH + Painel Web: portas ' + curAdminPorts + ')']),
+					E('option', {value:'isolated'}, ['🔒 Bloqueado / VPN Comercial (Só Saída — bloqueia qualquer entrada pelo túnel)']),
+					E('option', {value:'ranges'}, ['🎯 Acesso Admin + IPs ou Faixas Específicas da LAN']),
+					E('option', {value:'full_lan'}, ['🌐 Rede Toda: Acesso Admin + Toda a Rede LAN (Site-to-Site)'])
+				]);
+				modeSelect.value = (initialMode === 'isolated' || initialMode === 'ranges' || initialMode === 'full_lan') ? initialMode : 'admin';
+
+				const rangesInput = E('input', {
+					type:'text',
+					class:'cbi-input-text',
+					value: initialRanges || '',
+					placeholder:'Ex: 192.168.73.10, 192.168.73.50/32, 192.168.73.0/25',
+					style:'width:100%; font-family:monospace; margin-top:6px;'
+				});
+
+				const rangesWrap = E('div', {
+					style:'margin-top:8px; display:' + (modeSelect.value === 'ranges' ? 'block' : 'none') + ';'
+				}, [
+					E('span', {style:'font-size:0.78rem; font-weight:600; display:block;'}, ['IPs ou Sub-redes da LAN liberados para entrada pela VPN (separados por vírgula):']),
+					rangesInput,
+					E('small', {class:'ex-muted', style:'display:block; margin-top:4px;'}, [
+						'O acesso SSH/Web ao roteador permanece liberado; na LAN, somente os IPs/CIDRs acima serão alcançáveis pelo túnel.'
+					])
+				]);
+
+				const modeHint = E('small', {class:'ex-muted', style:'display:block; margin-top:6px; line-height:1.4;'}, []);
+				function syncHint(){
+					rangesWrap.style.display = (modeSelect.value === 'ranges') ? 'block' : 'none';
+					if(modeSelect.value === 'isolated'){
+						modeHint.textContent = 'Ideal para VPNs comerciais (ProtonVPN, Mullvad, NordVPN, WARP): o roteador sai pela VPN, mas ninguém de fora entra no painel nem na LAN.';
+					} else if(modeSelect.value === 'admin'){
+						modeHint.textContent = 'Ideal para conectar no seu servidor remoto (VPS) atrás de CGNAT: libera apenas SSH e Painel Web do roteador, mantendo os aparelhos da LAN isolados.';
+					} else if(modeSelect.value === 'ranges'){
+						modeHint.textContent = 'Libera SSH/Painel do roteador e encaminhamento apenas para os IPs ou sub-redes da LAN especificados.';
+					} else {
+						modeHint.textContent = 'Site-to-Site completo: quem vier pelo seu servidor VPN pode administrar o roteador e acessar qualquer dispositivo da LAN.';
+					}
+				}
+				modeSelect.addEventListener('change', syncHint);
+				syncHint();
+
+				const children = [
+					E('div', {style:'display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;'}, [
+						E('strong', {style:'font-size:0.84rem; color:#38bdf8;'}, ['🛡️ Permissão de Entrada pelo Túnel VPN (O que liberar?)'])
+					]),
+					modeSelect,
+					modeHint,
+					rangesWrap
+				];
+
+				if(showInstantSaveBtn){
+					const applyAccessBtn = E('button', {
+						class:'btn cbi-button cbi-button-action',
+						style:'margin-top:10px; min-height:36px; padding:0 14px; font-size:0.8rem; font-weight:600;',
+						click: function(){
+							const selMode = modeSelect.value;
+							const selRanges = (rangesInput.value || '').trim();
+							if(selMode === 'ranges' && !selRanges){
+								ui.addNotification(null, E('p', {}, ['Informe pelo menos um IP ou faixa CIDR da LAN (ex: 192.168.73.10).']), 'warning');
+								return;
+							}
+							applyAccessBtn.disabled = true;
+							applyAccessBtn.textContent = 'Aplicando firewall…';
+							fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-access-set', selMode, selRanges]).then(function(res){
+								applyAccessBtn.disabled = false;
+								applyAccessBtn.textContent = '💾 Salvar Permissão de Entrada';
+								if(res.code) throw new Error(res.stderr || 'Falha ao atualizar regras de firewall da VPN');
+								ui.addNotification(null, E('p', {}, ['Política de acesso de entrada da VPN atualizada com sucesso!']), 'info');
+							}).catch(function(err){
+								applyAccessBtn.disabled = false;
+								applyAccessBtn.textContent = '💾 Salvar Permissão de Entrada';
+								ui.addNotification(null, E('p', {}, [err.message || String(err)]), 'danger');
+							});
+						}
+					}, ['💾 Salvar Permissão de Entrada']);
+					children.push(E('div', {style:'display:flex; justify-content:flex-end;'}, [applyAccessBtn]));
+				}
+
+				const box = E('div', {
+					style:'padding:12px 14px; border-radius:10px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.22); margin-bottom:14px;'
+				}, children);
+
+				return { box: box, getMode: function(){ return modeSelect.value; }, getRanges: function(){ return (rangesInput.value || '').trim(); } };
 			}
 
 			// Mode 1: Configured and NOT in edit mode -> Show status / control dashboard
@@ -630,9 +735,12 @@ const vpnMethods = {
 					}
 				}, ['🗑 Excluir']);
 
+				const statusAccessCtrl = buildWgClientAccessControls(curAccessMode, curAllowedRanges, true);
+
 				ui.showModal('Cliente WireGuard (Conexão VPN)', [
 					statusBox,
 					metricsGrid,
+					statusAccessCtrl.box,
 					pubKeySection,
 					E('div', {class:'right', style:'margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;'}, [
 						toggleBtn,
@@ -645,6 +753,7 @@ const vpnMethods = {
 			}
 
 			// Mode 2: NOT configured OR in edit mode -> File upload / paste form
+			const importAccessCtrl = buildWgClientAccessControls(curAccessMode, curAllowedRanges, false);
 			const confTextarea = E('textarea', {
 				class:'cbi-input-textarea',
 				rows: 9,
@@ -811,8 +920,15 @@ const vpnMethods = {
 						return;
 					}
 
+					const chosenMode = importAccessCtrl.getMode();
+					const chosenRanges = importAccessCtrl.getRanges();
+					if(chosenMode === 'ranges' && !chosenRanges){
+						ui.addNotification(null, E('p', {}, ['Informe pelo menos um IP ou faixa CIDR da LAN para liberar na VPN']), 'warning');
+						return;
+					}
+
 					ui.showModal('Salvando Cliente VPN', [E('p', {}, ['Configurando interface wgclient, chaves e firewall…'])]);
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-import', b64]).then(function(saveRes){
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-client-import', b64, chosenMode, chosenRanges]).then(function(saveRes){
 						if(saveRes.code) throw new Error(saveRes.stderr || 'Falha ao importar cliente WireGuard');
 						ui.hideModal();
 						ui.addNotification(null, E('p', {}, ['Cliente WireGuard importado e conectado com sucesso!']), 'info');
@@ -858,6 +974,7 @@ const vpnMethods = {
 				]),
 				confTextarea,
 				previewContainer,
+				E('div', {style:'margin-top:12px;'}, [importAccessCtrl.box]),
 				E('div', {class:'right', style:'margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;'}, modalButtons)
 			]);
 
