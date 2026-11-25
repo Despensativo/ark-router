@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.16
+
+- **Atualização Incremental v2.2.16 (25/11/2026)**:
+  - Remediação completa dos 15 achados P0 e 10 blocos P1 do Super Manual (segurança Starlink/ksmbd/probe, IPv6/NAT64, limites vs Flow Offloading, SQM/AQL/Conntrack RFC 5382, Wi-Fi/MLO/Doctor, AdBlock/DNS, Speedify/ZeroTier/AmneziaWG), fix de recursão ark-hardware-tune/sqm validado no W6x (OpenWrt 25.12.6) e limpeza de symlinks rc.d legados.
+
 ## 2.2.15
 
 - **Atualização Incremental v2.2.15 (24/11/2026)**:

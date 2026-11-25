@@ -454,7 +454,7 @@ ark_hardware_tune_apply() {
 				[ -n "$_sq_if" ] && ark_apply_ingress_voice_tin_filters "$_sq_if" 2>/dev/null || true
 			done
 		fi
-		command -v ark_sync_gaming_ports_and_bql >/dev/null 2>&1 && ark_sync_gaming_ports_and_bql 2>/dev/null || true
+		command -v ark_sync_gaming_ports_and_bql >/dev/null 2>&1 && ARK_IN_HARDWARE_TUNE=1 ark_sync_gaming_ports_and_bql 2>/dev/null || true
 		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
 			command -v ark_sync_lan_selective_offload >/dev/null 2>&1 && ark_sync_lan_selective_offload 2>/dev/null || true
 		fi

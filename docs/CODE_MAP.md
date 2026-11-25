@@ -68,7 +68,7 @@
 | `ipv6-mode-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2091` (`handle_network`) | `src/modules/network_modals.js:960` (`showIpv6Modal`) |
 | `ipv6-relay-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:2094` (`handle_network`) | `src/modules/network_modals.js:1085` (`showIpv6Modal`) |
 | `ipv6-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:2088` (`handle_network`) | `src/modules/network_modals.js:878` (`showIpv6Modal`) |
-| `irqbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1361` (`handle_sqm`) | `src/modules/doctor_perf.js:988` (`systemPerfCard`)<br>`src/modules/doctor_perf.js:1015` (`systemPerfCard`) |
+| `irqbalance-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1363` (`handle_sqm`) | `src/modules/doctor_perf.js:988` (`systemPerfCard`)<br>`src/modules/doctor_perf.js:1015` (`systemPerfCard`) |
 | `ksmbd-control` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:444` (`handle_storage_wol`) | `src/modules/storage_wol.js:72` (`ksmbdCard`)<br>`src/modules/storage_wol.js:339` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:353` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:367` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:382` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:410` (`openKsmbdModal`) |
 | `ksmbd-disk-action` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:611` (`handle_storage_wol`) | `src/modules/storage_wol.js:204` (`openKsmbdFormatConfirmModal`)<br>`src/modules/storage_wol.js:449` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:464` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:480` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:501` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:534` (`openKsmbdModal`) |
 | `ksmbd-interface-access` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/storage_wol.sh:526` (`handle_storage_wol`) | `src/modules/storage_wol.js:572` (`openKsmbdModal`)<br>`src/modules/storage_wol.js:587` (`openKsmbdModal`) |
@@ -116,10 +116,10 @@
 | `speedtest-result` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1492` (`handle_devices`) | `src/modules/speedtest.js:406` (`loadSpeedtestResult`) |
 | `speedtest-start` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/devices.sh:1400` (`handle_devices`) | `src/modules/speedtest.js:363` (`runSpeedtest`) |
 | `speedtest-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/devices.sh:1488` (`handle_devices`) | `src/modules/speedtest.js:397` (`pollSpeedtest`) |
-| `sqm-engine-select` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1356` (`handle_sqm`) | `src/modules/network.js:506` (`selectSqmEngine`) |
-| `sqm-gaming-ports` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1448` (`handle_sqm`) | `src/modules/network.js:607` (`toggleGamingPorts`) |
-| `sqm-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1331` (`handle_sqm`) | `src/modules/lifecycle.js:169` (`switchProfile`)<br>`src/modules/network.js:473` (`toggleSqm`) |
-| `sqm-waveform-aplus` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1375` (`handle_sqm`) | `src/modules/network.js:571` (`toggleWaveformAplus`) |
+| `sqm-engine-select` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1358` (`handle_sqm`) | `src/modules/network.js:506` (`selectSqmEngine`) |
+| `sqm-gaming-ports` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1450` (`handle_sqm`) | `src/modules/network.js:607` (`toggleGamingPorts`) |
+| `sqm-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1333` (`handle_sqm`) | `src/modules/lifecycle.js:169` (`switchProfile`)<br>`src/modules/network.js:473` (`toggleSqm`) |
+| `sqm-waveform-aplus` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/sqm.sh:1377` (`handle_sqm`) | `src/modules/network.js:571` (`toggleWaveformAplus`) |
 | `starlink-active-wan-set` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:215` (`handle_starlink`) | `src/modules/starlink.js:61` (`starlinkCard`) |
 | `starlink-always-show-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:253` (`handle_starlink`) | `src/modules/starlink.js:137` (`toggleStarlinkAlwaysShow`) |
 | `starlink-public-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/starlink.sh:218` (`handle_starlink`) | `src/modules/starlink.js:124` (`toggleStarlinkPublic`) |
@@ -130,7 +130,7 @@
 | `starlink-telemetry-test-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/starlink.sh:368` (`handle_starlink`) | `src/modules/starlink.js:244` (`pollStarlinkTestEmail`) |
 | `system-hardware-auto-tune` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1759` (`handle_system`) | `src/modules/doctor_perf.js:854` (`systemPerfCard`)<br>`src/modules/system.js:2717` (`showHardwareModal`) |
 | `system-hardware-info` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1756` (`handle_system`) | `src/modules/lifecycle.js:241` (`fetchData`) |
-| `system-hardware-sqm-audit` | 🟢 Read-Only | `root/usr/lib/ark/modules/sqm.sh:1790` (`handle_sqm`) | `src/modules/network.js:653` (`editSqmLimits`) |
+| `system-hardware-sqm-audit` | 🟢 Read-Only | `root/usr/lib/ark/modules/sqm.sh:1792` (`handle_sqm`) | `src/modules/network.js:653` (`editSqmLimits`) |
 | `system-memory-purge` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1661` (`handle_system`) | `src/modules/doctor_perf.js:807` (`systemPerfCard`) |
 | `system-network-mode-get` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:1360` (`handle_network`) | `src/modules/system.js:2135` (`showNetworkModeModal`) |
 | `system-perf-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1562` (`handle_system`) | `src/modules/lifecycle.js:232` (`fetchData`) |
@@ -576,7 +576,7 @@
 | `speedify_uninstall()` | `951–1007` | 57L |
 | `handle_speedify()` | `1011–1113` | 103L |
 
-### `root/usr/lib/ark/modules/sqm.sh` (1812 linhas, 33 funções)
+### `root/usr/lib/ark/modules/sqm.sh` (1814 linhas, 33 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -588,31 +588,31 @@
 | `ark_sync_sqm_gaming_dns()` | `73–123` | 51L |
 | `ark_promote_cake_mq()` | `125–221` | 97L |
 | `ark_is_gaming_ports_enabled()` | `223–235` | 13L |
-| `ark_sync_gaming_ports_and_bql()` | `237–387` | 151L |
-| `ark_get_sqm_engine()` | `426–438` | 13L |
-| `ark_apply_sqm_engine_to_section()` | `440–453` | 14L |
-| `get_system_hardware_sqm_audit()` | `455–535` | 81L |
-| `sqm_apply_upload_only()` | `537–568` | 32L |
-| `ensure_qos_equipe()` | `570–580` | 11L |
-| `ark_sqm_ack_filter_opt()` | `582–592` | 11L |
-| `ark_sqm_ingress_rtt_opt()` | `594–613` | 20L |
-| `ark_sqm_ingress_mode_opt()` | `615–634` | 20L |
-| `ensure_sqm_section()` | `636–811` | 176L |
-| `sqm_section_for_network()` | `813–815` | 3L |
-| `apply_guest_tc_limit()` | `817–843` | 27L |
-| `ark_sqm_save_offload_state()` | `845–883` | 39L |
-| `sync_sqm_flow_offload()` | `885–955` | 71L |
-| `ark_sync_lan_selective_offload()` | `957–973` | 17L |
-| `ark_sqm_autorate_toggle()` | `975–993` | 19L |
-| `ark_sqm_autorate_step()` | `995–1161` | 167L |
-| `ark_sqm_autorate_status()` | `1163–1178` | 16L |
-| `ark_sqm_verify_device()` | `1180–1203` | 24L |
-| `ark_sqm_verify_queues()` | `1205–1229` | 25L |
-| `ark_sqm_sync_memory_limits()` | `1231–1255` | 25L |
-| `get_sqm_resource_plan()` | `1257–1269` | 13L |
-| `ark_sqm_restart_checked()` | `1271–1276` | 6L |
-| `ark_sqm_select_engine()` | `1278–1325` | 48L |
-| `handle_sqm()` | `1327–1812` | 486L |
+| `ark_sync_gaming_ports_and_bql()` | `237–389` | 153L |
+| `ark_get_sqm_engine()` | `428–440` | 13L |
+| `ark_apply_sqm_engine_to_section()` | `442–455` | 14L |
+| `get_system_hardware_sqm_audit()` | `457–537` | 81L |
+| `sqm_apply_upload_only()` | `539–570` | 32L |
+| `ensure_qos_equipe()` | `572–582` | 11L |
+| `ark_sqm_ack_filter_opt()` | `584–594` | 11L |
+| `ark_sqm_ingress_rtt_opt()` | `596–615` | 20L |
+| `ark_sqm_ingress_mode_opt()` | `617–636` | 20L |
+| `ensure_sqm_section()` | `638–813` | 176L |
+| `sqm_section_for_network()` | `815–817` | 3L |
+| `apply_guest_tc_limit()` | `819–845` | 27L |
+| `ark_sqm_save_offload_state()` | `847–885` | 39L |
+| `sync_sqm_flow_offload()` | `887–957` | 71L |
+| `ark_sync_lan_selective_offload()` | `959–975` | 17L |
+| `ark_sqm_autorate_toggle()` | `977–995` | 19L |
+| `ark_sqm_autorate_step()` | `997–1163` | 167L |
+| `ark_sqm_autorate_status()` | `1165–1180` | 16L |
+| `ark_sqm_verify_device()` | `1182–1205` | 24L |
+| `ark_sqm_verify_queues()` | `1207–1231` | 25L |
+| `ark_sqm_sync_memory_limits()` | `1233–1257` | 25L |
+| `get_sqm_resource_plan()` | `1259–1271` | 13L |
+| `ark_sqm_restart_checked()` | `1273–1278` | 6L |
+| `ark_sqm_select_engine()` | `1280–1327` | 48L |
+| `handle_sqm()` | `1329–1814` | 486L |
 
 ### `root/usr/lib/ark/modules/starlink.sh` (384 linhas, 8 funções)
 

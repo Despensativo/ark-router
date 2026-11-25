@@ -95,6 +95,7 @@ chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
 chmod +x /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* 2>/dev/null || true
 chown -R root:root /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/lib/ark /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod -R a+rX /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/share/luci/menu.d /usr/share/rpcd/acl.d 2>/dev/null || true
+rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true

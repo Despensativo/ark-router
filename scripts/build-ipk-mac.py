@@ -25,6 +25,7 @@ chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
 chmod +x /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* 2>/dev/null || true
+rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true

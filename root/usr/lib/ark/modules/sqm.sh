@@ -344,19 +344,21 @@ ark_sync_gaming_ports_and_bql() {
 					done
 				fi
 			done
-			if [ -x /etc/init.d/ark-hardware-tune ]; then
-				/etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
-			else
-				for phy_d in /sys/kernel/debug/ieee80211/phy*; do
-					[ -d "$phy_d" ] || continue
-					[ -w "$phy_d/aql_threshold" ] && echo 24000 > "$phy_d/aql_threshold" 2>/dev/null || true
-					if [ -w "$phy_d/aql_txq_limit" ]; then
-						echo "0 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
-						echo "1 3500 7000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
-						echo "2 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
-						echo "3 1500 3500" > "$phy_d/aql_txq_limit" 2>/dev/null || true
-					fi
-				done
+			if [ -f "$bql_state" ] && [ "${ARK_IN_HARDWARE_TUNE:-0}" != "1" ]; then
+				if [ -x /etc/init.d/ark-hardware-tune ]; then
+					/etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
+				else
+					for phy_d in /sys/kernel/debug/ieee80211/phy*; do
+						[ -d "$phy_d" ] || continue
+						[ -w "$phy_d/aql_threshold" ] && echo 24000 > "$phy_d/aql_threshold" 2>/dev/null || true
+						if [ -w "$phy_d/aql_txq_limit" ]; then
+							echo "0 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+							echo "1 3500 7000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+							echo "2 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+							echo "3 1500 3500" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+						fi
+					done
+				fi
 			fi
 		fi
 		rm -f "$bql_state" 2>/dev/null || true

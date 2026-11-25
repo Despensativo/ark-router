@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=2.2.15
+PKG_VERSION:=2.2.16
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -141,6 +141,7 @@ define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos /etc/init.d/equipe-traffic-history /etc/init.d/ark-* /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
+	rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable 2>/dev/null || true
@@ -163,6 +164,7 @@ define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos /etc/init.d/equipe-traffic-history /etc/init.d/ark-* /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
+	rm -f /etc/rc.d/K98ark-safe-shutdown /etc/rc.d/S22ark-firewall-guard 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable 2>/dev/null || true

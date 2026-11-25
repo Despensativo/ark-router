@@ -217,9 +217,14 @@ class TestSuperManualP0Fixes(unittest.TestCase):
         sqm_src = (REPO / "root/usr/lib/ark/modules/sqm.sh").read_text(encoding="utf-8")
         self.assertIn("echo 0 > \"$bql_f\"", sqm_src)
         self.assertIn("/etc/init.d/ark-hardware-tune reload", sqm_src)
+        self.assertIn("ARK_IN_HARDWARE_TUNE", sqm_src)
+        self.assertIn('[ -f "$bql_state" ]', sqm_src)
         self.assertIn("target 5ms interval 100ms ecn", sqm_src)
         self.assertEqual(sqm_src.count("meta length <= 512 ip dscp set cs4"), 3)
         self.assertEqual(sqm_src.count("meta length <= 512 ip6 dscp set cs4"), 3)
+
+        aht_src = (REPO / "root/etc/init.d/ark-hardware-tune").read_text(encoding="utf-8")
+        self.assertIn("ARK_IN_HARDWARE_TUNE=1 ark_sync_gaming_ports_and_bql", aht_src)
 
     def test_10_babyjumbo_lock_safety_and_manual_mtu_preserved(self):
         bj_src = (REPO / "root/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo").read_text(encoding="utf-8")
