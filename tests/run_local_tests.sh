@@ -104,6 +104,8 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_dns_optimization.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_audit_wave1_wave2.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_audit_wave3.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_super_manual_p0_fixes.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_super_manual_p1_fixes.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_offline_review.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 

@@ -67,7 +67,7 @@ ark_hfsc_detect_wan_profile() {
     saved_preset="$(uci -q get "equipe_dashboard.wan_profiles.$wan_net" 2>/dev/null || uci -q get "equipe_dashboard.${wan_net}.preset" 2>/dev/null || true)"
     if [ "$(uci -q get "equipe_dashboard.main.starlink_mode" 2>/dev/null)" = "1" ] || \
        [ "$(uci -q get "equipe_dashboard.settings.starlink_mode" 2>/dev/null)" = "1" ] || \
-       [ "$(uci -q get "starlink_telemetry.main.enabled" 2>/dev/null)" = "1" ]; then
+       [ "$(uci -q get "starlink_telemetry.global.enabled" 2>/dev/null)" = "1" ]; then
         printf 'mobile_starlink'
         return 0
     fi

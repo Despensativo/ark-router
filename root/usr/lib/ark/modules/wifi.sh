@@ -458,7 +458,7 @@ wifi_enhancer_run_upgrade() {
 	wifi_enhancer_update_status "running" "CONFIGURING" 6 90 "Sincronizando 802.11v BSS Transition, anti-queda (disassoc_low_ack=0) e reiniciando daemons..." ""
 
 	/etc/init.d/wpad restart >/dev/null 2>&1 || true
-	handle_wifi "wifi-roaming-sync" "on" >/dev/null 2>&1 || true
+	handle_wifi "wifi-roaming-toggle" "1" >/dev/null 2>&1 || true
 
 	# Etapa 7 / 7: COMPLETED
 	wifi_enhancer_update_status "completed" "COMPLETED" 7 100 "Upgrade concluido com sucesso! Motor Pro wpad-mbedtls 100% ativo e operacional." ""
@@ -511,12 +511,26 @@ wifi_mlo_toggle() {
 			uci -q set wireless.$mld_sec.ssid="ARK_MLO_$(uci -q get system.@system[0].hostname 2>/dev/null || echo 7)"
 		fi
 		uci -q set wireless.$mld_sec.disabled='0'
+		local _if_dev _if_htmode _if_enc
 		for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 			mode="$(uci -q get wireless.$iface.mode || echo ap)"
 			[ "$mode" = "ap" ] || continue
-			if [ "$(uci -q get wireless.$iface.isolate)" != "1" ]; then
-				uci -q set wireless.$iface.mld="$mld_sec"
-			fi
+			[ "$(uci -q get wireless.$iface.isolate)" = "1" ] && continue
+			_if_dev="$(uci -q get wireless.$iface.device 2>/dev/null || true)"
+			_if_htmode="$(uci -q get "wireless.${_if_dev}.htmode" 2>/dev/null || true)"
+			case "$_if_htmode" in
+				EHT*)
+					uci -q set wireless.$iface.mld="$mld_sec"
+					_if_enc="$(uci -q get wireless.$iface.encryption 2>/dev/null || true)"
+					case "$_if_enc" in
+						sae|sae-ext*) ;;
+						*)
+							uci -q set wireless.$iface.encryption='sae'
+							uci -q set wireless.$iface.ieee80211w='2'
+							;;
+					esac
+					;;
+			esac
 		done
 		uci commit wireless
 		(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &

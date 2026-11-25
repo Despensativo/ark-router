@@ -130,10 +130,10 @@ starlink_setup_policy_routing() {
 			ip rule add fwmark "$mark" lookup "$table" priority "$rule_prio" 2>/dev/null || true
 		fi
 
-		prerouting_rules="${prerouting_rules}\t\ttcp dport $port counter dnat ip to 192.168.100.1:9200\n"
-		mangle_pre_rules="${mangle_pre_rules}\t\ttcp dport $port counter meta mark set $mark\n"
-		output_nat_rules="${output_nat_rules}\t\ttcp dport $port counter dnat ip to 192.168.100.1:9200\n"
-		mangle_out_rules="${mangle_out_rules}\t\ttcp dport $port counter meta mark set $mark\n"
+		prerouting_rules="${prerouting_rules}\t\tiifname { \"lo\", \"br-*\", \"lan*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter dnat ip to 192.168.100.1:9200\n"
+		mangle_pre_rules="${mangle_pre_rules}\t\tiifname { \"lo\", \"br-*\", \"lan*\", \"wg*\", \"zt*\" } fib daddr type local tcp dport $port counter meta mark set $mark\n"
+		output_nat_rules="${output_nat_rules}\t\tip daddr 127.0.0.1 tcp dport $port counter dnat ip to 192.168.100.1:9200\n"
+		mangle_out_rules="${mangle_out_rules}\t\tip daddr 127.0.0.1 tcp dport $port counter meta mark set $mark\n"
 	done
 
 	printf '%b\t}\n' "$prerouting_rules" >> "$tmp_nft"
@@ -144,6 +144,18 @@ starlink_setup_policy_routing() {
 
 	if nft -f "$tmp_nft" 2>/dev/null; then
 		mv -f "$tmp_nft" "$nft_file"
+		local apply_sh="/etc/ark/apply_starlink.sh"
+		cat <<'EOF_SL' > "$apply_sh"
+#!/bin/sh
+[ -f /etc/ark/ark_starlink.nft ] && command -v nft >/dev/null 2>&1 && nft -f /etc/ark/ark_starlink.nft 2>/dev/null || true
+EOF_SL
+		chmod 755 "$apply_sh" 2>/dev/null || true
+		uci -q set firewall.ark_starlink=include
+		uci -q set firewall.ark_starlink.type='script'
+		uci -q set firewall.ark_starlink.path="$apply_sh"
+		uci -q set firewall.ark_starlink.fw4_compatible='1'
+		uci -q set firewall.ark_starlink.reload='1'
+		uci -q commit firewall 2>/dev/null || true
 	else
 		rm -f "$tmp_nft" 2>/dev/null || true
 	fi

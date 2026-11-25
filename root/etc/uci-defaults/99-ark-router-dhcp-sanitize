@@ -390,21 +390,39 @@ if [ -f /etc/config/sqm ]; then
 			_mlim="4M"
 		fi
 	fi
-	_in_rtt="rtt 100ms"
-	[ "$(uci -q get equipe_dashboard.main.starlink_mode 2>/dev/null || echo 0)" = "1" ] && _in_rtt="rtt 150ms"
+	_is_starlink=0
+	[ "$(uci -q get equipe_dashboard.main.starlink_mode 2>/dev/null || echo 0)" = "1" ] && _is_starlink=1
+	[ "$(uci -q get starlink_telemetry.global.enabled 2>/dev/null || echo 0)" = "1" ] && _is_starlink=1
 	for sq in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
 		[ "$(uci -q get "sqm.$sq.enabled")" = "1" ] && sqm_is_on=1
+		_sq_down="$(uci -q get "sqm.$sq.download" 2>/dev/null || echo 0)"
+		case "$_sq_down" in ''|*[!0-9]*) _sq_down=0 ;; esac
+		_sq_is_gigabit=0
+		[ "$_is_starlink" = "0" ] && [ "$_sq_down" -gt 500000 ] 2>/dev/null && _sq_is_gigabit=1
+		if [ "$_is_starlink" = "1" ]; then
+			_in_rtt="rtt 150ms"
+		elif [ "$_sq_is_gigabit" = "1" ]; then
+			_in_rtt="rtt 20ms"
+		else
+			_in_rtt="rtt 100ms"
+		fi
 		cur_iq="$(uci -q get "sqm.$sq.iqdisc_opts")"
 		if [ -n "$cur_iq" ]; then
-			if printf '%s' "$cur_iq" | grep -qw 'besteffort' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
-				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g; s/rtt 50ms/'"$_in_rtt"'/g')"
+			if { [ "$_sq_is_gigabit" = "0" ] && printf '%s' "$cur_iq" | grep -qw 'besteffort'; } || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
+				if [ "$_sq_is_gigabit" = "0" ]; then
+					cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g; s/rtt 50ms/'"$_in_rtt"'/g')"
+				else
+					cur_iq="$(printf '%s' "$cur_iq" | sed 's/rtt 50ms/'"$_in_rtt"'/g')"
+				fi
 				printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_iq="$cur_iq $_in_rtt"
 				printf '%s' "$cur_iq" | grep -qw 'nat' || cur_iq="$cur_iq nat"
 				printf '%s' "$cur_iq" | grep -qw 'dual-dsthost' || cur_iq="$cur_iq dual-dsthost"
 				printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-				printf '%s' "$cur_iq" | grep -qw 'ingress' || cur_iq="$cur_iq ingress"
+				if [ "$_sq_is_gigabit" = "0" ]; then
+					printf '%s' "$cur_iq" | grep -qw 'ingress' || cur_iq="$cur_iq ingress"
+				fi
 				if printf '%s' "$cur_iq" | grep -q 'memlimit'; then
-					cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $_mlim/g")"
+					cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[kKmMgGbB]*/memlimit $_mlim/g")"
 				else
 					cur_iq="$cur_iq memlimit $_mlim"
 				fi
@@ -421,7 +439,7 @@ if [ -f /etc/config/sqm ]; then
 				printf '%s' "$cur_eq" | grep -qw 'dual-srchost' || cur_eq="$cur_eq dual-srchost"
 				printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
 				if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
-					cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $_mlim/g")"
+					cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[kKmMgGbB]*/memlimit $_mlim/g")"
 				else
 					cur_eq="$cur_eq memlimit $_mlim"
 				fi

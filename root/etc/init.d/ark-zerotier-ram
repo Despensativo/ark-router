@@ -17,23 +17,34 @@ start_service() {
 		return 0
 	fi
 
-	# Roteador fraco: extrai pacote compactado em /tmp (RAM)
+	# Roteador fraco: extrai pacote compactado em /tmp (RAM) com deteccao dinamica de libstdc++.so.6.*
+	local tmp_lib lib_base
 	if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
 		mkdir -p /tmp
-		if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
+		tmp_lib="$(find /tmp/usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
+		if [ -z "$tmp_lib" ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
 			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+			tmp_lib="$(find /tmp/usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
 		fi
-		[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-		[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+		if [ -n "$tmp_lib" ]; then
+			lib_base="$(basename "$tmp_lib")"
+			[ -e "/usr/lib/$lib_base" ] || ln -sf "$tmp_lib" "/usr/lib/$lib_base"
+			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf "$lib_base" /usr/lib/libstdc++.so.6
+		fi
 		[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
 		chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
 	elif [ -f /etc/ark-router/zerotier-libs.tar.gz ]; then
 		mkdir -p /tmp/lib
-		if [ ! -f /tmp/lib/libstdc++.so.6.0.33 ]; then
+		tmp_lib="$(find /tmp/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
+		if [ -z "$tmp_lib" ]; then
 			tar -xzf /etc/ark-router/zerotier-libs.tar.gz -C /tmp/lib 2>/dev/null
+			tmp_lib="$(find /tmp/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
 		fi
-		[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-		[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+		if [ -n "$tmp_lib" ]; then
+			lib_base="$(basename "$tmp_lib")"
+			[ -e "/usr/lib/$lib_base" ] || ln -sf "$tmp_lib" "/usr/lib/$lib_base"
+			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf "$lib_base" /usr/lib/libstdc++.so.6
+		fi
 	fi
 }
 

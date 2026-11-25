@@ -70,6 +70,9 @@ probe_starlink_grpc() {
 			lat="$(printf '%s' "$res" | jsonfilter -e '@.pop_ping_latency_ms' 2>/dev/null || printf '25.0')"
 			loss="$(printf '%s' "$res" | jsonfilter -e '@.pop_ping_drop_rate' 2>/dev/null || printf '0.0')"
 			obstr="$(printf '%s' "$res" | jsonfilter -e '@.fraction_obstruction' 2>/dev/null || printf '0.0')"
+			# gRPC retorna pop_ping_drop_rate e fraction_obstruction em fracao (0.0..1.0); normaliza para percentual (0..100)
+			loss="$(awk -v v="${loss:-0.0}" 'BEGIN { if (v > 0 && v <= 1.0) v = v * 100.0; printf "%.2f", v + 0 }')"
+			obstr="$(awk -v v="${obstr:-0.0}" 'BEGIN { if (v > 0 && v <= 1.0) v = v * 100.0; printf "%.2f", v + 0 }')"
 			printf 'UP|%s|%s|%s|OK\n' "${lat:-25.0}" "${loss:-0.0}" "${obstr:-0.0}"
 			return 0
 		fi
@@ -405,13 +408,15 @@ daemon_status() {
 
 	local hours_count=0 flash_bytes=0
 	if [ -d "$FLASH_DIR" ]; then
-		hours_count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
-		flash_bytes="$(du -sb "$FLASH_DIR" 2>/dev/null | awk '{print $1}' || printf 0)"
+		hours_count="$(find "$FLASH_DIR" -maxdepth 1 -type f -name '*.csv.gz' 2>/dev/null | wc -l | tr -d ' ')"
+		flash_bytes="$(du -sk "$FLASH_DIR" 2>/dev/null | awk '{print ($1 + 0) * 1024}')"
+		[ -n "$flash_bytes" ] || flash_bytes=0
 	fi
 
 	local ram_bytes=0
 	if [ -d "$RAM_DIR" ]; then
-		ram_bytes="$(du -sb "$RAM_DIR" 2>/dev/null | awk '{print $1}' || printf 0)"
+		ram_bytes="$(du -sk "$RAM_DIR" 2>/dev/null | awk '{print ($1 + 0) * 1024}')"
+		[ -n "$ram_bytes" ] || ram_bytes=0
 	fi
 
 	local live="{}"

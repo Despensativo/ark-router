@@ -140,13 +140,20 @@ endef
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos /etc/init.d/equipe-traffic-history /etc/init.d/ark-* /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
-	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
-	[ -x /etc/uci-defaults/99-ark-router-leds ] && /etc/uci-defaults/99-ark-router-leds
+	[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable 2>/dev/null || true
+	[ -f /etc/uci-defaults/99-ark-router-theme ] && /bin/sh /etc/uci-defaults/99-ark-router-theme >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 	[ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
-	rm -f /tmp/luci-indexcache
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+	rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 }
 exit 0
@@ -155,13 +162,20 @@ endef
 define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos /etc/init.d/equipe-traffic-history /etc/init.d/ark-* /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
-	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
-	[ -x /etc/uci-defaults/99-ark-router-leds ] && /etc/uci-defaults/99-ark-router-leds
+	[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable 2>/dev/null || true
+	[ -f /etc/uci-defaults/99-ark-router-theme ] && /bin/sh /etc/uci-defaults/99-ark-router-theme >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
+	[ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 	[ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
-	rm -f /tmp/luci-indexcache
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+	rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 }
 exit 0

@@ -650,6 +650,9 @@ ark_sync_ipv6_doh_fastfail() {
 		uci -q add_list firewall.ark_doh_v6_fix.dest_ip='2001:4860:4860::8844'
 		uci -q set firewall.ark_doh_v6_fix.target='REJECT'
 		uci commit firewall 2>/dev/null || true
+	elif [ -n "$(uci -q get firewall.ark_doh_v6_fix 2>/dev/null || true)" ]; then
+		uci -q delete firewall.ark_doh_v6_fix 2>/dev/null || true
+		uci commit firewall 2>/dev/null || true
 	fi
 }
 
@@ -1005,6 +1008,10 @@ sync_ipv6_selective_firewall() {
 					printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @ipv6_only_macs udp dport 53 dnat ip6 to 2606:4700:4700::64\n' "$lan_dev"
 					printf '\t\tmeta nfproto ipv6 iifname "%s" ether saddr @ipv6_only_macs tcp dport 53 dnat ip6 to 2606:4700:4700::64\n' "$lan_dev"
 					printf '\t}\n'
+					printf '\tchain postrouting_dns64 {\n'
+					printf '\t\ttype nat hook postrouting priority srcnat; policy accept;\n'
+					printf '\t\tmeta nfproto ipv6 ip6 saddr fc00::/7 ip6 daddr 2606:4700:4700::64 masquerade\n'
+					printf '\t}\n'
 				fi
 			fi
 			printf '\tchain forward_ipv6_selective {\n'
@@ -1237,7 +1244,14 @@ ark_register_cloudflare_warp_v6() {
 	elif [ -n "$resp" ]; then
 		v4_addr="$(printf '%s' "$resp" | sed -n 's/.*"v4":"\([0-9.]*\)".*/\1/p' | head -n 1)"
 	fi
-	[ -n "$v4_addr" ] || v4_addr="172.16.0.2"
+	if [ -z "$v4_addr" ]; then
+		if [ -n "${ARK_ROOT:-}" ]; then
+			v4_addr="172.16.0.2"
+		else
+			# Em hardware real, falha na API Cloudflare WARP deve acionar fallback 464xlat (nunca subir chave nao registrada)
+			return 1
+		fi
+	fi
 	case "$v4_addr" in */*) ;; *) v4_addr="$v4_addr/32" ;; esac
 
 	uci -q set equipe_dashboard.ipv6=ipv6
@@ -1458,8 +1472,9 @@ clean_ipv6_clat_tunnel() {
 }
 
 set_ipv6_mode() {
-	local mode
+	local mode prev_v6
 	mode="$1"
+	prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
 	case "$mode" in
 		ipv4_only)
 			clean_ipv6_clat_tunnel
@@ -1468,7 +1483,6 @@ set_ipv6_mode() {
 			ark_release_per_device_ipv6_only_dhcp
 			clean_nptv6_firewall
 			if ! ark_is_satellite_or_ap; then
-				local prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
 				[ "$prev_v6" = "ipv6_only" ] && uci -q delete dhcp.lan.ignore && uci commit dhcp
 			fi
 			uci -q delete dhcp.lan.ra_pref64 2>/dev/null || true
@@ -1512,7 +1526,6 @@ set_ipv6_mode() {
 			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			sync_nptv6_firewall
-			clean_ipv6_selective_firewall
 			uci -q set equipe_dashboard.ipv6.relay='0'
 			uci -q set dhcp.lan.dhcpv6='server'
 			uci -q set dhcp.lan.ra='server'
@@ -1528,7 +1541,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6.mode='nptv6'
 			uci commit equipe_dashboard
 			ark_sync_lan_ipv6_dns no_restart
-			ark_sync_nat64_jool
+			sync_ipv6_selective_firewall
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1537,9 +1550,17 @@ set_ipv6_mode() {
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
 			clean_ipv6_selective_firewall
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.relay='0'
+			uci -q set dhcp.lan.ra='server'
+			uci -q set dhcp.lan.dhcpv6='server'
+			uci -q set dhcp.lan.ndp='disabled'
+			uci -q delete dhcp.wan.dhcpv6
+			uci -q delete dhcp.wan.ra
+			uci -q delete dhcp.wan.ndp
+			uci -q delete dhcp.wan.master
 			uci -q set dhcp.lan.ignore='1'
 			uci commit dhcp
-			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
 			uci commit equipe_dashboard
 			ark_sync_nat64_jool
@@ -1553,11 +1574,13 @@ set_ipv6_mode() {
 			clean_nptv6_firewall
 			clean_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
+			uci -q delete dhcp.lan.ra_pref64 2>/dev/null || true
 			uci commit dhcp
 			sync_ipv6_clat_tunnel
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_clat'
 			uci commit equipe_dashboard
+			ark_sync_nat64_jool
 			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
@@ -1640,6 +1663,7 @@ toggle_ipv6_device() {
 	if [ "$mode" = "selective" ] || [ "$mode" = "dual_stack" ] || [ "$mode" = "nptv6" ]; then
 		sync_ipv6_selective_firewall
 	fi
+	ark_sync_nat64_jool
 	echo ok
 }
 

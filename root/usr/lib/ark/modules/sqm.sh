@@ -71,11 +71,23 @@ ark_apply_ingress_voice_tin_filters() {
 }
 
 ark_sync_sqm_gaming_dns() {
-	local doh_pref doh_running=0 dnsmasq_restart=0
+	local doh_pref doh_running=0 dnsmasq_restart=0 cloud_en agh_en agh_ab agh_running=0
 	doh_pref="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_doh_enabled || echo 0)"
-	[ -x "${ARK_ROOT:-}/etc/init.d/https-dns-proxy" ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && doh_running=1
+	cloud_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || echo 0)"
+	agh_ab="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled || echo 0)"
+	agh_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled || echo 0)"
+	[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/adguardhome ] && pgrep -f AdGuardHome >/dev/null 2>&1 && agh_running=1
+	[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/https-dns-proxy ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && doh_running=1
 
-	# Se QoS/Gaming estiver ativo, desativa Dual-DoH para eliminar 60-70ms de overhead TLS e garantir ping DNS < 5ms
+	# Preserva AdBlock Cloud (DoH de filtragem) e AdGuard Home: nunca sobrescrever dnsmasq com 1.1.1.1/8.8.8.8 nesses modos
+	if { [ -n "$cloud_en" ] && [ "$cloud_en" != "0" ] && [ "$cloud_en" != "off" ]; } || \
+	   { [ "$agh_ab" = "1" ] && [ "$agh_en" = "1" ]; } || \
+	   [ "$agh_running" = "1" ]; then
+		logger -t ark-sqm "QoS/Gaming ativo: AdBlock Cloud ou AdGuard Home detectado; politica DNS preservada."
+		return 0
+	fi
+
+	# Se QoS/Gaming estiver ativo, desativa Dual-DoH puro para eliminar 60-70ms de overhead TLS e garantir ping DNS < 5ms
 	if [ "$doh_pref" = "1" ] || [ "$doh_running" = "1" ] || uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '5053'; then
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings=performance
 		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings.dns_doh_enabled='0'
@@ -117,31 +129,27 @@ ark_promote_cake_mq() {
 	rm -f "$state_file" 2>/dev/null || true
 
 	if [ -z "${ARK_ROOT:-}" ]; then
-		for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus /sys/class/net/eth*/queues/rx-*/rps_cpus; do
-			[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
-		done
-		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+		if ! command -v ark_hw_compute_rps_target >/dev/null 2>&1 && [ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ]; then
+			. "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+		fi
+		if command -v ark_hw_compute_rps_target >/dev/null 2>&1; then
+			local _wifi_on=0 _wan_devs="" _ifd _ifn _rps_v
 			cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
-			rps_mask="f"
-			command -v ark_calculate_rps_mask >/dev/null 2>&1 && rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
-			if [ "$cpu_cores" = "4" ] && grep -qE "mt76|mt79|ath|qca" /proc/interrupts 2>/dev/null; then
-				rps_mask="3"
-				for ifb_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus; do
-					[ -w "$ifb_q" ] && echo 7 > "$ifb_q" 2>/dev/null || true
+			ark_hw_detect_wifi_active && _wifi_on=1
+			command -v ark_hw_list_wan_phys_devs >/dev/null 2>&1 && _wan_devs="$(ark_hw_list_wan_phys_devs)"
+			for _ifd in /sys/class/net/*; do
+				[ -d "$_ifd" ] || continue
+				_ifn="${_ifd##*/}"
+				[ "$_ifn" = "lo" ] && continue
+				_rps_v="$(ark_hw_compute_rps_target "$_ifn" "$cpu_cores" "$_wifi_on" "$_wan_devs")"
+				for ifb_q in "$_ifd"/queues/rx-*/rps_cpus; do
+					[ -w "$ifb_q" ] && echo "$_rps_v" > "$ifb_q" 2>/dev/null || true
 				done
-				for ifb_q in /sys/class/net/phy*/queues/rx-*/rps_cpus; do
-					[ -w "$ifb_q" ] && echo 3 > "$ifb_q" 2>/dev/null || true
-				done
-			fi
-			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
-				[ -w "$ifb_q" ] && echo "$rps_mask" > "$ifb_q" 2>/dev/null || true
 			done
-			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-			if [ -n "$pppoe_phys" ]; then
-				for ifb_q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_cpus; do
-					[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
-				done
-			fi
+		else
+			for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus /sys/class/net/eth*/queues/rx-*/rps_cpus; do
+				[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
+			done
 		fi
 		if command -v ethtool >/dev/null 2>&1; then
 			for ndev in /sys/class/net/*; do
@@ -327,12 +335,29 @@ ark_sync_gaming_ports_and_bql() {
 				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_max; do
 					[ -w "$bql_f" ] && echo 1879048192 > "$bql_f" 2>/dev/null || true
 				done
+				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_min; do
+					[ -w "$bql_f" ] && echo 0 > "$bql_f" 2>/dev/null || true
+				done
 				if tc qdisc show dev "$pdev" 2>/dev/null | grep -q "qdisc mq"; then
 					for fq_parent in $(tc qdisc show dev "$pdev" 2>/dev/null | awk '/qdisc fq_codel/ {for(i=1;i<=NF;i++) if($i=="parent") print $(i+1)}'); do
-						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 5ms interval 100ms 2>/dev/null || true
+						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 5ms interval 100ms ecn 2>/dev/null || true
 					done
 				fi
 			done
+			if [ -x /etc/init.d/ark-hardware-tune ]; then
+				/etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
+			else
+				for phy_d in /sys/kernel/debug/ieee80211/phy*; do
+					[ -d "$phy_d" ] || continue
+					[ -w "$phy_d/aql_threshold" ] && echo 24000 > "$phy_d/aql_threshold" 2>/dev/null || true
+					if [ -w "$phy_d/aql_txq_limit" ]; then
+						echo "0 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+						echo "1 3500 7000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+						echo "2 2500 5000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+						echo "3 1500 3500" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+					fi
+				done
+			fi
 		fi
 		rm -f "$bql_state" 2>/dev/null || true
 	fi
@@ -348,10 +373,10 @@ ark_sync_gaming_ports_and_bql() {
 table inet fw4 {
 	chain ark_gaming_ports {
 		type filter hook prerouting priority mangle - 4; policy accept;
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv4 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 41641, 51413, 51820 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv6 Priority"
 		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv4"
 		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv6"
 	}
@@ -577,7 +602,7 @@ ark_sqm_ingress_rtt_opt() {
 	if [ "$(uci -q get "equipe_dashboard.main.starlink_mode")" = "1" ] || \
 	   [ "$(uci -q get "equipe_dashboard.settings.starlink_mode")" = "1" ] || \
 	   [ "$preset" = "starlink" ] || [ "$preset" = "mobile_starlink" ] || \
-	   [ "$(uci -q get "starlink_telemetry.main.enabled")" = "1" ]; then
+	   [ "$(uci -q get "starlink_telemetry.global.enabled")" = "1" ]; then
 		printf 'rtt 150ms'
 	elif [ "$down_kbps" -gt 500000 ] 2>/dev/null; then
 		# Gigabit / Ultra-High Speed Fiber (FTTH GPON/XGS-PON): COBALT 20ms RTT target (1ms) evita retencao de buffer

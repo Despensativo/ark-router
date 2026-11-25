@@ -138,7 +138,7 @@ build_attachment() {
 		[ -n "$ram_files" ] && cat $ram_files 2>/dev/null
 	) | awk '
 		NR==1 { print; next }
-		$0 ~ /^timestamp,/ { next }
+		$0 ~ /^timestamp(_epoch)?,/ { next }
 		{ print }
 	' | gzip -c > "$TMP_ATTACH"
 }
@@ -361,8 +361,8 @@ send_report() {
   <h3>2. Eficácia da Duplicação (Proteção PS Portal)</h3>
   <table>
     <tbody>
-      <tr><td>Quedas WAN 1 salvas pela WAN 2</td><td class="highlight">$saved_w1 s</td></tr>
-      <tr><td>Quedas WAN 2 salvas pela WAN 1</td><td class="highlight">$saved_w2 s</td></tr>
+      <tr><td>Quedas WAN 1 salvas pela WAN 2</td><td class="highlight">$saved_w2 s</td></tr>
+      <tr><td>Quedas WAN 2 salvas pela WAN 1</td><td class="highlight">$saved_w1 s</td></tr>
       <tr><td>Falhas simultâneas em ambas</td><td>$sim_loss s</td></tr>
       <tr><td><strong>Disponibilidade Combinada</strong></td><td><span class="badge badge-success">$combined_avail %</span></td></tr>
     </tbody>

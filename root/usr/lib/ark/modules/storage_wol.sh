@@ -132,12 +132,18 @@ ksmbd_sync_shares() {
 	done
 
 	local mnt_base="${ARK_ROOT}/mnt"
+	local mounts_file="${ARK_ROOT}/proc/mounts"
+	[ -r "$mounts_file" ] || mounts_file="/proc/mounts"
 	local d bname sec_id has_any=0
 	if [ -d "$mnt_base" ]; then
 		for d in "$mnt_base"/*; do
 			[ -d "$d" ] || continue
 			bname="$(basename "$d")"
 			[ "$bname" != "*" ] || continue
+			# Em roteador real, compartilha SOMENTE pontos efetivamente montados (evita gravar na flash interna)
+			if [ -z "$ARK_ROOT" ]; then
+				awk -v m="/mnt/$bname" '$2 == m {found=1} END{exit !found}' "$mounts_file" 2>/dev/null || continue
+			fi
 			chmod 0777 "$d" 2>/dev/null || true
 			sec_id="$(uci -q add ksmbd share 2>/dev/null || true)"
 			if [ -n "$sec_id" ]; then
@@ -257,7 +263,7 @@ ksmbd_status_json() {
 		done
 	fi
 
-	# 2. Also include any directories in ${ARK_ROOT}/mnt/* not already listed
+	# 2. Also include mounted /mnt/* directories not already listed (no fabricated sizes in production)
 	local d
 	if [ -d "${ARK_ROOT}/mnt" ]; then
 		for d in "${ARK_ROOT}/mnt"/*; do
@@ -266,15 +272,30 @@ ksmbd_status_json() {
 			[ "$bname" != "*" ] || continue
 			case "$disks_json" in *"\"name\":\"$bname\""*|*"\"label\":\"$bname\""*|*"\"mount_point\":\"/mnt/$bname\""*) continue ;; esac
 			dev="$(awk -v m="/mnt/$bname" '$2 == m {print $1; exit}' "$mounts_file" 2>/dev/null || true)"
+			fstype="$(awk -v m="/mnt/$bname" '$2 == m {print $3; exit}' "$mounts_file" 2>/dev/null || true)"
+			# Em produção, ignora pastas vazias não montadas em /mnt/*
+			if [ -z "$ARK_ROOT" ] && [ -z "$dev" ]; then
+				continue
+			fi
 			if [ -z "$dev" ]; then
 				case "$bname" in
 					sd[a-z][0-9]*|nvme[0-9]*n[0-9]*p[0-9]*|mmcblk[0-9]*p[0-9]*) dev="/dev/$bname" ;;
 					*) dev="/dev/sda1" ;;
 				esac
 			fi
+			[ -n "$fstype" ] || fstype="usb/auto"
+			sz_str="0 MB"; used_str="0 MB"; avail_str="0 MB"; pct_str="0%"
+			local df_extra
+			df_extra="$(df -h "$d" 2>/dev/null | awk 'NR==2 {print $2 "|" $3 "|" $4 "|" $5}' || true)"
+			if [ -n "$df_extra" ]; then
+				sz_str="$(printf '%s' "$df_extra" | cut -d'|' -f1)"
+				used_str="$(printf '%s' "$df_extra" | cut -d'|' -f2)"
+				avail_str="$(printf '%s' "$df_extra" | cut -d'|' -f3)"
+				pct_str="$(printf '%s' "$df_extra" | cut -d'|' -f4)"
+			fi
 			[ "$first_d" = 1 ] || disks_json="${disks_json},"
 			first_d=0
-			disks_json="${disks_json}{\"device\":\"$(json_escape "$dev")\",\"name\":\"$(json_escape "$bname")\",\"label\":\"$(json_escape "$bname")\",\"fstype\":\"exfat/ext4\",\"size\":\"64 GB\",\"used\":\"4.2 GB\",\"avail\":\"59.8 GB\",\"use_pct\":\"7%\",\"mounted\":true,\"mount_point\":\"/mnt/$(json_escape "$bname")\",\"share_name\":\"$(json_escape "$bname")\"}"
+			disks_json="${disks_json}{\"device\":\"$(json_escape "$dev")\",\"name\":\"$(json_escape "$bname")\",\"label\":\"$(json_escape "$bname")\",\"fstype\":\"$(json_escape "$fstype")\",\"size\":\"$(json_escape "$sz_str")\",\"used\":\"$(json_escape "$used_str")\",\"avail\":\"$(json_escape "$avail_str")\",\"use_pct\":\"$(json_escape "$pct_str")\",\"mounted\":true,\"mount_point\":\"/mnt/$(json_escape "$bname")\",\"share_name\":\"$(json_escape "$bname")\"}"
 		done
 	fi
 
@@ -482,6 +503,15 @@ handle_storage_wol() {
 			guest="$(ez_bool "$guest")"
 			smbv1="$(ez_bool "$smbv1")"
 			ksmbd_ensure_config
+			if [ "$guest" = "1" ]; then
+				local cur_wan_if cur_wan_fw
+				cur_wan_if=" $(uci -q get ksmbd.@globals[0].interface 2>/dev/null || printf 'lan') "
+				cur_wan_fw="$(uci -q get firewall.ark_ksmbd_wan.enabled 2>/dev/null || printf '0')"
+				if [ "$cur_wan_fw" = "1" ] || case "$cur_wan_if" in *" wan "*) true ;; *) false ;; esac; then
+					echo "BLOQUEIO DE SEGURANCA: Desative o acesso SMB pela WAN antes de habilitar acesso convidado (guest_ok)." >&2
+					return 2
+				fi
+			fi
 			uci -q set "ksmbd.@globals[0].workgroup=$wg"
 			uci -q set "ksmbd.@globals[0].description=$desc"
 			uci -q set "ksmbd.@globals[0].guest_ok=$guest"
@@ -501,6 +531,16 @@ handle_storage_wol() {
 				*) echo "Zona de rede invalida: $net_zone" >&2; return 2 ;;
 			esac
 			ksmbd_ensure_config
+			if [ "$net_zone" = "wan" ] && [ "$allow" = "1" ]; then
+				local g_ok db_file has_user=0
+				g_ok="$(uci -q get ksmbd.@globals[0].guest_ok 2>/dev/null || printf '1')"
+				db_file="${ARK_ROOT}/etc/ksmbd/ksmbdpwd.db"
+				[ -s "$db_file" ] && has_user=1
+				if [ "$g_ok" != "0" ] || [ "$has_user" != "1" ]; then
+					echo "BLOQUEIO DE SEGURANCA: Expor SMB (TCP 445/139) na WAN exige desativar acesso convidado (guest_ok=0) e cadastrar pelo menos um usuario autenticado." >&2
+					return 2
+				fi
+			fi
 			local cur_ifaces new_ifaces="" z
 			cur_ifaces=" $(uci -q get ksmbd.@globals[0].interface 2>/dev/null || printf 'lan') "
 			for z in lan guest iot wan; do
@@ -602,11 +642,13 @@ handle_storage_wol() {
 					if [ -z "$ARK_ROOT" ]; then
 						[ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd stop >/dev/null 2>&1 || true
 						umount "$dev" 2>/dev/null || umount -l "$dev" 2>/dev/null || true
+						rmdir "/mnt/$bname" 2>/dev/null || true
+						ksmbd_sync_shares
 						[ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd start >/dev/null 2>&1 || true
 					else
-						rm -rf "${ARK_ROOT}/mnt/$bname" 2>/dev/null || true
+						[ -n "$bname" ] && rm -rf "${ARK_ROOT}/mnt/${bname:?}" 2>/dev/null || true
+						ksmbd_sync_shares
 					fi
-					ksmbd_sync_shares
 					ksmbd_status_json
 					;;
 				benchmark)
@@ -641,18 +683,40 @@ handle_storage_wol() {
 						printf '{"status":"ok","device":"%s","output":"Verificacao de integridade concluida: 0 erros encontrados."}\n' "$(json_escape "$dev")"
 						return 0
 					fi
+					local detected_fs=""
+					detected_fs="$(awk -v d="$dev" '$1 == d {print $3; exit}' /proc/mounts 2>/dev/null || true)"
+					if [ -z "$detected_fs" ] && command -v blkid >/dev/null 2>&1; then
+						detected_fs="$(blkid -s TYPE -o value "$dev" 2>/dev/null || true)"
+					fi
 					sync
 					umount "$dev" 2>/dev/null || true
 					local out=""
-					if command -v e2fsck >/dev/null 2>&1; then
-						out="$(e2fsck -p "$dev" 2>&1 || true)"
-					elif command -v fsck.exfat >/dev/null 2>&1; then
-						out="$(fsck.exfat -r "$dev" 2>&1 || true)"
-					elif command -v fsck.fat >/dev/null 2>&1; then
-						out="$(fsck.fat -a "$dev" 2>&1 || true)"
-					else
-						out="Utilitario fsck especifico nao instalado; particao remontada com seguranca."
-					fi
+					case "$detected_fs" in
+						ext2|ext3|ext4)
+							if command -v e2fsck >/dev/null 2>&1; then
+								out="$(e2fsck -p "$dev" 2>&1 || true)"
+							else
+								out="e2fsck nao instalado para verificar $detected_fs."
+							fi
+							;;
+						exfat)
+							if command -v fsck.exfat >/dev/null 2>&1; then
+								out="$(fsck.exfat -r "$dev" 2>&1 || true)"
+							else
+								out="fsck.exfat nao instalado para verificar exFAT."
+							fi
+							;;
+						vfat|fat|msdos)
+							if command -v fsck.fat >/dev/null 2>&1; then
+								out="$(fsck.fat -a "$dev" 2>&1 || true)"
+							else
+								out="fsck.fat nao instalado para verificar FAT/vFAT."
+							fi
+							;;
+						*)
+							out="Sistema de arquivos ($detected_fs) nao identificado ou sem fsck especifico; particao remontada sem alteracoes."
+							;;
+					esac
 					mkdir -p "/mnt/$bname" 2>/dev/null || true
 					mount -o rw,umask=000 "$dev" "/mnt/$bname" 2>/dev/null || mount "$dev" "/mnt/$bname" 2>/dev/null || true
 					ksmbd_sync_shares

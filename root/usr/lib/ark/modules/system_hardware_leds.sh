@@ -1255,16 +1255,30 @@ system_hardware_auto_tune() {
 		else
 			irq_action="Multicore detectado ($silicon_cpu_cores núcleos)"
 		fi
-		# Mascara RPS calculada dinamicamente para 1 a 64 nucleos
+		# Topologia RPS unificada via hw-tune.sh (evita divergencia com ark-hardware-tune e SQM)
+		if ! command -v ark_hw_compute_rps_target >/dev/null 2>&1 && [ -f "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh" ]; then
+			. "${ARK_LIB_DIR:-/usr/lib/ark}/hw-tune.sh"
+		fi
+		local _rps_wifi_on=0 _rps_wan_devs=""
+		if command -v ark_hw_compute_rps_target >/dev/null 2>&1; then
+			ark_hw_detect_wifi_active && _rps_wifi_on=1
+			command -v ark_hw_list_wan_phys_devs >/dev/null 2>&1 && _rps_wan_devs="$(ark_hw_list_wan_phys_devs)"
+		fi
 		rps_mask="$(ark_calculate_rps_mask "$silicon_cpu_cores")"
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
+			local _if_base="${iface_dir##*/}"
+			[ "$_if_base" = "lo" ] && continue
 			local rps_target="$rps_mask"
-			case "${iface_dir##*/}" in
-				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|wlan*|phy*|ap*|sta*|mesh*|mld*)
-					rps_target=0
-					;;
-			esac
+			if command -v ark_hw_compute_rps_target >/dev/null 2>&1; then
+				rps_target="$(ark_hw_compute_rps_target "$_if_base" "$silicon_cpu_cores" "$_rps_wifi_on" "$_rps_wan_devs")"
+			else
+				case "$_if_base" in
+					lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|wlan*|phy*|ap*|sta*|mesh*|mld*)
+						rps_target=0
+						;;
+				esac
+			fi
 			for rps_f in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -w "$rps_f" ] && echo "$rps_target" > "$rps_f" 2>/dev/null || true
 			done
@@ -1432,10 +1446,22 @@ EOF
 			uci -q set network.lan.igmp_snooping=1
 			uci commit network 2>/dev/null || true
 		fi
-		# Otimizacao de multicast para unicast no Wi-Fi
+		# Otimizacao de multicast_to_unicast alinhada ao Doctor (0 em 2.4 GHz para IoT / 1 em 5-6 GHz)
 		if [ -f /etc/config/wireless ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/wireless" ]; then
+			local _w_dev _w_band _w_ch _w_m2u
 			for w_sec in $(uci -q show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
-				uci -q set "wireless.$w_sec.multicast_to_unicast=1"
+				_w_dev="$(uci -q get "wireless.$w_sec.device" 2>/dev/null || echo '')"
+				_w_band="$(uci -q get "wireless.$_w_dev.band" 2>/dev/null || echo '')"
+				_w_m2u="1"
+				if [ "$_w_band" = "2g" ]; then
+					_w_m2u="0"
+				elif [ "$_w_band" != "5g" ] && [ "$_w_band" != "6g" ]; then
+					_w_ch="$(uci -q get "wireless.$_w_dev.channel" 2>/dev/null || echo '')"
+					if [ -n "$_w_ch" ] && [ "$_w_ch" -ge 1 ] 2>/dev/null && [ "$_w_ch" -le 14 ] 2>/dev/null; then
+						_w_m2u="0"
+					fi
+				fi
+				uci -q set "wireless.$w_sec.multicast_to_unicast=$_w_m2u"
 			done
 			uci commit wireless 2>/dev/null || true
 		fi

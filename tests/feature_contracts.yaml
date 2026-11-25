@@ -1106,7 +1106,7 @@ features:
   temp_data:
   - /etc/nftables.d/
   - /var/run/fw4.state
-  boot_behavior: Inicializado no boot START=19; ark-firewall-guard valida integridade da tabela no START=22.
+  boot_behavior: Inicializado no boot START=19; ark-firewall-guard valida integridade da tabela no START=99.
   can_modify:
   - firewall.*
   cannot_modify:
@@ -1319,7 +1319,7 @@ features:
   - /etc/config/luci
   - /etc/config/equipe_dashboard
   temp_data: []
-  boot_behavior: Executado no START=22 logo após a subida do netifd e firewall.
+  boot_behavior: Executado no START=99 após a subida de netifd, firewall, dnsmasq e AdGuard Home.
   can_modify:
   - luci.main.mediaurlbase
   cannot_modify:

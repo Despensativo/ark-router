@@ -250,7 +250,7 @@ config dnsmasq
         self.assertTrue(os.path.isfile(init_script), "Script ark-safe-shutdown nao encontrado!")
         with open(init_script, "r") as f:
             content = f.read()
-        self.assertIn("STOP=98", content)
+        self.assertIn("STOP=05", content)
         self.assertIn("ark_safe_storage_reboot", content)
 
     def test_11_install_stage_telemetry(self):

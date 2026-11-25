@@ -17,18 +17,28 @@ sleep 1
 
 # 1. WireGuard endpoint re-sync: iterate over all configured wireguard peer sections
 
-# 2. Iterate over all configured wireguard peer sections in network config
-for s in $(uci -q show network 2>/dev/null | grep -E '=wireguard_[a-zA-Z0-9_]+$' | cut -d. -f2 | cut -d= -f1); do
+# 2. Iterate over all configured wireguard/amneziawg peer sections in network config
+for s in $(uci -q show network 2>/dev/null | grep -E '=(wireguard|amneziawg)_[a-zA-Z0-9_]+$' | cut -d. -f2 | cut -d= -f1); do
 	ep_host="$(uci -q get "network.$s.endpoint_host")"
 	[ -n "$ep_host" ] || continue
 	pubkey="$(uci -q get "network.$s.public_key")"
 	[ -n "$pubkey" ] || continue
 	ep_port="$(uci -q get "network.$s.endpoint_port" || printf '51820')"
 
-	# Extract interface name from section type (e.g. wireguard_wgclient -> wgclient)
+	# Extract interface name from section type (e.g. wireguard_wgclient or amneziawg_wgclient -> wgclient)
 	sec_type="$(uci -q get "network.$s" 2>/dev/null || printf '%s' "$s")"
-	sec_clean="${sec_type#@wireguard_}"
-	sec_clean="${sec_clean#wireguard_}"
+	wg_cmd="wg"
+	case "$sec_type" in
+		*amneziawg_*)
+			command -v awg >/dev/null 2>&1 && wg_cmd="awg"
+			sec_clean="${sec_type#@amneziawg_}"
+			sec_clean="${sec_clean#amneziawg_}"
+			;;
+		*)
+			sec_clean="${sec_type#@wireguard_}"
+			sec_clean="${sec_clean#wireguard_}"
+			;;
+	esac
 	iface="${sec_clean%%\[*}"
 	[ -n "$iface" ] && [ -d "/sys/class/net/$iface" ] || continue
 
@@ -49,11 +59,11 @@ for s in $(uci -q show network 2>/dev/null | grep -E '=wireguard_[a-zA-Z0-9_]+$'
 			;;
 	esac
 
-	# Re-poke the peer endpoint into the kernel WireGuard interface.
+	# Re-poke the peer endpoint into the kernel WireGuard/AmneziaWG interface.
 	# This forces the kernel socket to rebind and dispatch an immediate handshake initiation via the active default route.
-	if command -v wg >/dev/null 2>&1; then
-		wg set "$iface" peer "$pubkey" endpoint "${target_ip}:${ep_port}" 2>/dev/null || true
-		logger -t ark-wireguard "WAN failover re-sync: updated $iface peer $pubkey -> ${target_ip}:${ep_port}"
+	if command -v "$wg_cmd" >/dev/null 2>&1; then
+		"$wg_cmd" set "$iface" peer "$pubkey" endpoint "${target_ip}:${ep_port}" 2>/dev/null || true
+		logger -t ark-wireguard "WAN failover re-sync ($wg_cmd): updated $iface peer $pubkey -> ${target_ip}:${ep_port}"
 	fi
 done
 

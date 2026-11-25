@@ -136,7 +136,7 @@ adblock_status_json() {
 	fi
 
 	zt_web_url=""
-	zt_dev="$(uci -q get firewall.zerotier.device || echo ztxoohdno4)"
+	zt_dev="$(uci -q get firewall.zerotier.device || ip -4 -o link show 2>/dev/null | awk -F': ' '/: zt/{print $2; exit}' || true)"
 	if [ -n "$zt_dev" ]; then
 		zt_ip="$(ip -4 addr show dev "$zt_dev" 2>/dev/null | awk '/inet / {split($2,a,"/"); print a[1]; exit}')"
 		if [ -n "$zt_ip" ] && [ "$zt_access" = "true" ]; then
@@ -149,11 +149,12 @@ adblock_status_json() {
 	custom_whitelist="$(uci -q get equipe_perf.settings.custom_whitelist || true)"
 	nextdns_id="$(uci -q get equipe_perf.settings.nextdns_id || true)"
 
-	if [ -f /etc/adguardhome/adguardhome.yaml ] && command -v python3 >/dev/null 2>&1; then
+	local agh_yaml="${ARK_ROOT:-}/etc/adguardhome/adguardhome.yaml"
+	if [ -f "$agh_yaml" ] && command -v python3 >/dev/null 2>&1; then
 		agh_rules="$(python3 -c "
-import re
+import re, sys
 try:
-    with open('/etc/adguardhome/adguardhome.yaml', 'r', encoding='utf-8') as f:
+    with open(sys.argv[1], 'r', encoding='utf-8') as f:
         content = f.read()
     lines = content.splitlines()
     idx_ur = -1
@@ -167,19 +168,19 @@ try:
             s = l.strip()
             m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
             r = m.group(1) if m else s
-            wm = re.search(r'^@@\|\|([a-z0-9.-]+)\^?$', r.lower())
+            wm = re.search(r'''^@@\|\|([a-z0-9.-]+)\^?(?:[$]important)?$''', r.lower())
             if wm:
                 d = wm.group(1)
                 if d not in wl: wl.append(d)
                 continue
-            bm = re.search(r'^\|\|([a-z0-9.-]+)\^?$', r.lower())
+            bm = re.search(r'''^\|\|([a-z0-9.-]+)\^?$''', r.lower())
             if bm:
                 d = bm.group(1)
                 if d not in bl: bl.append(d)
     print(','.join(bl) + '|' + ','.join(wl))
 except Exception:
     print('|')
-")"
+" "$agh_yaml")"
 		agh_bl="${agh_rules%|*}"
 		agh_wl="${agh_rules#*|}"
 		[ -n "$agh_bl" ] && custom_blacklist="$agh_bl"
@@ -221,8 +222,8 @@ adblock_apply_rules() {
 	local raw_blacklist raw_whitelist old_addrs old_servers has_bl_arg clean_bl item dom has_wl_arg clean_wl a d s
 	raw_blacklist="$1"
 	raw_whitelist="${2:-}"
-	mkdir -p /etc/config
-	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	mkdir -p "${ARK_ROOT:-}/etc/config" 2>/dev/null || true
+	[ -f "${ARK_ROOT:-}/etc/config/equipe_perf" ] || touch "${ARK_ROOT:-}/etc/config/equipe_perf" 2>/dev/null || true
 	uci -q set equipe_perf.settings=performance
 
 	old_addrs="$(uci -q get dhcp.@dnsmasq[0].address || true)"
@@ -236,7 +237,7 @@ adblock_apply_rules() {
 	else
 		clean_bl=""
 		for item in $(printf '%s' "$raw_blacklist" | tr ',;\n\r\t' ' '); do
-			dom="$(printf '%s' "$item" | sed -E 's|^@@\|\|||; s|^\|\|||; s|\^.*$||; s|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			dom="$(printf '%s' "$item" | sed -E 's#^@@\|\|##; s#^\|\|##; s#\^.*$##; s#^https?://##; s#/.*$##' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
 			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
 				case ",$clean_bl," in
 					*,"$dom",*) ;;
@@ -256,7 +257,7 @@ adblock_apply_rules() {
 	else
 		clean_wl=""
 		for item in $(printf '%s' "$raw_whitelist" | tr ',;\n\r\t' ' '); do
-			dom="$(printf '%s' "$item" | sed -E 's|^@@\|\|||; s|^\|\|||; s|\^.*$||; s|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			dom="$(printf '%s' "$item" | sed -E 's#^@@\|\|##; s#^\|\|##; s#\^.*$##; s#^https?://##; s#/.*$##' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
 			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
 				case ",$clean_wl," in
 					*,"$dom",*) ;;
@@ -266,6 +267,13 @@ adblock_apply_rules() {
 				esac
 			fi
 		done
+	fi
+
+	local _skip_plain_wl=0
+	if { [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; } || \
+	   [ "$(uci -q get equipe_perf.settings.dns_doh_enabled || echo 0)" = "1" ] || \
+	   printf '%s' "$old_servers" | grep -qE '127\.0\.0\.1#(5335|5053|5054)'; then
+		_skip_plain_wl=1
 	fi
 
 	{
@@ -288,26 +296,34 @@ adblock_apply_rules() {
 				/*) echo "del_list dhcp.@dnsmasq[0].server='$s'" ;;
 			esac
 		done
-		for d in $(printf '%s' "$clean_wl" | tr ',' ' '); do
-			echo "add_list dhcp.@dnsmasq[0].server='/$d/1.1.1.1'"
-		done
+		if [ "$_skip_plain_wl" = "0" ]; then
+			for d in $(printf '%s' "$clean_wl" | tr ',' ' '); do
+				echo "add_list dhcp.@dnsmasq[0].server='/$d/1.1.1.1'"
+			done
+		fi
 		echo "commit dhcp"
 		echo "commit equipe_perf"
 	} | uci batch >/dev/null 2>&1 || true
 
-	# 4. Sincronizar user_rules no AdGuard Home
-	if [ -f /etc/adguardhome/adguardhome.yaml ] && command -v python3 >/dev/null 2>&1; then
+	# 4. Sincronizar user_rules no AdGuard Home (somente dominios sanitizados + validacao --check-config com rollback)
+	local agh_yaml="${ARK_ROOT:-}/etc/adguardhome/adguardhome.yaml"
+	local py_bl_arg="$clean_bl" py_wl_arg="$clean_wl"
+	[ "$raw_blacklist" = "__KEEP_EXISTING__" ] && py_bl_arg="__KEEP_EXISTING__"
+	[ "$raw_whitelist" = "__KEEP_EXISTING__" ] && py_wl_arg="__KEEP_EXISTING__"
+	if [ -f "$agh_yaml" ] && command -v python3 >/dev/null 2>&1; then
+		cp -f "$agh_yaml" "${agh_yaml}.ark.bak" 2>/dev/null || true
 		python3 -c "
 import sys, re
 
-yaml_path = '/etc/adguardhome/adguardhome.yaml'
+yaml_path = sys.argv[3] if len(sys.argv) > 3 else '/etc/adguardhome/adguardhome.yaml'
 raw_bl = sys.argv[1] if len(sys.argv) > 1 else ''
 raw_wl = sys.argv[2] if len(sys.argv) > 2 else ''
 has_bl_arg = len(sys.argv) > 1 and sys.argv[1] != '__KEEP_EXISTING__'
 has_wl_arg = len(sys.argv) > 2 and sys.argv[2] != '__KEEP_EXISTING__'
 
-new_bl_domains = [d.strip().lower() for d in raw_bl.split(',') if d.strip()]
-new_wl_domains = [d.strip().lower() for d in raw_wl.split(',') if d.strip()]
+dom_re = re.compile(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$')
+new_bl_domains = [d.strip().lower() for d in raw_bl.split(',') if dom_re.match(d.strip().lower())]
+new_wl_domains = [d.strip().lower() for d in raw_wl.split(',') if dom_re.match(d.strip().lower())]
 
 try:
     with open(yaml_path, 'r', encoding='utf-8') as f:
@@ -366,9 +382,19 @@ try:
             f.write(new_content)
 except Exception:
     pass
-" "${raw_blacklist:-$clean_bl}" "${raw_whitelist:-$clean_wl}"
-		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+" "$py_bl_arg" "$py_wl_arg" "$agh_yaml"
+		if command -v AdGuardHome >/dev/null 2>&1; then
+			if ! AdGuardHome --check-config -c "$agh_yaml" >/dev/null 2>&1; then
+				[ -f "${agh_yaml}.ark.bak" ] && mv -f "${agh_yaml}.ark.bak" "$agh_yaml" 2>/dev/null || true
+				logger -t ark-adblock "AdGuardHome --check-config falhou apos escrita de user_rules; backup restaurado."
+			else
+				rm -f "${agh_yaml}.ark.bak" 2>/dev/null || true
+			fi
+		else
+			rm -f "${agh_yaml}.ark.bak" 2>/dev/null || true
+		fi
+		[ -z "${ARK_ROOT:-}" ] && chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
+		if [ -z "${ARK_ROOT:-}" ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 	fi
@@ -681,9 +707,9 @@ try:
         c = f.read()
     wl = []
     for l in c.splitlines():
-        wm = re.search(r'''^-\s*['\"]?@@\|\|([a-z0-9.-]+)\^?['\"]?\s*$''', l.strip())
-        if wm and wm.group(1) not in wl:
-            wl.append(wm.group(1))
+        wm = re.search(r'''^-\s*['\"]?@@\|\|([a-z0-9.-]+)\^?(?:[$]important)?['\"]?\s*$''', l.strip(), re.I)
+        if wm and wm.group(1).lower() not in wl:
+            wl.append(wm.group(1).lower())
     print(','.join(wl))
 except Exception:
     pass
@@ -1289,11 +1315,17 @@ adblock_restore_dns() {
 
 	target_noresolv="$(uci -q get equipe_perf.settings.saved_noresolv || echo 0)"
 
-	# 4. Aplica restauracao no dnsmasq
+	# 4. Aplica restauracao no dnsmasq (respeita dns_doh_enabled e SQM ativo para nunca reativar DoH indevidamente)
+	local _restore_doh _restore_sqm=0
+	_restore_doh="$(uci -q get equipe_perf.settings.dns_doh_enabled || echo 0)"
+	if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+		_restore_sqm=1
+	fi
 	uci -q delete dhcp.@dnsmasq[0].server
-	if command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "turbo" "$clean_restore_servers"; then
+	if [ "$_restore_doh" = "1" ] && [ "$_restore_sqm" = "0" ] && command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "turbo" "$clean_restore_servers"; then
 		uci -q set dhcp.@dnsmasq[0].allservers='1'
 	else
+		command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "disable" >/dev/null 2>&1 || true
 		for s in $clean_restore_servers; do
 			uci -q add_list "dhcp.@dnsmasq[0].server=$s"
 		done

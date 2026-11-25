@@ -52,6 +52,7 @@ ark_tune_wifi_aql() {
 	[ -d /sys/kernel/debug/ieee80211 ] || mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
 	local phy phy_name radio_idx band is_high_band atf_en accel_en atf_flags
 	accel_en="$(uci -q get equipe_dashboard.wifi.wifi6_accel 2>/dev/null || echo '1')"
+	[ "$accel_en" = "0" ] && return 0
 	for phy in /sys/kernel/debug/ieee80211/phy*; do
 		[ -d "$phy" ] || continue
 		phy_name="$(basename "$phy")"

@@ -145,13 +145,12 @@ zerotier_enable() {
 	zerotier_install || return $?
 	zerotier_ram_compress
 	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
-	[ -n "$sec" ] || sec="sample_config"
+	[ -n "$sec" ] || sec="global"
 	for s in $(uci -q show zerotier | grep '=zerotier' | cut -d. -f2 | cut -d= -f1); do
 		[ "$s" = "$sec" ] || uci -q delete "zerotier.$s"
 	done
 	uci -q set "zerotier.$sec=zerotier"
 	uci -q set "zerotier.$sec.enabled=1"
-	uci -q delete "zerotier.$sec.join" 2>/dev/null || true
 	uci commit zerotier
 	zerotier_firewall_prepare
 	zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
@@ -1155,7 +1154,7 @@ wireguard_client_status_json() {
 	local live_ep dump online now diff conf_b64 cur_proto is_awg wg_tool
 	local awg_jc awg_jmin awg_jmax awg_s1 awg_s2 awg_h1 awg_h2 awg_h3 awg_h4
 	installed_wg=false; ([ -x /usr/bin/wg ] || [ -x /usr/bin/awg ] || [ -f /lib/netifd/proto/wireguard.sh ] || [ -f /lib/netifd/proto/amneziawg.sh ]) && installed_wg=true
-	cur_proto="$(uci -q get network.wgclient.proto 2>/dev/null || echo wireguard)"
+	cur_proto="$(uci -q get network.wgclient.proto 2>/dev/null || true)"
 	configured=false; ([ "$cur_proto" = "wireguard" ] || [ "$cur_proto" = "amneziawg" ]) && configured=true
 	active=false; [ -d /sys/class/net/wgclient ] && active=true
 	autostart=false; [ "$(uci -q get network.wgclient.auto)" != "0" ] && autostart=true
@@ -1248,7 +1247,7 @@ wireguard_client_delete() {
 	local s z
 	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	uci -q delete network.wgclient
-	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
+	for s in $(uci -q show network | grep -E '=(wireguard|amneziawg)_wgclient$' | cut -d. -f2 | cut -d= -f1); do
 		uci -q delete "network.$s"
 	done
 	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do

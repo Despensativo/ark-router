@@ -128,6 +128,10 @@ query_value() {
 	printf '%s' "${QUERY_STRING:-}" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n 1
 }
 
+valid_wan_name() {
+	printf '%s' "$1" | grep -Eq '^wan([0-9]+)?$'
+}
+
 action="$(query_value action)"
 printf 'Content-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n\r\n'
 
@@ -137,7 +141,7 @@ case "$action" in
 		;;
 	query)
 		wan="$(query_value wan)"
-		case "$wan" in wan|wan[0-9]*) ;; *) printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0 ;; esac
+		valid_wan_name "$wan" || { printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0; }
 		[ "$(uci -q get "network.$wan")" = interface ] || { printf '{"ok":false,"error":"WAN não configurada."}\n'; exit 0; }
 		case "$(uci -q get "network.$wan.proto")" in dhcp|pppoe|static) ;; *) printf '{"ok":false,"error":"WAN não está ativa."}\n'; exit 0 ;; esac
 		err_file="/tmp/ark-starlink-public.$$.err"
@@ -151,10 +155,7 @@ case "$action" in
 		fi
 		;;
 	set_active)
-		wan="$(query_value wan)"
-		case "$wan" in wan|wan[0-9]*) ;; *) printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0 ;; esac
-		/usr/sbin/equipe-dashboard-control starlink-active-wan-set "$wan" >/dev/null 2>&1
-		printf '{"ok":true,"active_wan":"%s"}\n' "$wan"
+		printf '{"ok":false,"error":"Endpoint público somente leitura: altere a rota Starlink autenticado no painel ARK Router."}\n'
 		;;
 	*) printf '{"ok":false,"error":"Ação inválida."}\n' ;;
 esac

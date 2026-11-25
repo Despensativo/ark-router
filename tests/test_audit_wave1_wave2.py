@@ -151,7 +151,7 @@ class AuditWave1Wave2Tests(unittest.TestCase):
     def test_adblock_whitelist_preserves_important_and_is_idempotent(self):
         txt = ADBLOCK_SH.read_text(encoding="utf-8")
         m = re.search(
-            r'# 4\. Sincronizar user_rules no AdGuard Home.*?python3 -c "\n(.*?)\n" "\$\{raw_blacklist:-\$clean_bl\}" "\$\{raw_whitelist:-\$clean_wl\}"',
+            r'# 4\. Sincronizar user_rules no AdGuard Home.*?python3 -c "\n(.*?)\n" "\$py_bl_arg" "\$py_wl_arg" "\$agh_yaml"',
             txt,
             re.DOTALL,
         )
@@ -161,11 +161,12 @@ class AuditWave1Wave2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="ark_adblock_wl_") as tmp:
             yaml_path = Path(tmp) / "adguardhome.yaml"
             yaml_path.write_text("http:\n  address: 0.0.0.0:3000\nuser_rules:\n  - '||ads.example^'\n", encoding="utf-8")
-            snippet = m.group(1).replace("/etc/adguardhome/adguardhome.yaml", str(yaml_path))
+            snippet = m.group(1)
             sh_script = (
-                'raw_blacklist="__KEEP_EXISTING__"\n'
-                'raw_whitelist="bank.com,gov.br"\n'
-                f'python3 -c "\n{snippet}\n" "$raw_blacklist" "$raw_whitelist"\n'
+                'py_bl_arg="__KEEP_EXISTING__"\n'
+                'py_wl_arg="bank.com,gov.br"\n'
+                f'agh_yaml="{yaml_path}"\n'
+                f'python3 -c "\n{snippet}\n" "$py_bl_arg" "$py_wl_arg" "$agh_yaml"\n'
             )
 
             for _ in range(2):

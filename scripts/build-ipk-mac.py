@@ -22,9 +22,9 @@ chmod +x /usr/sbin/ark-rainbowd 2>/dev/null || true
 chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
 chmod +x /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
-chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
-chmod +x /etc/init.d/* 2>/dev/null || true
-chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
+chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
+chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/*ark* /etc/hotplug.d/net/*ark* 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
@@ -43,6 +43,7 @@ if [ "$(uci -q get network.autowan.enabled || echo 0)" = "1" ]; then
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan restart >/dev/null 2>&1 || true
 fi
+[ -f /etc/uci-defaults/99-ark-router-theme ] && /bin/sh /etc/uci-defaults/99-ark-router-theme >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true

@@ -218,7 +218,7 @@ proto_amneziawg_setup() {
 	if [ "${nohostroute}" != "1" ]; then
 		${WG} show "${config}" endpoints 2>/dev/null | \
 		sed -E 's/\[?([0-9.:a-f]+)\]?:([0-9]+)/\1 \2/' | \
-		while IFS=$'\t ' read -r _key address port; do
+		while read -r _key address port; do
 			[ -n "${port}" ] || continue
 			proto_add_host_dependency "${config}" "${address}" "${tunlink}"
 		done

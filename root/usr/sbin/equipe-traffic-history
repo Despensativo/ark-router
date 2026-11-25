@@ -14,9 +14,11 @@ read_counter() {
 }
 
 wan_interfaces() {
-	local w status dev found=0
+	local w proto status dev found=0
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
-		[ "$(uci -q get "network.$w.proto")" != "none" ] || continue
+		case "$w" in wan6|*_6) continue ;; esac
+		proto="$(uci -q get "network.$w.proto")"
+		[ -n "$proto" ] && [ "$proto" != "none" ] && [ "$proto" != "dhcpv6" ] || continue
 		status="$(ifstatus "$w" 2>/dev/null)"
 		dev="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
 		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
@@ -127,7 +129,10 @@ $iface,$dev,$cur_rx,$cur_tx"
 	done
 
 	printf '%s\n' "$new_state" > "$state"
-	printf '%s\n' "$new_daily" > "$wan_daily.new" && mv "$wan_daily.new" "$wan_daily"
+	{
+		[ -f "$wan_daily" ] && grep -v "^$today," "$wan_daily" 2>/dev/null | tail -n 60 || true
+		[ -n "$new_daily" ] && printf '%s\n' "$new_daily"
+	} > "$wan_daily.new" && mv "$wan_daily.new" "$wan_daily"
 
 	if [ "$elapsed" -ge 2 ] && [ "$elapsed" -le 30 ]; then
 		[ "$total_down" -le 5000000000 ] || total_down=0
@@ -149,7 +154,8 @@ trap 'flush_to_persist; rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
 rpcd_stuck_cycles=0
 check_rpcd_health() {
 	local rpcd_count
-	rpcd_count="$(pgrep -c rpcd 2>/dev/null || echo 1)"
+	rpcd_count="$(pgrep rpcd 2>/dev/null | wc -l | tr -d ' ')"
+	case "$rpcd_count" in ''|*[!0-9]*) rpcd_count=1 ;; esac
 	if [ "$rpcd_count" -ge 4 ]; then
 		rpcd_stuck_cycles=$((rpcd_stuck_cycles + 1))
 		if [ "$rpcd_stuck_cycles" -ge 12 ]; then

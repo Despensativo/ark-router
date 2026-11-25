@@ -90,10 +90,24 @@ ensure_client() {
 	command -v wget >/dev/null 2>&1 || { echo 'wget não está disponível para preparar a telemetria.' >&2; return 1; }
 	free_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
 	[ "${free_kb:-0}" -ge 4096 ] || { echo 'RAM temporária insuficiente para o cliente Starlink.' >&2; return 1; }
-	if _ark_tls_verify_ready; then
-		wget -q -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
-	else
-		wget -q --no-check-certificate -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	if ! _ark_tls_verify_ready; then
+		echo 'Download do binário Starlink bloqueado: CA TLS ausente ou relógio não sincronizado (ajuste NTP e ca-bundle antes de baixar binário executável).' >&2
+		return 1
+	fi
+	wget -q -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	# Validação de integridade: exige assinatura ELF válida e SHA-256 quando fixado
+	if ! head -c 4 "${CLIENT_RAM}.new" 2>/dev/null | grep -q 'ELF'; then
+		rm -f "${CLIENT_RAM}.new"
+		echo 'Download do cliente Starlink rejeitado: arquivo baixado não é um binário ELF válido.' >&2
+		return 1
+	fi
+	if [ -n "${ARK_STARLINK_DISH_SHA256:-}" ]; then
+		got_sha="$(sha256sum "${CLIENT_RAM}.new" 2>/dev/null | awk '{print $1}')"
+		if [ "$got_sha" != "$ARK_STARLINK_DISH_SHA256" ]; then
+			rm -f "${CLIENT_RAM}.new"
+			echo 'Download do cliente Starlink rejeitado: divergência de SHA-256.' >&2
+			return 1
+		fi
 	fi
 	chmod 755 "${CLIENT_RAM}.new" || { rm -f "${CLIENT_RAM}.new"; return 1; }
 	mv -f "${CLIENT_RAM}.new" "$CLIENT_RAM"

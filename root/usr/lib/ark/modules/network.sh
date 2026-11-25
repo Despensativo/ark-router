@@ -175,17 +175,8 @@ mwan3_toggle() {
 	fi
 	if [ "$desired" = 1 ]; then
 		wan_count=0
-		for ifc in $(uci show network 2>/dev/null | grep -E '^network\.wan[0-9]*=interface' | cut -d. -f2 | cut -d= -f1); do
-			case "$ifc" in
-				wan6|*_6|*6) continue ;;
-			esac
-			proto="$(uci -q get network.${ifc}.proto || true)"
-			dev="$(uci -q get network.${ifc}.device || uci -q get network.${ifc}.ifname || true)"
-			case "$dev" in @*) continue ;; esac
-			[ "$proto" = "dhcpv6" ] && continue
-			if [ -n "$proto" ] && [ "$proto" != "none" ]; then
-				wan_count=$((wan_count + 1))
-			fi
+		for ifc in $(active_wan_networks); do
+			wan_count=$((wan_count + 1))
 		done
 		if [ "$wan_count" -lt 2 ]; then
 			echo 'Multi-WAN requer pelo menos 2 conexões WAN configuradas para operar.' >&2
@@ -533,6 +524,12 @@ handle_network() {
 				[ -n "$(uci -q get "network.${iface}_6")" ] && uci -q set "network.${iface}_6.delegate=0"
 			fi
 		fi
+		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
+
+		zone="$(firewall_wan_zone_section)"
+		apply_wan_modem_access "$iface" "$proto" "$modem_ip" "$effective_dev" || exit $?
+
+		# Atualiza SQM apenas apos validacao bem-sucedida de proto e modem_access
 		sqm_sec="$(sqm_section_for_network "$iface" 2>/dev/null || true)"
 		if [ -n "$sqm_sec" ] && uci -q get "sqm.$sqm_sec" >/dev/null 2>&1; then
 			if [ "$proto" = pppoe ]; then
@@ -564,10 +561,6 @@ handle_network() {
 			fi
 			uci commit sqm 2>/dev/null || true
 		fi
-		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
-
-		zone="$(firewall_wan_zone_section)"
-		apply_wan_modem_access "$iface" "$proto" "$modem_ip" "$effective_dev" || exit $?
 
 		if [ -n "$zone" ]; then
 			firewall_zone_has_network "$zone" "$iface" || uci -q add_list "firewall.$zone.network=$iface"
@@ -1078,15 +1071,24 @@ handle_network() {
 				done
 			fi
 
-			# Limpa VLAN de quarentena (99) e restaura portas LAN no swconfig
+			# Limpa VLAN de quarentena (99) e restaura portas LAN no swconfig lendo /etc/board.json
 			if is_swconfig; then
-				saved_v1="$(uci -q get network.autowan.saved_v1_ports || echo '1 2 3 4 0t')"
+				local _wan_p _cpu_t _def_v1=""
+				_wan_p="$(ark_board_switch_wan_port)"
+				_cpu_t="$(ark_board_switch_cpu_tag)"
+				for p in 1 2 3 4 5; do
+					[ "$p" = "$_wan_p" ] && continue
+					_def_v1="${_def_v1:+$_def_v1 }$p"
+				done
+				_def_v1="${_def_v1:+$_def_v1 }$_cpu_t"
+				saved_v1="$(uci -q get network.autowan.saved_v1_ports || printf '%s' "$_def_v1")"
 				swconfig dev switch0 vlan 99 set ports "" >/dev/null 2>&1 || true
 				swconfig dev switch0 vlan 1 set ports "$saved_v1" >/dev/null 2>&1 || true
-				for p in 1 2 3 4; do
+				for p in $saved_v1; do
+					case "$p" in *[!0-9]*) continue ;; esac
 					swconfig dev switch0 port "$p" set pvid 1 >/dev/null 2>&1 || true
 				done
-				swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+				[ -n "$_wan_p" ] && swconfig dev switch0 port "$_wan_p" set pvid 2 >/dev/null 2>&1 || true
 				swconfig dev switch0 set apply >/dev/null 2>&1 || true
 				v1_sec="$(find_switch_vlan 1)"
 				[ -n "$v1_sec" ] && uci -q set "network.$v1_sec.ports=$saved_v1"
@@ -1552,6 +1554,21 @@ handle_network() {
 			sysctl_conf="/etc/sysctl.d/99-ark-performance.conf"
 			[ -n "${ARK_ROOT}" ] && sysctl_conf="${ARK_ROOT}/etc/sysctl.d/99-ark-performance.conf"
 			mkdir -p "$(dirname "$sysctl_conf")"
+			# Snapshot dos valores previos antes de aplicar TCP Turbo (preservacao de estado)
+			if [ -z "$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_rmem_max 2>/dev/null)" ]; then
+				touch "${ARK_ROOT}/etc/config/equipe_perf" 2>/dev/null || true
+				uci -q set equipe_perf.tcp_turbo_snapshot=snapshot
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_rmem_max=$(cat /proc/sys/net/core/rmem_max 2>/dev/null || echo 212992)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_wmem_max=$(cat /proc/sys/net/core/wmem_max 2>/dev/null || echo 212992)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_tcp_rmem=$(tr '\t' ' ' < /proc/sys/net/ipv4/tcp_rmem 2>/dev/null || echo '4096 87380 212992')"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_tcp_wmem=$(tr '\t' ' ' < /proc/sys/net/ipv4/tcp_wmem 2>/dev/null || echo '4096 65536 212992')"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_backlog=$(cat /proc/sys/net/core/netdev_max_backlog 2>/dev/null || echo 1000)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_cca=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo cubic)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_ecn=$(cat /proc/sys/net/ipv4/tcp_ecn 2>/dev/null || echo 0)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_slow_start=$(cat /proc/sys/net/ipv4/tcp_slow_start_after_idle 2>/dev/null || echo 1)"
+				uci -q set "equipe_perf.tcp_turbo_snapshot.saved_fastopen=$(cat /proc/sys/net/ipv4/tcp_fastopen 2>/dev/null || echo 1)"
+				uci commit equipe_perf 2>/dev/null || true
+			fi
 			cca="cubic"
 			if grep -qw bbr3 /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
 				cca="bbr3"
@@ -1576,17 +1593,29 @@ EOF
 			sysctl_conf="/etc/sysctl.d/99-ark-performance.conf"
 			[ -n "${ARK_ROOT}" ] && sysctl_conf="${ARK_ROOT}/etc/sysctl.d/99-ark-performance.conf"
 			rm -f "$sysctl_conf"
-			sysctl -w net.core.rmem_max=212992 >/dev/null 2>&1 || true
-			sysctl -w net.core.wmem_max=212992 >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_rmem="4096 87380 212992" >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_wmem="4096 65536 212992" >/dev/null 2>&1 || true
-			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_ecn=0 >/dev/null 2>&1 || true
+			local _sv_rmem _sv_wmem _sv_trmem _sv_twmem _sv_bklog _sv_cca _sv_ecn _sv_ss _sv_tfo
+			_sv_rmem="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_rmem_max 2>/dev/null || echo 212992)"
+			_sv_wmem="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_wmem_max 2>/dev/null || echo 212992)"
+			_sv_trmem="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_tcp_rmem 2>/dev/null || echo '4096 87380 212992')"
+			_sv_twmem="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_tcp_wmem 2>/dev/null || echo '4096 65536 212992')"
+			_sv_bklog="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_backlog 2>/dev/null || echo 1000)"
+			_sv_cca="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_cca 2>/dev/null || echo cubic)"
+			_sv_ecn="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_ecn 2>/dev/null || echo 0)"
+			_sv_ss="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_slow_start 2>/dev/null || echo 1)"
+			_sv_tfo="$(uci -q get equipe_perf.tcp_turbo_snapshot.saved_fastopen 2>/dev/null || echo 1)"
+			sysctl -w "net.core.rmem_max=$_sv_rmem" >/dev/null 2>&1 || true
+			sysctl -w "net.core.wmem_max=$_sv_wmem" >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_rmem=$_sv_trmem" >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_wmem=$_sv_twmem" >/dev/null 2>&1 || true
+			sysctl -w "net.core.netdev_max_backlog=$_sv_bklog" >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_congestion_control=$_sv_cca" >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_ecn=$_sv_ecn" >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_mtu_probing=1 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_base_mss=1024 >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_slow_start_after_idle=1 >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_slow_start_after_idle=$_sv_ss" >/dev/null 2>&1 || true
+			sysctl -w "net.ipv4.tcp_fastopen=$_sv_tfo" >/dev/null 2>&1 || true
+			uci -q delete equipe_perf.tcp_turbo_snapshot 2>/dev/null || true
+			uci commit equipe_perf 2>/dev/null || true
 			if [ "$(uci -q get nlbwmon.@nlbwmon[0].netlink_buffer_size 2>/dev/null || echo 0)" -ge 524288 ] 2>/dev/null; then
 				sysctl -w net.core.rmem_max=1048576 >/dev/null 2>&1 || true
 			fi

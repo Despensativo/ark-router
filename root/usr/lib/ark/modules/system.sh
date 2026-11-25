@@ -970,11 +970,11 @@ network_capacity_save() {
 	fi
 	printf 'net.netfilter.nf_conntrack_max=%s\n' "$ct_max" > "${sysctl_dir}/99-ark-conntrack-max.conf"
 
-	if [ "$tcp_timeout" -le 7200 ]; then
+	if [ "$tcp_timeout" -le 7440 ]; then
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_close_wait=30 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_fin_wait=30 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30 2>/dev/null || true
-		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=%s\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' "$tcp_timeout" > "${sysctl_dir}/99-ark-conntrack.conf"
+		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=%s\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\nnet.netfilter.nf_conntrack_udp_timeout=30\nnet.netfilter.nf_conntrack_udp_timeout_stream=120\n' "$tcp_timeout" > "${sysctl_dir}/99-ark-conntrack.conf"
 		[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
 		uci -q set equipe_perf.settings=performance
 		uci -q set equipe_perf.settings.conntrack_recycle='1'
@@ -984,11 +984,22 @@ network_capacity_save() {
 		uci -q set equipe_perf.settings=performance
 		uci -q set equipe_perf.settings.conntrack_recycle='0'
 	fi
-	uci commit equipe_perf
+
+	local _agh_cap_active=0
+	if { [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; } || \
+	   uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '127\.0\.0\.1#5335'; then
+		_agh_cap_active=1
+	fi
 
 	uci -q set "dhcp.@dnsmasq[0].dnsforwardmax=$fwd_max"
-	uci -q set "dhcp.@dnsmasq[0].dns_forward_max=$fwd_max"
-	uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+	uci -q delete dhcp.@dnsmasq[0].dns_forward_max 2>/dev/null || true
+	if [ "$_agh_cap_active" = "1" ]; then
+		uci -q set "equipe_perf.settings.saved_dns_cachesize=$cache_sz"
+		uci -q set "dhcp.@dnsmasq[0].cachesize=0"
+	else
+		uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+	fi
+	uci commit equipe_perf
 	uci -q set "dhcp.lan.leasetime=$lease_time"
 	uci commit dhcp
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true

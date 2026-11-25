@@ -79,10 +79,10 @@ class AuditWave3Tests(unittest.TestCase):
             self.assertNotIn("--no-check-certificate", text, f"{mod.name} still hardcodes --no-check-certificate")
             self.assertNotRegex(text, r"\bcurl\b[^\n]*\s-[A-Za-z]*k", f"{mod.name} still hardcodes curl -k")
 
-        # Standalone binaries/scripts only permit --no-check-certificate in fallback branches gated by CA + clock check
+        # Executable binary downloader MUST enforce TLS strictly (zero --no-check-certificate)
         telemetry_txt = STARLINK_TELEMETRY.read_text(encoding="utf-8")
         self.assertIn("_ark_tls_verify_ready", telemetry_txt)
-        self.assertEqual(telemetry_txt.count("--no-check-certificate"), 1)
+        self.assertNotIn("--no-check-certificate", telemetry_txt)
 
         mailer_txt = STARLINK_MAILER.read_text(encoding="utf-8")
         self.assertIn("ARK_TLS_CLOCK_EPOCH", mailer_txt)

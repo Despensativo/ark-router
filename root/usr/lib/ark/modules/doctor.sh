@@ -370,7 +370,7 @@ ark_doctor_audit() {
 							cur_iq="$cur_iq ingress"
 						fi
 						if printf '%s' "$cur_iq" | grep -q 'memlimit'; then
-							cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
+							cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[kKmMgGbB]*/memlimit $exp_mlim/g")"
 						else
 							cur_iq="$cur_iq memlimit $exp_mlim"
 						fi
@@ -386,7 +386,7 @@ ark_doctor_audit() {
 							printf '%s' "$cur_eq" | grep -qw "$exp_ack" || cur_eq="$cur_eq $exp_ack"
 						fi
 						if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
-							cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
+							cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[kKmMgGbB]*/memlimit $exp_mlim/g")"
 						else
 							cur_eq="$cur_eq memlimit $exp_mlim"
 						fi
@@ -522,9 +522,14 @@ ark_doctor_audit() {
 		has_ppe=1
 	fi
 
-	# 5. Checagem de Conflitos: Flow Offloading vs SQM vs Multi-WAN
+	# 5. Checagem de Conflitos: Flow Offloading vs SQM vs Multi-WAN vs Limites por Dispositivo vs Modo AP/HUB
 	flow_offload="$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)"
 	flow_user_disabled="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
+	local has_dev_limits=0 is_ap_or_hub=0
+	ark_has_active_device_limits && has_dev_limits=1
+	if ark_is_satellite_or_ap || ark_is_hub_mode; then
+		is_ap_or_hub=1
+	fi
 	mwan_active_count=0
 	if [ -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -f /etc/config/mwan3 ]; then
 		if [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; then
@@ -560,7 +565,19 @@ ark_doctor_audit() {
 		else
 			add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
 		fi
-	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ] && [ "$flow_user_disabled" != "1" ]; then
+	elif [ "$flow_offload" = "1" ] && [ "$has_dev_limits" = "1" ]; then
+		if [ "$auto_fix" = 1 ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Flow Offload vs Limites por Dispositivo" "FIXED" "Fastpath desativado para que os limites de banda por dispositivo (hook forward) sejam aplicados."
+		else
+			add_check "Flow Offload vs Limites por Dispositivo" "WARN" "Fastpath ativo contorna os limites de banda por dispositivo (nftables hook forward)."
+		fi
+	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ] && [ "$has_dev_limits" = "0" ] && [ "$is_ap_or_hub" = "0" ] && [ "$flow_user_disabled" != "1" ]; then
 		if [ "$auto_fix" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=1
 			if [ "$has_ppe" = "1" ]; then
@@ -575,7 +592,7 @@ ark_doctor_audit() {
 			add_check "Aceleracao de Rede" "WARN" "Fastpath desativado, mas nao ha SQM nem Multi-WAN para justifica-lo. Habilite-o para ganhar maxima vazao."
 		fi
 	else
-		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM e Multi-WAN."
+		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM, Multi-WAN e Limites por Dispositivo."
 	fi
 
 	# 6. Checagem de Hardware Offload vs Capacidade do Silicio
@@ -993,12 +1010,12 @@ ark_doctor_audit() {
 			if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
 				_act_pfx="$(ubus call network.interface.lan status 2>/dev/null \
 					| jsonfilter -e '@["ipv6-prefix-assignment"][*].address' -e '@["ipv6-address"][*].address' 2>/dev/null \
-					| awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+					| ark_ipv6_expand_prefix64 | sort -u | tr '\n' ' ' | sed 's/ $//')"
 			fi
 			if [ -n "$_act_pfx" ]; then
 				for pio_chk_f in /tmp/odhcpd-piodir/*; do
 					[ -f "$pio_chk_f" ] || continue
-					for pio_chk_p in $(grep -oE '"prefix":"[^"]+"' "$pio_chk_f" 2>/dev/null | cut -d'"' -f4 | awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}'); do
+					for pio_chk_p in $(grep -oE '"prefix":"[^"]+"' "$pio_chk_f" 2>/dev/null | cut -d'"' -f4 | ark_ipv6_expand_prefix64); do
 						local _p_match=0
 						for _ap in $_act_pfx; do
 							[ "$pio_chk_p" = "$_ap" ] && { _p_match=1; break; }
@@ -2018,11 +2035,15 @@ ark_doctor_audit() {
 			local if_dev="$($uci_cmd get "wireless.$chk_iface.device" 2>/dev/null || echo '')"
 			local if_band="$($uci_cmd get "wireless.$if_dev.band" 2>/dev/null || echo '')"
 			local is_if_2g=0
-			if [ "$if_band" = "2g" ] || [ "$if_dev" = "radio0" ] || [ "$if_dev" = "wifi0" ]; then
+			if [ "$if_band" = "2g" ]; then
 				is_if_2g=1
+			elif [ "$if_band" = "5g" ] || [ "$if_band" = "6g" ]; then
+				is_if_2g=0
 			else
 				local if_ch="$($uci_cmd get "wireless.$if_dev.channel" 2>/dev/null || echo '')"
 				if [ -n "$if_ch" ] && [ "$if_ch" -ge 1 ] 2>/dev/null && [ "$if_ch" -le 14 ] 2>/dev/null; then
+					is_if_2g=1
+				elif [ -z "$if_ch" ] && { [ "$if_dev" = "radio0" ] || [ "$if_dev" = "wifi0" ]; }; then
 					is_if_2g=1
 				fi
 			fi
@@ -2118,10 +2139,6 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
-		(sleep 1; wifi reload; rm -f "${ARK_ROOT}/tmp"/ark-stations-cache.* "${ARK_ROOT}/tmp"/ark-hw-cache.* 2>/dev/null || true) </dev/null >/dev/null 2>&1 &
-	fi
-
 	# 12e. Higiene de Nós Zumbis IoT & Ar 2.4 GHz
 	# Detecta e purga estações zumbis em 2.4 GHz (ex: Smart Home desligadas na parede
 	# que permanecem associadas acumulando falhas contínuas e degradando o airtime).
@@ -2143,6 +2160,8 @@ ark_doctor_audit() {
 			local is_wif_2g=0
 			if echo "$w_info" | grep -qE "channel [0-9]+ \(24[0-9]{2} MHz\)"; then
 				is_wif_2g=1
+			elif echo "$w_info" | grep -qE "channel [0-9]+ \([56][0-9]{3} MHz\)"; then
+				is_wif_2g=0
 			elif [ "$wif" = "phy0-ap0" ]; then
 				is_wif_2g=1
 			fi
@@ -2463,8 +2482,14 @@ EOF
 
 	if ! ark_is_satellite_or_ap && command -v ark_has_doh_proxy >/dev/null 2>&1 && ark_has_doh_proxy; then
 		local _doh_pref="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_doh_enabled || echo 0)"
+		local _cloud_cfg="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || echo 0)"
+		local _agh_cfg_ab="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled || echo 0)"
+		local _agh_cfg_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled || echo 0)"
 		local _agh_active=0
-		[ -x "${ARK_ROOT}/etc/init.d/adguardhome" ] && pgrep -f AdGuardHome >/dev/null 2>&1 && _agh_active=1
+		{ [ "$_agh_cfg_ab" = "1" ] && [ "$_agh_cfg_en" = "1" ]; } && _agh_active=1
+		[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/adguardhome ] && pgrep -f AdGuardHome >/dev/null 2>&1 && _agh_active=1
+		local _cloud_active=0
+		[ -n "$_cloud_cfg" ] && [ "$_cloud_cfg" != "0" ] && [ "$_cloud_cfg" != "off" ] && _cloud_active=1
 		_sqm_active=0
 		if [ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ]; then
 			if uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
@@ -2473,45 +2498,49 @@ EOF
 		fi
 
 		if [ "$_sqm_active" = "1" ]; then
-			_doh_running=0
-			[ -x "${ARK_ROOT}/etc/init.d/https-dns-proxy" ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && _doh_running=1
-			_doh_match=0
-			if [ "$_doh_pref" = "1" ] || [ "$_doh_running" = "1" ]; then
-				_doh_match=1
-			elif uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '5053'; then
-				_doh_match=1
-			fi
-
-			if [ "$_doh_match" = "1" ]; then
-				if [ "$auto_fix" = 1 ]; then
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings=performance
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings.dns_doh_enabled='0'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit equipe_perf 2>/dev/null || true
-					if command -v ark_sync_doh_proxy >/dev/null 2>&1; then
-						ark_sync_doh_proxy "disable" >/dev/null 2>&1 || true
-					fi
-					if [ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ]; then
-						/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
-						/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
-					fi
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
-					if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_dashboard.ipv6.mode || echo dual_stack)" = "ipv4_only" ]; then
-						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
-					else
-						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
-					fi
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='1'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
-					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
-					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
-					fixes_applied=$((fixes_applied + 1))
-					add_check "Latência DNS Gaming vs Dual-DoH" "FIXED" "QoS ativo: Dual-DoH desativado e Anycast direto (< 5 ms) configurado para eliminar lag DNS em jogos."
-				else
-					add_check "Latência DNS Gaming vs Dual-DoH" "WARN" "QoS ativo com Dual-DoH: negociacao TLS adiciona ~65 ms de latencia em queries DNS. Recomendado Anycast direto UDP 53."
-				fi
+			if [ "$_cloud_active" = "1" ] || [ "$_agh_active" = "1" ]; then
+				add_check "Latência DNS Gaming" "OK" "AdBlock Cloud ou AdGuard Home ativo: política DNS filtrada preservada em harmonia com QoS."
 			else
-				add_check "Latência DNS Gaming" "OK" "Anycast UDP 53 direto ativo (< 5 ms) em harmonia com motor QoS."
+				_doh_running=0
+				[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && _doh_running=1
+				_doh_match=0
+				if [ "$_doh_pref" = "1" ] || [ "$_doh_running" = "1" ]; then
+					_doh_match=1
+				elif uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '5053'; then
+					_doh_match=1
+				fi
+
+				if [ "$_doh_match" = "1" ]; then
+					if [ "$auto_fix" = 1 ]; then
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings=performance
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings.dns_doh_enabled='0'
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit equipe_perf 2>/dev/null || true
+						if command -v ark_sync_doh_proxy >/dev/null 2>&1; then
+							ark_sync_doh_proxy "disable" >/dev/null 2>&1 || true
+						fi
+						if [ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ]; then
+							/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
+							/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
+						fi
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+						if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_dashboard.ipv6.mode || echo dual_stack)" = "ipv4_only" ]; then
+							uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+						else
+							uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+						fi
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='1'
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
+						uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
+						[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Latência DNS Gaming vs Dual-DoH" "FIXED" "QoS ativo: Dual-DoH desativado e Anycast direto (< 5 ms) configurado para eliminar lag DNS em jogos."
+					else
+						add_check "Latência DNS Gaming vs Dual-DoH" "WARN" "QoS ativo com Dual-DoH: negociacao TLS adiciona ~65 ms de latencia em queries DNS. Recomendado Anycast direto UDP 53."
+					fi
+				else
+					add_check "Latência DNS Gaming" "OK" "Anycast UDP 53 direto ativo (< 5 ms) em harmonia com motor QoS."
+				fi
 			fi
 		elif [ "$_doh_pref" = "1" ] && [ "$_agh_active" = "0" ]; then
 			local _cur_dnsmasq_srv="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || echo '')"

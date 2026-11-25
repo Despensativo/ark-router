@@ -5,8 +5,14 @@ iface="${6:-wan}"
 dev_mtu="$(uci -q get "network.$iface.device_mtu")"
 req_mtu="$(uci -q get "network.$iface.mtu")"
 
-# Se Baby Jumbo estiver habilitado no UCI (1508/1500), nao rebaixa
+# Se Baby Jumbo (1508/1500) ou MTU manual explicito com device_mtu >= req_mtu+8 estiver habilitado, nao rebaixa
 if [ "$dev_mtu" = "1508" ] && [ "$req_mtu" = "1500" ]; then
+	exit 0
+fi
+mtu_mode="$(uci -q get "equipe_dashboard.wan_profiles.${iface}_mtu_mode" 2>/dev/null || true)"
+case "$dev_mtu" in ''|*[!0-9]*) dev_mtu=0 ;; esac
+case "$req_mtu" in ''|*[!0-9]*) req_mtu=0 ;; esac
+if [ "$mtu_mode" = "manual" ] && [ "$req_mtu" -gt 1492 ] && [ "$dev_mtu" -ge $((req_mtu + 8)) ]; then
 	exit 0
 fi
 

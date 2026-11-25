@@ -481,6 +481,12 @@ speedify_prepare_wans() {
 					uci -q set "network.$iface.metric=$metric"
 				fi
 				uci -q set "network.$iface.ip6metric=$metric"
+				# Snapshot saved_* antes de desligar IPv6/delegate na WAN
+				if [ -z "$(uci -q get "equipe_dashboard.speedify.saved_${iface}_delegate" 2>/dev/null)" ]; then
+					uci -q set equipe_dashboard.speedify=feature
+					uci -q set "equipe_dashboard.speedify.saved_${iface}_delegate=$(uci -q get "network.$iface.delegate" 2>/dev/null || echo __unset__)"
+					uci -q set "equipe_dashboard.speedify.saved_${iface}_ipv6=$(uci -q get "network.$iface.ipv6" 2>/dev/null || echo __unset__)"
+				fi
 				uci -q set "network.$iface.delegate=0"
 				cur_ipv6="$(uci -q get "network.$iface.ipv6" || true)"
 				if [ -z "$cur_ipv6" ]; then
@@ -722,10 +728,10 @@ speedify_stop_runtime() {
 	fi
 	rm -f /etc/rc.d/S*speedify /etc/rc.d/K*speedify /etc/rc.d/S*sfy-ws-auth /etc/rc.d/K*sfy-ws-auth 2>/dev/null || true
 	pid="$(cat /tmp/ark-speedify.pid 2>/dev/null || true)"
-	[ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1 || true
-	pkill -9 -f 'speedify' >/dev/null 2>&1 || true
-	pkill -9 -f 'sfy-ws-auth' >/dev/null 2>&1 || true
-	killall -9 speedify 2>/dev/null || true
+	[ -n "$pid" ] && [ "$pid" != "$$" ] && kill -9 "$pid" >/dev/null 2>&1 || true
+	pkill -9 -x speedify >/dev/null 2>&1 || true
+	pkill -9 -x sfy-ws-auth >/dev/null 2>&1 || true
+	killall -9 speedify sfy-ws-auth >/dev/null 2>&1 || true
 	rm -f /tmp/ark-speedify.pid
 	return 0
 }

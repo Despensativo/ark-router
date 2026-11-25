@@ -569,15 +569,27 @@ speedtest_schedule_weak_cleanup() {
 }
 
 speedtest_download_fallback_mbps() {
-	local wan_src bind_opt token fast_meta urls start pids count u end dt mbps
-	local i
+	local wan_src bind_opt curl_bind token fast_meta urls start pids count u end dt total_bytes tmp_dir i f b
 	wan_src="$1"
 	bind_opt=""
-	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
+	curl_bind=""
+	if [ -n "$wan_src" ]; then
+		curl_bind="--interface $wan_src"
+		if command -v wget >/dev/null 2>&1 && wget --help 2>&1 | grep -q -- '--bind-address'; then
+			bind_opt="--bind-address=$wan_src"
+		fi
+	fi
 
-	# 1. Tenta obter múltiplos alvos da Netflix CDN (Fast.com) para multi-stream paralelo
+	tmp_dir="/tmp/ark-st-dl-$$"
+	mkdir -p "$tmp_dir" 2>/dev/null || true
+
+	# 1. Tenta obter multiplos alvos da Netflix CDN (Fast.com) para multi-stream paralelo
 	token="YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"
-	fast_meta="$(ark_wget_tls $bind_opt -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null)"
+	if command -v curl >/dev/null 2>&1; then
+		fast_meta="$(ark_curl_tls -fsS -m 4 $curl_bind "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null || true)"
+	else
+		fast_meta="$(ark_wget_tls $bind_opt -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null || true)"
+	fi
 	urls="$(printf '%s' "$fast_meta" | grep -o 'https://[^"]*')"
 
 	if [ -n "$urls" ]; then
@@ -587,69 +599,109 @@ speedtest_download_fallback_mbps() {
 		for u in $urls $urls; do
 			count=$((count + 1))
 			[ "$count" -gt 8 ] && break
-			ark_wget_tls $bind_opt -T 15 -qO- "${u}&range=0-26214400" >/dev/null 2>&1 &
+			if command -v curl >/dev/null 2>&1; then
+				(ark_curl_tls -fsS -m 15 $curl_bind -o /dev/null -w '%{size_download}' "${u}&range=0-26214400" 2>/dev/null || printf '0') > "$tmp_dir/s$count" &
+			else
+				(ark_wget_tls $bind_opt -T 15 -qO- "${u}&range=0-26214400" 2>/dev/null | wc -c || printf '0') > "$tmp_dir/s$count" &
+			fi
 			pids="$pids $!"
 		done
-		wait $pids
+		wait $pids 2>/dev/null || true
 		end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
-		awk -v s="$start" -v e="$end" -v count="$count" 'BEGIN{
-			dt=e-s
-			if (dt < 0.2) dt=0.2
-			mbps=(count * 26.2144 * 8) / dt
-			if (mbps > 0) printf "%.2f", mbps
-			else printf "0"
-		}'
-		return 0
+		total_bytes=0
+		for f in "$tmp_dir"/s*; do
+			[ -f "$f" ] || continue
+			b="$(tr -dc '0-9' < "$f" 2>/dev/null || echo 0)"
+			[ -n "$b" ] && total_bytes=$((total_bytes + b))
+		done
+		rm -rf "$tmp_dir" 2>/dev/null || true
+		if [ "$total_bytes" -gt 0 ]; then
+			awk -v s="$start" -v e="$end" -v bytes="$total_bytes" 'BEGIN{
+				dt=e-s
+				if (dt < 0.2) dt=0.2
+				mbps=(bytes * 8.0) / (dt * 1000000.0)
+				if (mbps > 0) printf "%.2f", mbps
+				else printf "0"
+			}'
+			return 0
+		fi
+		mkdir -p "$tmp_dir" 2>/dev/null || true
 	fi
 
-	# 2. Fallback Cloudflare Multi-Stream com User-Agent
+	# 2. Fallback Cloudflare Multi-Stream validando bytes reais transferidos (zero falso positivo em falha)
 	start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
 	pids=""
-	count=4
 	for i in 1 2 3 4; do
-		ark_wget_tls $bind_opt -T 15 -qO- --header='User-Agent: Mozilla/5.0' "https://speed.cloudflare.com/__down?bytes=25000000" >/dev/null 2>&1 &
+		if command -v curl >/dev/null 2>&1; then
+			(ark_curl_tls -fsS -m 15 $curl_bind -A 'Mozilla/5.0' -o /dev/null -w '%{size_download}' "https://speed.cloudflare.com/__down?bytes=25000000" 2>/dev/null || printf '0') > "$tmp_dir/c$i" &
+		else
+			(ark_wget_tls $bind_opt -T 15 -qO- --header='User-Agent: Mozilla/5.0' "https://speed.cloudflare.com/__down?bytes=25000000" 2>/dev/null | wc -c || printf '0') > "$tmp_dir/c$i" &
+		fi
 		pids="$pids $!"
 	done
-	wait $pids
+	wait $pids 2>/dev/null || true
 	end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
-	awk -v s="$start" -v e="$end" -v count="$count" 'BEGIN{
+	total_bytes=0
+	for f in "$tmp_dir"/c*; do
+		[ -f "$f" ] || continue
+		b="$(tr -dc '0-9' < "$f" 2>/dev/null || echo 0)"
+		[ -n "$b" ] && total_bytes=$((total_bytes + b))
+	done
+	rm -rf "$tmp_dir" 2>/dev/null || true
+	if [ "$total_bytes" -le 0 ]; then
+		printf '0'
+		return 1
+	fi
+	awk -v s="$start" -v e="$end" -v bytes="$total_bytes" 'BEGIN{
 		dt=e-s
 		if (dt < 0.2) dt=0.2
-		mbps=(count * 25.0 * 8) / dt
+		mbps=(bytes * 8.0) / (dt * 1000000.0)
 		if (mbps > 0) printf "%.2f", mbps
 		else printf "0"
 	}'
 }
 
 speedtest_upload_fallback_mbps() {
-	local wan_src bind_opt up_file start curl_bind end dt mbps
+	local wan_src bind_opt up_file start curl_bind end ok=0
 	wan_src="$1"
 	bind_opt=""
-	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
+	curl_bind=""
+	if [ -n "$wan_src" ]; then
+		curl_bind="--interface $wan_src"
+		if command -v wget >/dev/null 2>&1 && wget --help 2>&1 | grep -q -- '--bind-address'; then
+			bind_opt="--bind-address=$wan_src"
+		fi
+	fi
 
-	# Upload probe para Cloudflare Speedtest (~4MB POST)
+	# Upload probe para Cloudflare Speedtest (~4MB POST) validando exit code real
 	up_file="/tmp/ark-speedtest-up-$$.dat"
 	dd if=/dev/zero of="$up_file" bs=1048576 count=4 >/dev/null 2>&1 || true
 	if [ ! -s "$up_file" ]; then
 		rm -f "$up_file"
 		printf '0'
-		return 0
+		return 1
 	fi
 
 	start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
 	if command -v curl >/dev/null 2>&1; then
-		curl_bind=""
-		[ -n "$wan_src" ] && curl_bind="--interface $wan_src"
-		ark_curl_tls -s -m 15 $curl_bind -X POST --data-binary @"$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+		if ark_curl_tls -fsS -m 15 $curl_bind -X POST --data-binary @"$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1; then
+			ok=1
+		fi
 	elif command -v wget >/dev/null 2>&1; then
-		ark_wget_tls $bind_opt -T 15 -qO- --post-file="$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+		if ark_wget_tls $bind_opt -T 15 -qO- --post-file="$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1; then
+			ok=1
+		fi
 	fi
 	end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
 	rm -f "$up_file"
+	if [ "$ok" != "1" ]; then
+		printf '0'
+		return 1
+	fi
 	awk -v s="$start" -v e="$end" 'BEGIN{
 		dt=e-s
 		if (dt < 0.2) dt=0.2
-		mbps=(4.0 * 8) / dt
+		mbps=(4.194304 * 8) / dt
 		if (mbps > 0) printf "%.2f", mbps
 		else printf "0"
 	}'
@@ -790,6 +842,11 @@ apply_device_bandwidth_limits() {
 	printf '\t}\n}\n' >> "$tmp_nft"
 
 	if [ "$has_rules" = 1 ]; then
+		if [ -z "${ARK_ROOT:-}" ] && is_fw3; then
+			rm -f "$tmp_nft"
+			echo "Limites de banda por dispositivo via nftables indisponiveis em firewall3 (fw3)." >&2
+			return 1
+		fi
 		if [ -x "$nft_bin" ] && ! "$nft_bin" -c -f "$tmp_nft" 2>/dev/null; then
 			rm -f "$tmp_nft"
 			echo "Erro de sintaxe nftables no arquivo de limites" >&2
@@ -807,11 +864,41 @@ EOF
 		uci -q set firewall.ark_limits.type=script
 		uci -q set "firewall.ark_limits.path=/etc/ark/apply_limits.sh"
 		uci -q set firewall.ark_limits.fw4_compatible='1'
+		uci -q set firewall.ark_limits.reload='1'
+		# Desativa Flow Offloading com snapshot saved_* para impedir bypass do hook forward
+		local cur_fo cur_fo_hw
+		cur_fo="$(uci -q get firewall.@defaults[0].flow_offloading 2>/dev/null || echo 0)"
+		cur_fo_hw="$(uci -q get firewall.@defaults[0].flow_offloading_hw 2>/dev/null || echo 0)"
+		if [ "$cur_fo" = "1" ] || [ "$cur_fo_hw" = "1" ]; then
+			if [ -z "$(uci -q get equipe_devices.ark_offload_snapshot.saved_flow_offloading 2>/dev/null)" ]; then
+				uci -q set equipe_devices.ark_offload_snapshot=snapshot
+				uci -q set "equipe_devices.ark_offload_snapshot.saved_flow_offloading=$cur_fo"
+				uci -q set "equipe_devices.ark_offload_snapshot.saved_flow_offloading_hw=$cur_fo_hw"
+				uci -q commit equipe_devices 2>/dev/null || true
+			fi
+			uci -q set firewall.@defaults[0].flow_offloading='0'
+			uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
+		fi
 		uci commit firewall
 	else
 		rm -f "$tmp_nft" "$nft_file" "$apply_sh" 2>/dev/null || true
 		"$nft_bin" delete table inet ark_device_limits 2>/dev/null || true
 		uci -q delete firewall.ark_limits 2>/dev/null || true
+		local saved_fo saved_fo_hw fo_user_dis sqm_any_on
+		saved_fo="$(uci -q get equipe_devices.ark_offload_snapshot.saved_flow_offloading 2>/dev/null || true)"
+		saved_fo_hw="$(uci -q get equipe_devices.ark_offload_snapshot.saved_flow_offloading_hw 2>/dev/null || true)"
+		if [ -n "$saved_fo" ]; then
+			fo_user_dis="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
+			sqm_any_on=0
+			uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" && sqm_any_on=1
+			if [ "$fo_user_dis" != "1" ] && [ "$sqm_any_on" = "0" ] && ! ark_is_satellite_or_ap && ! ark_is_hub_mode; then
+				uci -q set "firewall.@defaults[0].flow_offloading=$saved_fo"
+				[ -n "$saved_fo_hw" ] && uci -q set "firewall.@defaults[0].flow_offloading_hw=$saved_fo_hw"
+			fi
+			uci -q delete equipe_devices.ark_offload_snapshot 2>/dev/null || true
+			uci -q commit equipe_devices 2>/dev/null || true
+		fi
 		uci commit firewall
 	fi
 }
@@ -827,16 +914,18 @@ device_apply_parental() {
 	p_services="${7:-}"
 	p_suffix="$(device_suffix "$p_mac")"
 
+	local agh_yaml="${ARK_ROOT:-}/etc/adguardhome/adguardhome.yaml" agh_updated=0
 	agh_active=0
-	if [ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && [ -f /etc/adguardhome/adguardhome.yaml ]; then
+	if { [ -x /usr/bin/AdGuardHome ] || [ -n "${ARK_ROOT:-}" ]; } && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && [ -f "$agh_yaml" ]; then
 		agh_active=1
 	fi
 
 	if [ "$agh_active" = "1" ] && command -v python3 >/dev/null 2>&1; then
+		cp -f "$agh_yaml" "${agh_yaml}.ark.bak" 2>/dev/null || true
 		python3 -c "
 import sys, re
 
-yaml_path = '/etc/adguardhome/adguardhome.yaml'
+yaml_path = sys.argv[8] if len(sys.argv) > 8 else '/etc/adguardhome/adguardhome.yaml'
 mac = sys.argv[1]
 ip = sys.argv[2]
 name = sys.argv[3] or mac
@@ -955,13 +1044,95 @@ try:
             f.write(new_content)
 except Exception:
     pass
-" "$p_mac" "$p_ip" "$p_name" "$p_mode" "$p_block" "$p_safe" "$p_services"
-		chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-		chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+" "$p_mac" "$p_ip" "$p_name" "$p_mode" "$p_block" "$p_safe" "$p_services" "$agh_yaml" && agh_updated=1
+		if command -v AdGuardHome >/dev/null 2>&1; then
+			if ! AdGuardHome --check-config -c "$agh_yaml" >/dev/null 2>&1; then
+				[ -f "${agh_yaml}.ark.bak" ] && mv -f "${agh_yaml}.ark.bak" "$agh_yaml" 2>/dev/null || true
+				agh_updated=0
+			else
+				rm -f "${agh_yaml}.ark.bak" 2>/dev/null || true
+			fi
+		else
+			rm -f "${agh_yaml}.ark.bak" 2>/dev/null || true
+		fi
+		[ -z "${ARK_ROOT:-}" ] && chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+		chmod 644 "$agh_yaml" 2>/dev/null || true
+		if [ -z "${ARK_ROOT:-}" ] && [ "$agh_updated" = "1" ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
+	elif [ "$agh_active" = "1" ] && command -v ucode >/dev/null 2>&1; then
+		# Fallback nativo ucode (OpenWrt sem python3) para atualizar persistent clients no AdGuardHome
+		cp -f "$agh_yaml" "${agh_yaml}.ark.bak" 2>/dev/null || true
+		if ucode -e '
+			let fs = require("fs");
+			let mac = ARGV[0] || "", ip = ARGV[1] || "", name = ARGV[2] || mac, mode = ARGV[3] || "default";
+			let p_block = (ARGV[4] == "1"), s_safe = (ARGV[5] == "1"), svcs_raw = ARGV[6] || "", ypath = ARGV[7];
+			let content = fs.readfile(ypath);
+			if (!content) exit(1);
+			let idx_p = index(content, "  persistent:");
+			if (idx_p < 0) exit(1);
+			let eol_p = index(content, "\n", idx_p);
+			if (eol_p < 0) eol_p = length(content);
+			let idx_log = index(content, "\nlog:", idx_p);
+			if (idx_log < 0) idx_log = length(content);
+			let before = substr(content, 0, idx_p) + "  persistent:";
+			let after = substr(content, idx_log);
+			let mid = substr(content, eol_p, idx_log - eol_p);
+			let lines = split(mid, "\n");
+			let blocks = [], cur = [];
+			for (let l in lines) {
+				if (substr(l, 0, 6) == "    - ") {
+					if (length(cur) > 0) { push(blocks, join("\n", cur)); cur = []; }
+				}
+				if (length(cur) > 0 || substr(l, 0, 6) == "    - ") push(cur, l);
+			}
+			if (length(cur) > 0) push(blocks, join("\n", cur));
+			let mac_clean = replace(lc(mac), ":", "");
+			let name_clean = lc(name);
+			let kept = [];
+			for (let b in blocks) {
+				let bc = replace(lc(b), ":", "");
+				if ((mac_clean && index(bc, mac_clean) >= 0) || (ip && index(b, ip) >= 0) || (name_clean && index(bc, "name: \"" + name_clean + "\"") >= 0)) continue;
+				push(kept, b);
+			}
+			if (mode == "custom" || mode == "bypass") {
+				let ids = (ip ? ("        - \"" + ip + "\"\n") : "") + (mac ? ("        - \"" + lc(mac) + "\"") : "");
+				let ne = replace(replace(name, "\\", "\\\\"), "\"", "\\\"");
+				let pb = (mode == "custom" && p_block) ? "true" : "false";
+				let ss = (mode == "custom" && s_safe) ? "true" : "false";
+				let filt = (mode == "bypass") ? "false" : "true";
+				let s_ids = [];
+				if (mode == "custom" && svcs_raw) {
+					for (let s in split(svcs_raw, ",")) {
+						s = replace(trim(s), /[^a-zA-Z0-9_.-]/g, "");
+						if (s) push(s_ids, "          - " + s);
+					}
+				}
+				let sblk = length(s_ids) > 0 ? ("      blocked_services:\n        schedule:\n          time_zone: UTC\n        ids:\n" + join("\n", s_ids)) : "      blocked_services:\n        schedule:\n          time_zone: UTC\n        ids: []";
+				push(kept, "    - name: \"" + ne + "\"\n      ids:\n" + ids + "\n      use_global_settings: false\n      filtering_enabled: " + filt + "\n      parental_enabled: " + pb + "\n      safesearch_enabled: " + ss + "\n      safe_search:\n        enabled: " + ss + "\n        bing: " + ss + "\n        duckduckgo: " + ss + "\n        ecosia: " + ss + "\n        google: " + ss + "\n        pixabay: " + ss + "\n        yandex: " + ss + "\n        youtube: " + ss + "\n      use_global_blocked_services: false\n" + sblk);
+			}
+			let out = length(kept) > 0 ? (before + "\n" + join("\n", kept) + "\n\n" + ltrim(after, "\n")) : (before + " []\n" + ltrim(after, "\n"));
+			fs.writefile(ypath, out);
+		' "$p_mac" "$p_ip" "$p_name" "$p_mode" "$p_block" "$p_safe" "$p_services" "$agh_yaml" 2>/dev/null; then
+			agh_updated=1
+			if command -v AdGuardHome >/dev/null 2>&1 && ! AdGuardHome --check-config -c "$agh_yaml" >/dev/null 2>&1; then
+				[ -f "${agh_yaml}.ark.bak" ] && mv -f "${agh_yaml}.ark.bak" "$agh_yaml" 2>/dev/null || true
+				agh_updated=0
+			else
+				rm -f "${agh_yaml}.ark.bak" 2>/dev/null || true
+			fi
+		else
+			[ -f "${agh_yaml}.ark.bak" ] && mv -f "${agh_yaml}.ark.bak" "$agh_yaml" 2>/dev/null || true
+		fi
+		[ -z "${ARK_ROOT:-}" ] && chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+		chmod 644 "$agh_yaml" 2>/dev/null || true
+		if [ -z "${ARK_ROOT:-}" ] && [ "$agh_updated" = "1" ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 	fi
+
+	# Se AdGuard nao conseguiu aplicar (sem python3/ucode ou falha), ativa fallback firewall DNS
+	[ "$agh_active" = "1" ] && [ "$agh_updated" != "1" ] && agh_active=0
 
 	has_custom_dns="$(uci -q get "equipe_devices.device_$(printf '%s' "$p_mac" | tr -d ':').custom_dns" || true)"
 	if [ "$p_mode" = "bypass" ] || [ -n "$has_custom_dns" ]; then
@@ -980,8 +1151,12 @@ except Exception:
 			uci -q set "firewall.ark_par_$p_suffix.dest_ip=94.140.14.15"
 			uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
 			uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
-			[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
-			[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
+			if [ -n "$p_mac" ]; then
+				uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
+				uci -q delete "firewall.ark_par_$p_suffix.src_ip" 2>/dev/null || true
+			elif [ -n "$p_ip" ]; then
+				uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
+			fi
 			uci -q set "firewall.ark_par_$p_suffix.enabled=1"
 		else
 			uci -q delete "firewall.ark_par_$p_suffix"

@@ -63,10 +63,9 @@ chain ark_dscp_prerouting {
 	udp dport { 5060, 5061, 50000-50100 } meta length <= 256 ip6 dscp set cs4 comment "ARK: Discord/VoIP Outgoing IPv6 Voice priority"
 	udp sport { 5060, 5061, 50000-50100 } meta length <= 256 ip6 dscp set cs4 comment "ARK: Discord/VoIP Incoming IPv6 Voice priority"
 
-	# Competitive Gaming Ports & Multipath Relays (PUBG Mobile, CS2/Steam, CoD, LoL, Valorant, Fortnite, Minecraft, Honor of Kings, Mobile Legends, Wild Rift, GearUP/LagoFast) -> CS4 (Voice/Gaming Tin)
-	# Covers full high UDP gaming/relay spectrum 17000-65535 without blind spots (17501-19999 / 60001-65535), excluding Tailscale (41641), BitTorrent (51413) and WireGuard (51820).
-	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip dscp set cs4 comment "ARK: Competitive Gaming Ports IPv4 priority"
-	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } ip6 dscp set cs4 comment "ARK: Competitive Gaming Ports IPv6 priority"
+	# Competitive Gaming Ports & Multipath Relays -> CS4 (Voice/Gaming Tin), limitado a pacotes <= 512B para evitar que downloads UDP/QUIC/P2P saturem a fila de voz/jogos.
+	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming Ports IPv4 priority"
+	iifname { "br-*", "lan*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-41640, 41642-51412, 51414-51819, 51821-65535 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming Ports IPv6 priority"
 	iifname { "br-*", "lan*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv4 priority"
 	iifname { "br-*", "lan*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 comment "ARK: Competitive Gaming TCP Control IPv6 priority"
 
@@ -116,9 +115,7 @@ chain ark_dscp_output {
 chain ark_cone_nat {
 	type nat hook postrouting priority srcnat - 5; policy accept;
 
-	# Endpoint-Independent Mapping (Full Cone NAT) for UDP:
-	# Preserves outbound source ports across diverse destination endpoints.
-	# Eliminates Symmetric / Strict NAT for gaming consoles, STUN, WebRTC and P2P sessions.
-	oifname != { "lo", "br-*", "lan*" } meta nfproto ipv4 meta l4proto udp masquerade persistent comment "ARK: Endpoint-Independent Mapping (Cone NAT) for UDP Gaming"
+	# Endpoint-Independent Mapping (Full Cone NAT) for UDP on WAN egress only (excludes LAN and VPN/overlay tunnels).
+	oifname != { "lo", "br-*", "lan*", "wg*", "zt*", "tailscale*", "tun*", "tap*", "connectify*", "docker*" } meta nfproto ipv4 meta l4proto udp masquerade persistent comment "ARK: Endpoint-Independent Mapping (Cone NAT) for UDP Gaming"
 }
 

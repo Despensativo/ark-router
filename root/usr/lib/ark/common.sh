@@ -446,7 +446,7 @@ ark_feature_policy_drifted() {
 			;;
 		zerotier)
 			running zerotier && return 0
-			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get zerotier.global.enabled 2>/dev/null || echo 0)" = "1" ]; then
+			if uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} show zerotier 2>/dev/null | grep -q "\.enabled='1'"; then
 				return 0
 			fi
 			ark_is_init_enabled zerotier && return 0
@@ -1189,8 +1189,11 @@ ark_safe_storage_reboot() {
 		fi
 	done
 
-	# 3. Interromper daemons de rede com escrita em disco (Samba, FTP, DLNA)
-	for srv in smbd nmbd samba samba4 vsftpd minidlna gerbera; do
+	# 3. Flush de telemetria Starlink e parada de daemons de rede com escrita em disco (ksmbd, Samba, FTP, DLNA)
+	if [ -z "$root_prefix" ] && [ -x /usr/sbin/starlink-telemetry-daemon ]; then
+		/usr/sbin/starlink-telemetry-daemon flush >/dev/null 2>&1 || true
+	fi
+	for srv in ksmbd smbd nmbd samba samba4 vsftpd minidlna gerbera starlink-telemetry; do
 		if [ -x "${root_prefix}/etc/init.d/$srv" ]; then
 			"${root_prefix}/etc/init.d/$srv" stop >/dev/null 2>&1 || true
 		fi
@@ -1205,6 +1208,14 @@ ark_safe_storage_reboot() {
 	sync
 	sync
 	sync
+
+	# 6. Remonta unidades USB/armazenamento montadas em /mnt/* como somente-leitura (ro)
+	if [ -z "$root_prefix" ] && [ -r /proc/mounts ]; then
+		local mp
+		for mp in $(awk '$2 ~ /^\/mnt\/[^ ]+/ {print $2}' /proc/mounts 2>/dev/null); do
+			mount -o remount,ro "$mp" >/dev/null 2>&1 || true
+		done
+	fi
 
 	logger -t ark-safe-storage "Protecao de armazenamento concluida. Buffers descarregados com sucesso."
 	return 0
@@ -1456,6 +1467,55 @@ ark_sanitize_lan_ipv6() {
 	return 0
 }
 
+# Normaliza enderecos/prefixos IPv6 GUA (inclusive comprimidos com '::', ex: 2001:db8::1) para os 4 primeiros hextetos canonicos (xxxx:xxxx:xxxx:xxxx)
+ark_ipv6_expand_prefix64() {
+	awk '
+	{
+		addr = tolower($0)
+		sub(/\/.*/, "", addr)
+		sub(/%.*/, "", addr)
+		if (addr !~ /^[23][0-9a-f]*:/) next
+		if (index(addr, "::") > 0) {
+			pos = index(addr, "::")
+			left = substr(addr, 1, pos - 1)
+			right = substr(addr, pos + 2)
+			nl = (left == "") ? 0 : split(left, L, ":")
+			nr = (right == "") ? 0 : split(right, R, ":")
+			missing = 8 - (nl + nr)
+			if (missing < 0) next
+			k = 0
+			for (i = 1; i <= nl; i++) H[++k] = L[i]
+			for (i = 1; i <= missing; i++) H[++k] = "0"
+			for (i = 1; i <= nr; i++) H[++k] = R[i]
+		} else {
+			k = split(addr, H, ":")
+		}
+		if (k < 4) next
+		for (i = 1; i <= 4; i++) {
+			h = H[i]
+			while (length(h) < 4) h = "0" h
+			H[i] = h
+		}
+		print H[1] ":" H[2] ":" H[3] ":" H[4]
+	}'
+}
+
+ark_has_active_device_limits() {
+	local sec en dl ul
+	for sec in $(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		en="$(uci -q get "equipe_devices.$sec.limit_enabled" 2>/dev/null || echo 0)"
+		[ "$en" = "1" ] || continue
+		dl="$(uci -q get "equipe_devices.$sec.limit_down" 2>/dev/null || echo 0)"
+		ul="$(uci -q get "equipe_devices.$sec.limit_up" 2>/dev/null || echo 0)"
+		case "$dl" in ''|*[!0-9]*) dl=0 ;; esac
+		case "$ul" in ''|*[!0-9]*) ul=0 ;; esac
+		if [ "$dl" -gt 0 ] || [ "$ul" -gt 0 ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 # Autolimpeza inteligente e blindagem contra prefixos IPv6 antigos presos na br-lan a cada rediscagem PPPoE
 ark_ipv6_prefix_hygiene() {
 	local root_prefix="${ARK_ROOT:-}"
@@ -1503,7 +1563,7 @@ ark_ipv6_prefix_hygiene() {
 	if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
 		active_gua_pfxs="$(ubus call network.interface.lan status 2>/dev/null \
 			| jsonfilter -e '@["ipv6-prefix-assignment"][*].address' -e '@["ipv6-address"][*].address' 2>/dev/null \
-			| awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+			| ark_ipv6_expand_prefix64 | sort -u | tr '\n' ' ' | sed 's/ $//')"
 	fi
 
 	# 4. Remove imediatamente qualquer endereco IPv6 GUA 'deprecated' na br-lan
@@ -1518,7 +1578,8 @@ ark_ipv6_prefix_hygiene() {
 	if [ -n "$active_gua_pfxs" ]; then
 		local addr_cidr addr_p4 pfx_ok a_p4 rt_pfx n_ip
 		for addr_cidr in $(ip -6 -o addr show dev br-lan scope global 2>/dev/null | awk '{print $4}' | grep -iE '^[23][0-9a-f]*:'); do
-			addr_p4="$(printf '%s' "$addr_cidr" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			addr_p4="$(printf '%s\n' "$addr_cidr" | ark_ipv6_expand_prefix64)"
+			[ -n "$addr_p4" ] || continue
 			pfx_ok=0
 			for a_p4 in $active_gua_pfxs; do
 				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
@@ -1530,7 +1591,8 @@ ark_ipv6_prefix_hygiene() {
 		done
 
 		for rt_pfx in $(ip -6 route show dev br-lan 2>/dev/null | awk '/^[23][0-9a-fA-F]*:/ {print $1}'); do
-			addr_p4="$(printf '%s' "$rt_pfx" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			addr_p4="$(printf '%s\n' "$rt_pfx" | ark_ipv6_expand_prefix64)"
+			[ -n "$addr_p4" ] || continue
 			pfx_ok=0
 			for a_p4 in $active_gua_pfxs; do
 				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
@@ -1542,7 +1604,8 @@ ark_ipv6_prefix_hygiene() {
 		done
 
 		for n_ip in $(ip -6 neigh show dev br-lan 2>/dev/null | awk '/^[23][0-9a-fA-F]*:/ {print $1}'); do
-			addr_p4="$(printf '%s' "$n_ip" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			addr_p4="$(printf '%s\n' "$n_ip" | ark_ipv6_expand_prefix64)"
+			[ -n "$addr_p4" ] || continue
 			pfx_ok=0
 			for a_p4 in $active_gua_pfxs; do
 				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
@@ -1558,7 +1621,7 @@ ark_ipv6_prefix_hygiene() {
 			local pio_file stale_pio=0 pio_pfx
 			for pio_file in /tmp/odhcpd-piodir/*; do
 				[ -f "$pio_file" ] || continue
-				for pio_pfx in $(grep -oE '"prefix":"[^"]+"' "$pio_file" 2>/dev/null | cut -d'"' -f4 | awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}'); do
+				for pio_pfx in $(grep -oE '"prefix":"[^"]+"' "$pio_file" 2>/dev/null | cut -d'"' -f4 | ark_ipv6_expand_prefix64); do
 					local pio_match=0
 					for a_p4 in $active_gua_pfxs; do
 						[ "$pio_pfx" = "$a_p4" ] && { pio_match=1; break; }
@@ -1984,7 +2047,7 @@ ark_optimal_wg_mtu() {
 		esac
 	done
 	if [ "$($uci_cmd get equipe_dashboard.main.starlink_mode 2>/dev/null)" = "1" ] || \
-	   [ "$($uci_cmd get starlink_telemetry.main.enabled 2>/dev/null)" = "1" ] || \
+	   [ "$($uci_cmd get starlink_telemetry.global.enabled 2>/dev/null)" = "1" ] || \
 	   [ "$min_wan_mtu" -le 1460 ] 2>/dev/null; then
 		printf '1380'
 		return 0
@@ -2510,33 +2573,43 @@ configure_uhttpd_listeners() {
 }
 
 zerotier_ram_compress() {
-	local overlay_total
+	local overlay_total rom_lib usr_lib tmp_lib lib_base
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
 	if [ "$overlay_total" -le 16384 ]; then
-		if [ -f /rom/usr/lib/libstdc++.so.6.0.33 ] || [ -f /rom/usr/bin/zerotier-one ]; then
+		rom_lib="$(find /rom/usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
+		if [ -n "$rom_lib" ] || [ -f /rom/usr/bin/zerotier-one ]; then
 			rm -f /etc/ark-router/zerotier-pkg.tar.gz /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
 			return 0
 		fi
 		if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
-			if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
+			tmp_lib="$(find /tmp/usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
+			if [ -z "$tmp_lib" ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
 				mkdir -p /tmp
 				tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+				tmp_lib="$(find /tmp/usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
 			fi
-			[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			if [ -n "$tmp_lib" ]; then
+				lib_base="$(basename "$tmp_lib")"
+				[ -e "/usr/lib/$lib_base" ] || ln -sf "$tmp_lib" "/usr/lib/$lib_base"
+				[ -e /usr/lib/libstdc++.so.6 ] || ln -sf "$lib_base" /usr/lib/libstdc++.so.6
+			fi
 			[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
 			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
-		elif [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
-			mkdir -p /etc/ark-router /tmp
-			tar -czf /etc/ark-router/zerotier-pkg.tar.gz /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one 2>/dev/null
-			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
-			rm -f /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
-			ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-			ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
-			ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
-			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
-			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+		else
+			usr_lib="$(find /usr/lib -maxdepth 1 -type f -name 'libstdc++.so.6.*' 2>/dev/null | head -n 1)"
+			if [ -n "$usr_lib" ] && [ ! -L "$usr_lib" ]; then
+				lib_base="$(basename "$usr_lib")"
+				mkdir -p /etc/ark-router /tmp
+				tar -czf /etc/ark-router/zerotier-pkg.tar.gz "$usr_lib" /usr/bin/zerotier-one 2>/dev/null
+				tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+				rm -f "$usr_lib" /usr/bin/zerotier-one /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
+				ln -sf "/tmp/usr/lib/$lib_base" "/usr/lib/$lib_base"
+				ln -sf "$lib_base" /usr/lib/libstdc++.so.6
+				ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+				chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
+				[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+			fi
 		fi
 	fi
 }
@@ -2900,6 +2973,14 @@ ark_try_lock_dir() {
 	return 0
 }
 
+ark_mutation_lock_is_held() {
+	[ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ] || return 1
+	if [ -n "${ARK_MUTATION_LOCK_PID:-}" ]; then
+		kill -0 "$ARK_MUTATION_LOCK_PID" 2>/dev/null || return 1
+	fi
+	return 0
+}
+
 ark_acquire_mutation_lock() {
 	local cmd_name="${1:-unknown}"
 	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
@@ -2927,6 +3008,7 @@ ark_release_mutation_lock() {
 	[ "${_ark_has_mut_lock:-0}" = "1" ] || return 0
 	_ark_has_mut_lock=0
 	export ARK_MUTATION_LOCK_HELD=0
+	export ARK_MUTATION_LOCK_PID=""
 	trap - EXIT INT TERM HUP
 	ark_invalidate_caches
 	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
